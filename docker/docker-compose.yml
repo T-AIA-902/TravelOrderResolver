@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # Main API service
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - LOG_LEVEL=INFO
+    volumes:
+      - ../models/production:/app/models/production:ro
+      - ../datasets/raw/sncf:/app/datasets/raw/sncf:ro
+    restart: unless-stopped
+
+  # Training service (optional, GPU required)
+  training:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.training
+    volumes:
+      - ../datasets:/app/datasets
+      - ../models:/app/models
+      - ../training:/app/training
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    profiles:
+      - training
+
+  # MLflow tracking server (optional)
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.9.2
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow.db
+    volumes:
+      - mlflow_data:/mlflow
+    command: mlflow server --host 0.0.0.0 --port 5000
+    profiles:
+      - mlops
+
+volumes:
+  mlflow_data:

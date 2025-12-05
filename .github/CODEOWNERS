@@ -1,0 +1,21 @@
+# CODEOWNERS file
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything
+* @Romain-Ber
+
+# NLP module
+src/nlp/ @Romain-Ber
+
+# Pathfinding module
+src/pathfinding/ @Romain-Ber
+
+# Speech module
+src/speech/ @Romain-Ber
+
+# API
+src/api/ @Romain-Ber
+
+# Infrastructure
+.github/ @Romain-Ber
+docker/ @Romain-Ber
