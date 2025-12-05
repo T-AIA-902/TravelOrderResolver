@@ -1,0 +1,38 @@
+name: Model Benchmark
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run weekly on Sunday at midnight
+    - cron: '0 0 * * 0'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: |
+          poetry install --with ml
+          poetry run python -m spacy download fr_dep_news_trf
+
+      - name: Download models
+        run: ./scripts/download_models.sh
+
+      - name: Run benchmark
+        run: poetry run python evaluation/benchmark.py --output benchmark_results.json
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark_results.json
