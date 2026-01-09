@@ -8,12 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial project structure
-- README with documentation
-- Poetry configuration (pyproject.toml)
-- Makefile with common commands
-- GitHub Actions CI/CD templates
-- Pre-commit hooks configuration
+- N/A
 
 ### Changed
 - N/A
