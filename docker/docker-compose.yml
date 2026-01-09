@@ -3,6 +3,7 @@ version: '3.8'
 services:
   # Main API service
   api:
+    image: travel-order-resolver
     build:
       context: ..
       dockerfile: docker/Dockerfile
