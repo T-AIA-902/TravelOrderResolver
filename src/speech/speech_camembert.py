@@ -4,24 +4,21 @@ import pandas as pd
 from transformers import CamembertTokenizer, CamembertModel
 from rapidfuzz import process
 
-# -----------------------------
-# 1. Charger les fichiers
-# -----------------------------
+# Charger les fichiers à traiter
+
 sentences_df = pd.read_csv("datasets/raw/sentences/travel_sentences.csv",encoding="latin-1")  # phrases de voyage
 stations_df = pd.read_csv("datasets/raw/sncf/gares.csv",encoding="latin-1")  # liste des gares / villes
 
 stations_list = stations_df['city_name'].tolist()
 
-# -----------------------------
-# 2. Charger CamemBERT natif
-# -----------------------------
+# Charger CamemBERT natif
+
 tokenizer = CamembertTokenizer.from_pretrained("camembert-base")
 model = CamembertModel.from_pretrained("camembert-base")
 
 
-# -----------------------------
-# 3. Fonctions utilitaires
-# -----------------------------
+# Fonctions utilitaires pour extraire les villes et identifier origine/destination
+
 
 def extract_cities(sentence, stations_list, threshold=80):
     """
@@ -62,9 +59,8 @@ def get_origin_destination(sentence, cities):
     return origin, destination
 
 
-# -----------------------------
-# 4. Traitement des phrases
-# -----------------------------
+# Traitement des phrases
+
 output_rows = []
 
 for idx, row in sentences_df.iterrows():
