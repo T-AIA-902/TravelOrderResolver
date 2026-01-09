@@ -27,6 +27,7 @@ pydantic = "^2.5"
 # CLI
 typer = "^0.9"
 rich = "^13.7"
+click = ">=8.0.1,<8.1.0"  # Pinned for spacy CLI compatibility
 # Config
 python-dotenv = "^1.0"
 pyyaml = "^6.0"
