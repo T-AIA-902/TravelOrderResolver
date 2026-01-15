@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..data import StationDatabase
-from .models import BaseModel, BaselineRegexModel, Intent, PredictionResult
+from .models import BaselineRegexModel, BaseModel, Intent, PredictionResult
 from .preprocessor import Preprocessor, PreprocessorConfig
 
 
