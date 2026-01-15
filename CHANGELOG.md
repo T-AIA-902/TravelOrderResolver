@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] CamemBERT Zero-Shot Baseline - 2025-01-16
+
+### Added
+- **CamemBERT Zero-Shot Extractor** (`src/nlp/entity_extractor.py`):
+  - `CamembertZeroShotExtractor` - Uses `almanach/camembert-base` without fine-tuning
+  - Exact string matching against station database
+  - Establishes baseline for future fine-tuning comparison
+- **Evaluation Adapters** (`evaluation/evaluate_all.py`):
+  - `CamembertAdapter` - Entity extraction only
+  - `CamembertRegexAdapter` - Combined with Regex for intent classification
+  - Updated evaluation tables to include CamemBERT results
+
+### Changed
+- **README.md**: Added CamemBERT metrics to benchmark tables
+- **.flake8**: Added `extend-ignore = E203` for black compatibility
+
+### Results on test.csv (15k samples)
+| Model | Entity Accuracy | Intent Accuracy | Latency |
+|-------|-----------------|-----------------|---------|
+| CamemBERT (zero-shot) | 6.7% | N/A | 1.2ms |
+| CamemBERT + Regex | 6.7% | 69.3% | 2.2ms |
+
 ## [0.1.4] Unified Evaluation & Metrics - 2025-01-15
 
 ### Added

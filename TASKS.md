@@ -163,9 +163,9 @@
 ### 3.9 Modele CamemBERT [P1]
 - [x] Chargement CamemBERT depuis HuggingFace
 - [ ] Fine-tuning pour classification d'intention
-- [x] Fine-tuning pour NER custom (B-DEP, I-DEP, B-DEST, I-DEST)
-- [x] Pipeline d'inference (`CamembertEntityExtractor`)
-- [ ] Tests et metriques CamemBERT
+- [ ] Fine-tuning pour NER custom (B-DEP, I-DEP, B-DEST, I-DEST)
+- [x] Pipeline d'inference (`CamembertZeroShotExtractor`)
+- [x] Tests et metriques CamemBERT (zero-shot: 6.7% accuracy)
 
 ### 3.10 Modele Flan-T5 / Seq2Seq [P1]
 - [ ] Chargement Flan-T5 (base ou small)
@@ -527,4 +527,4 @@
 
 ---
 
-*Derniere mise a jour: 2026-01-15*
+*Derniere mise a jour: 2025-01-16*
