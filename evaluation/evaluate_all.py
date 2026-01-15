@@ -304,6 +304,45 @@ class FuzzyRegexAdapter(ModelAdapter):
         return result.intent.value
 
 
+class CamembertAdapter(ModelAdapter):
+    """Adapter for CamemBERT zero-shot entity extractor (no intent classification)."""
+
+    def __init__(self, threshold: float = 0.85):
+        from src.nlp.entity_extractor import CamembertZeroShotExtractor
+
+        self._model = CamembertZeroShotExtractor(threshold=threshold)
+
+    @property
+    def name(self) -> str:
+        return "CamemBERT"
+
+    def extract_entities(self, text: str) -> dict:
+        return self._model.extract_entities(text)
+
+
+class CamembertRegexAdapter(ModelAdapter):
+    """Adapter combining Regex (intent) + CamemBERT (entities)."""
+
+    def __init__(self, threshold: float = 0.85):
+        from src.nlp.entity_extractor import CamembertZeroShotExtractor
+
+        station_db = StationDatabase()
+        station_db.load()
+        self._regex_model = BaselineRegexModel(station_db=station_db)
+        self._camembert_model = CamembertZeroShotExtractor(threshold=threshold)
+
+    @property
+    def name(self) -> str:
+        return "CamemBERT + Regex"
+
+    def extract_entities(self, text: str) -> dict:
+        return self._camembert_model.extract_entities(text)
+
+    def classify_intent(self, text: str) -> Optional[str]:
+        result = self._regex_model.predict(text)
+        return result.intent.value
+
+
 # =============================================================================
 # Helper Functions
 # =============================================================================
@@ -517,14 +556,14 @@ def evaluate_model(
 
 
 def print_table_1_extractors(results: dict):
-    """Print Table 1: Entity extractors only (SpaCy, Fuzzy)."""
+    """Print Table 1: Entity extractors only (SpaCy, Fuzzy, CamemBERT)."""
     print("\n" + "=" * 80)
     print("TABLE 1: EXTRACTEURS D'ENTITES (Entity Extraction Only)")
     print("=" * 80)
     print("\n| Methode | Accuracy | Precision | Recall | F1-Score | Latence |")
     print("|---------|----------|-----------|--------|----------|---------|")
 
-    for name in ["SpaCy", "Fuzzy"]:
+    for name in ["SpaCy", "Fuzzy", "CamemBERT"]:
         if name in results:
             r = results[name]
             dep = r.departure_metrics
@@ -548,7 +587,7 @@ def print_table_2_complete(results: dict):
     print("\n| Methode | Intent Acc | Entity Acc | Precision | Recall | F1-Score | Latence |")
     print("|---------|------------|------------|-----------|--------|----------|---------|")
 
-    for name in ["Baseline Regex", "SpaCy + Regex", "Fuzzy + Regex"]:
+    for name in ["Baseline Regex", "SpaCy + Regex", "Fuzzy + Regex", "CamemBERT + Regex"]:
         if name in results:
             r = results[name]
             dep = r.departure_metrics
@@ -570,7 +609,7 @@ def print_table_3_categories(results: dict):
     print("=" * 80)
 
     # Get complete solution names
-    complete_names = ["Baseline Regex", "SpaCy + Regex", "Fuzzy + Regex"]
+    complete_names = ["Baseline Regex", "SpaCy + Regex", "Fuzzy + Regex", "CamemBERT + Regex"]
     available = [n for n in complete_names if n in results]
 
     if not available:
@@ -704,7 +743,7 @@ def main():
     parser.add_argument(
         "--models",
         nargs="+",
-        choices=["spacy", "fuzzy", "regex", "spacy_regex", "fuzzy_regex", "all"],
+        choices=["spacy", "fuzzy", "regex", "spacy_regex", "fuzzy_regex", "camembert", "camembert_regex", "all"],
         default=["all"],
         help="Models to evaluate (default: all)",
     )
@@ -734,7 +773,7 @@ def main():
 
     # Determine which models to evaluate
     if "all" in args.models:
-        model_list = ["spacy", "fuzzy", "regex", "spacy_regex", "fuzzy_regex"]
+        model_list = ["spacy", "fuzzy", "regex", "spacy_regex", "fuzzy_regex", "camembert", "camembert_regex"]
     else:
         model_list = args.models
 
@@ -782,7 +821,7 @@ def main():
         )
 
     if "fuzzy_regex" in model_list:
-        print("\n[5/5] Initializing Fuzzy + Regex...")
+        print("\n[5/7] Initializing Fuzzy + Regex...")
         adapter = FuzzyRegexAdapter()
         print("      Evaluating Fuzzy + Regex...")
         results["Fuzzy + Regex"] = evaluate_model(
@@ -791,6 +830,24 @@ def main():
         print(
             f"      Done. Intent: {results['Fuzzy + Regex'].intent_accuracy*100:.1f}%, "
             f"Entity: {results['Fuzzy + Regex'].entity_accuracy*100:.1f}%"
+        )
+
+    # CamemBERT models
+    if "camembert" in model_list:
+        print("\n[6/7] Initializing CamemBERT (zero-shot)...")
+        adapter = CamembertAdapter()
+        print("      Evaluating CamemBERT...")
+        results["CamemBERT"] = evaluate_model(adapter, data, include_intent=False)
+        print(f"      Done. Entity accuracy: {results['CamemBERT'].entity_accuracy*100:.1f}%")
+
+    if "camembert_regex" in model_list:
+        print("\n[7/7] Initializing CamemBERT + Regex...")
+        adapter = CamembertRegexAdapter()
+        print("      Evaluating CamemBERT + Regex...")
+        results["CamemBERT + Regex"] = evaluate_model(adapter, data, include_intent=True)
+        print(
+            f"      Done. Intent: {results['CamemBERT + Regex'].intent_accuracy*100:.1f}%, "
+            f"Entity: {results['CamemBERT + Regex'].entity_accuracy*100:.1f}%"
         )
 
     # Print results tables
