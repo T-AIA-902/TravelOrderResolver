@@ -45,7 +45,9 @@ class TestNormalizeName:
 
     def test_complex_names(self) -> None:
         """Test complex station names."""
-        assert normalize_name("Aeroport Charles de Gaulle 2 TGV") == "aeroport charles de gaulle 2 tgv"
+        assert (
+            normalize_name("Aeroport Charles de Gaulle 2 TGV") == "aeroport charles de gaulle 2 tgv"
+        )
         assert normalize_name("Paris Gare de Lyon") == "paris gare de lyon"
 
 

@@ -215,11 +215,13 @@ class TestNLPPipeline:
     def test_pipeline_batch_process(self) -> None:
         """Test batch processing."""
         pipeline = NLPPipeline()
-        results = pipeline.batch_process([
-            "De Paris a Lyon",
-            "Hello world",
-            "De Marseille a Nice",
-        ])
+        results = pipeline.batch_process(
+            [
+                "De Paris a Lyon",
+                "Hello world",
+                "De Marseille a Nice",
+            ]
+        )
         assert len(results) == 3
         assert results[0].intent == Intent.TRIP
         assert results[2].intent == Intent.TRIP
