@@ -5,9 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.3] Integration finetuning CamemBERT - 2025-01-15
 
-### Added (Integration SpaCy - 2025-01-15)
+### Added
+- **CamemBERT Entity Extractor** (`src/nlp/entity_extractor.py`):
+  - `CamembertEntityExtractor` - Fine-tuned CamemBERT NER model
+  - Direct DEP/DEST label prediction (no heuristics needed)
+- **Pathfinding module** (`src/pathfinding/`):
+  - `TrainGraph` - NetworkX-based railway graph with Dijkstra algorithm
+  - LGV (high-speed line) optimization (3x faster weight)
+  - City hub transfers for major stations (Paris, Lyon, etc.)
+- **Visualization module** (`src/visualization/`):
+  - `MapVisualizer` - Folium-based interactive route maps
+  - Auto-opens in browser after generation
+- **Main orchestrator** (`src/main.py`):
+  - `TravelOrderResolver` - Unified entry point with pluggable extractors
+  - CLI with `--extractor` flag: camembert, spacy, fuzzy, regex
+- **Saved model** (`models/camembert-ner/`):
+  - Pre-fine-tuned CamemBERT tokenizer and config
+- **Dataset generation scripts** (`datasets/scripts/`):
+  - `generate_camembert_data.py` - 100K synthetic training samples
+  - `preprocess_camembert_data.py` - CSV to JSONL conversion
+- **Training dataset** (`datasets/processed/dataset_train_sncf.csv`):
+  - 100,000 labeled travel sentences (80% valid, 20% invalid)
+- **Dependencies**:
+  - networkx, shapely, geopy (pathfinding)
+  - folium (visualization)
+  - faker (data generation)
+
+## [0.1.2] Integration SpaCy - 2025-01-15
+
+### Added
 - **SpaCy Entity Extractor** (`src/nlp/entity_extractor.py`):
   - `SpacyEntityExtractor` - Extraction NER avec fr_core_news_lg
   - `FuzzyEntityExtractor` - Extension avec matching fuzzy RapidFuzz
@@ -22,9 +50,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `test_entity_extractor.py` - 27 tests extracteurs
   - `test_fuzzy_matcher.py` - 26 tests fuzzy matcher
 
-### Changed (Integration SpaCy - 2025-01-15)
+### Changed
 - **Data module** - `normalize_name()` utilise maintenant `unidecode` pour une normalisation plus robuste des accents
 - **Evaluation scripts** - Utilisent `datasets/generated/test.csv` (1501 phrases) au lieu d'un dataset séparé
+
+## [0.1.1] - 2025-01-15
 
 ### Added
 - Initial project structure
