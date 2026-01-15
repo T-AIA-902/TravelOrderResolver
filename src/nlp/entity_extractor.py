@@ -5,12 +5,13 @@ This module extracts travel-related entities (departure, destination, intermedia
 from French sentences using spaCy's pre-trained transformer model.
 """
 
+from typing import Any, Dict, List, Optional, Union, cast
+
 import spacy
-from typing import Dict, List, Optional
-from pathlib import Path
 
 try:
     from src.nlp.fuzzy_matcher import StationMatcher
+
     FUZZY_MATCHING_AVAILABLE = True
 except ImportError:
     FUZZY_MATCHING_AVAILABLE = False
@@ -36,7 +37,7 @@ class SpacyEntityExtractor:
         self.nlp = spacy.load(model_name)
         print("Model loaded successfully!")
 
-    def extract_entities(self, text: str) -> Dict[str, Optional[str]]:
+    def extract_entities(self, text: str) -> Dict[str, Union[Optional[str], List[str]]]:
         """
         Extract departure, destination, and intermediate stops from text.
 
@@ -78,9 +79,10 @@ class SpacyEntityExtractor:
         # spaCy identifies entities with labels:
         # - LOC = Location (geographic places)
         # - GPE = Geopolitical Entity (cities, countries)
-        location_entities = [
+        location_entities: List[Dict[str, Any]] = [
             {"text": ent.text, "start": ent.start_char, "end": ent.end_char}
-            for ent in doc.ents if ent.label_ in ["LOC", "GPE"]
+            for ent in doc.ents
+            if ent.label_ in ["LOC", "GPE"]
         ]
 
         # Step 3: Identify intermediate keywords
@@ -100,10 +102,10 @@ class SpacyEntityExtractor:
                         intermediate_locs.add(loc["text"])
 
         # Step 4: Apply heuristics to classify locations
-        result = {
+        result: Dict[str, Union[Optional[str], List[str]]] = {
             "departure": None,
             "destination": None,
-            "intermediate": []
+            "intermediate": [],
         }
 
         if len(location_entities) == 0:
@@ -174,12 +176,14 @@ class SpacyEntityExtractor:
         entities = []
         for ent in doc.ents:
             if ent.label_ in ["LOC", "GPE"]:
-                entities.append({
-                    "text": ent.text,
-                    "label": ent.label_,
-                    "start": ent.start_char,
-                    "end": ent.end_char
-                })
+                entities.append(
+                    {
+                        "text": ent.text,
+                        "label": ent.label_,
+                        "start": ent.start_char,
+                        "end": ent.end_char,
+                    }
+                )
 
         # Extract departure/destination using the simple method
         extracted = self.extract_entities(text)
@@ -189,7 +193,7 @@ class SpacyEntityExtractor:
             "entities": entities,
             "departure": extracted["departure"],
             "destination": extracted["destination"],
-            "intermediate": extracted["intermediate"]
+            "intermediate": extracted["intermediate"],
         }
 
 
@@ -207,7 +211,6 @@ class FuzzyEntityExtractor(SpacyEntityExtractor):
     def __init__(
         self,
         model_name: str = "fr_core_news_lg",
-        stations_path: Optional[str] = None,
         fuzzy_threshold: int = 75,
     ):
         """
@@ -215,7 +218,6 @@ class FuzzyEntityExtractor(SpacyEntityExtractor):
 
         Args:
             model_name: spaCy model name (default: fr_core_news_lg)
-            stations_path: Path to stations.json file (default: auto-detect)
             fuzzy_threshold: Minimum similarity score for fuzzy matching (default: 75)
         """
         # Initialize parent spaCy extractor
@@ -228,12 +230,10 @@ class FuzzyEntityExtractor(SpacyEntityExtractor):
                 "Install with: pip install rapidfuzz unidecode"
             )
 
-        self.fuzzy_matcher = StationMatcher(
-            stations_path=stations_path, threshold=fuzzy_threshold
-        )
+        self.fuzzy_matcher = StationMatcher(threshold=fuzzy_threshold)
         print(f"Fuzzy matching enabled (threshold: {fuzzy_threshold}%)")
 
-    def extract_entities(self, text: str) -> Dict[str, Optional[str]]:
+    def extract_entities(self, text: str) -> Dict[str, Union[Optional[str], List[str]]]:
         """
         Extract and normalize entities using fuzzy matching.
 
@@ -261,20 +261,23 @@ class FuzzyEntityExtractor(SpacyEntityExtractor):
         entities = super().extract_entities(text)
 
         # Step 2: Normalize each entity with fuzzy matching
-        if entities["departure"]:
-            match = self.fuzzy_matcher.match_station(entities["departure"])
+        departure = cast(Optional[str], entities["departure"])
+        if departure:
+            match = self.fuzzy_matcher.match_station(departure)
             if match:
                 entities["departure"] = match[0]  # Use matched station name
             # If no match, keep original spaCy entity
 
-        if entities["destination"]:
-            match = self.fuzzy_matcher.match_station(entities["destination"])
+        destination = cast(Optional[str], entities["destination"])
+        if destination:
+            match = self.fuzzy_matcher.match_station(destination)
             if match:
                 entities["destination"] = match[0]
 
         # Normalize intermediate stops
-        normalized_intermediate = []
-        for stop in entities["intermediate"]:
+        intermediate = cast(List[str], entities["intermediate"])
+        normalized_intermediate: List[str] = []
+        for stop in intermediate:
             match = self.fuzzy_matcher.match_station(stop)
             if match:
                 normalized_intermediate.append(match[0])
