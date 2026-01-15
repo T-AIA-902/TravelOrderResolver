@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Unit tests** - 63 tests covering data and NLP modules
 
 ### Changed
-- N/A
+- Updated README to reflect the final architecture
 
 ### Deprecated
 - N/A
@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Test discovery issue: added missing `tests/unit/__init__.py`
+- `.gitignore` pattern `models/` changed to `/models/` to include `src/nlp/models/` source code
 
 ### Security
 - N/A
