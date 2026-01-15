@@ -7,8 +7,9 @@ with typos, case variations) to the official SNCF stations database.
 Uses StationDatabase as the single source of truth for station data.
 """
 
-from typing import Optional, List, Tuple
-from rapidfuzz import process, fuzz
+from typing import List, Optional, Tuple
+
+from rapidfuzz import fuzz, process
 
 from src.data.station_database import StationDatabase, normalize_name
 
@@ -63,9 +64,7 @@ class StationMatcher:
         """
         return normalize_name(text)
 
-    def match_station(
-        self, query: str, top_n: int = 1
-    ) -> Optional[Tuple[str, float]]:
+    def match_station(self, query: str, top_n: int = 1) -> Optional[Tuple[str, float]]:
         """
         Find the best matching station for a query.
 
@@ -106,7 +105,7 @@ class StationMatcher:
         # Step 2: Build a mapping of first words to station names
         # This allows us to match "lyon" to "lyon st paul" more effectively
         # Note: normalize_name() converts hyphens to spaces
-        first_words = {}
+        first_words: dict[str, list[str]] = {}
         for normalized_name in self.normalized_names:
             first_word = normalized_name.split(" ")[0]
             if first_word not in first_words:
@@ -163,9 +162,7 @@ class StationMatcher:
         original_name = self.search_index[best_station]
         return (original_name, best_score)
 
-    def match_stations_batch(
-        self, queries: List[str]
-    ) -> List[Optional[Tuple[str, float]]]:
+    def match_stations_batch(self, queries: List[str]) -> List[Optional[Tuple[str, float]]]:
         """
         Match multiple queries in batch.
 
@@ -184,9 +181,7 @@ class StationMatcher:
         """
         return [self.match_station(query) for query in queries]
 
-    def match_with_details(
-        self, query: str, top_n: int = 5
-    ) -> List[Tuple[str, float]]:
+    def match_with_details(self, query: str, top_n: int = 5) -> List[Tuple[str, float]]:
         """
         Get multiple match candidates with scores for debugging.
 
@@ -221,9 +216,7 @@ class StationMatcher:
         )
 
         # Convert to original names
-        results = [
-            (self.search_index[match[0]], match[1]) for match in matches
-        ]
+        results = [(self.search_index[match[0]], match[1]) for match in matches]
 
         return results
 

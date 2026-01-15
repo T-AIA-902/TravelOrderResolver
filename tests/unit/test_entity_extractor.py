@@ -10,7 +10,8 @@ for extracting travel-related entities from French sentences.
 # This is standard pytest practice, not an error
 
 import pytest
-from src.nlp.entity_extractor import SpacyEntityExtractor, FuzzyEntityExtractor
+
+from src.nlp.entity_extractor import FuzzyEntityExtractor, SpacyEntityExtractor
 
 
 @pytest.fixture(scope="module")

@@ -7,15 +7,16 @@ extraction.
 """
 
 import sys
-from pathlib import Path
-import pandas as pd
 import time
+from pathlib import Path
+
+import pandas as pd
 
 # Add src to path to import our modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.nlp.entity_extractor import SpacyEntityExtractor
-from evaluation.metrics import calculate_entity_metrics, measure_latency
+from evaluation.metrics import calculate_entity_metrics  # noqa: E402
+from src.nlp.entity_extractor import SpacyEntityExtractor  # noqa: E402
 
 
 def normalize_location(location):
@@ -53,7 +54,7 @@ def evaluate_extractor(dataset_path: str):
     extractor = SpacyEntityExtractor()
 
     # Filter only TRIP sentences (we only evaluate entity extraction on travel queries)
-    trip_df = df[df['intent'] == 'TRIP'].copy()
+    trip_df = df[df["intent"] == "TRIP"].copy()
     print(f"\nEvaluating on {len(trip_df)} TRIP sentences")
 
     # Storage for predictions and ground truth
@@ -67,9 +68,9 @@ def evaluate_extractor(dataset_path: str):
     print("-" * 70)
 
     for idx, row in trip_df.iterrows():
-        sentence = row['sentence']
-        true_departure = normalize_location(row['departure'])
-        true_destination = normalize_location(row['destination'])
+        sentence = row["sentence"]
+        true_departure = normalize_location(row["departure"])
+        true_destination = normalize_location(row["destination"])
 
         # Measure latency for this sentence
         start_time = time.perf_counter()
@@ -77,8 +78,8 @@ def evaluate_extractor(dataset_path: str):
         end_time = time.perf_counter()
         latencies.append((end_time - start_time) * 1000)  # Convert to ms
 
-        pred_departure = normalize_location(result['departure'])
-        pred_destination = normalize_location(result['destination'])
+        pred_departure = normalize_location(result["departure"])
+        pred_destination = normalize_location(result["destination"])
 
         # Store predictions and ground truth
         predictions.append((pred_departure, pred_destination))
@@ -86,15 +87,17 @@ def evaluate_extractor(dataset_path: str):
 
         # Store errors for analysis
         if not (pred_departure == true_departure and pred_destination == true_destination):
-            errors.append({
-                'sentence': sentence,
-                'true_departure': true_departure,
-                'pred_departure': pred_departure,
-                'true_destination': true_destination,
-                'pred_destination': pred_destination,
-                'departure_correct': pred_departure == true_departure,
-                'destination_correct': pred_destination == true_destination
-            })
+            errors.append(
+                {
+                    "sentence": sentence,
+                    "true_departure": true_departure,
+                    "pred_departure": pred_departure,
+                    "true_destination": true_destination,
+                    "pred_destination": pred_destination,
+                    "departure_correct": pred_departure == true_departure,
+                    "destination_correct": pred_destination == true_destination,
+                }
+            )
 
     # Calculate comprehensive metrics
     metrics = calculate_entity_metrics(predictions, ground_truth)
@@ -117,12 +120,23 @@ def evaluate_extractor(dataset_path: str):
     print("\n" + "-" * 70)
     print("COMPREHENSIVE METRICS")
     print("-" * 70)
-    print(f"\n{'Metric':<20} {'Departure':<15} {'Destination':<15} {'Both Correct':<15}")
+    print(f"\n{'Metric':<20} {'Departure':<15} {'Destination':<15} {'Both':<15}")
     print("-" * 70)
-    print(f"{'Precision':<20} {metrics['departure']['precision']:>13.2f}% {metrics['destination']['precision']:>14.2f}% {metrics['both']['precision']:>14.2f}%")
-    print(f"{'Recall':<20} {metrics['departure']['recall']:>13.2f}% {metrics['destination']['recall']:>14.2f}% {metrics['both']['recall']:>14.2f}%")
-    print(f"{'F1-Score':<20} {metrics['departure']['f1_score']:>13.2f}% {metrics['destination']['f1_score']:>14.2f}% {metrics['both']['f1_score']:>14.2f}%")
-    print(f"{'Accuracy':<20} {metrics['departure']['accuracy']:>13.2f}% {metrics['destination']['accuracy']:>14.2f}% {metrics['both']['accuracy']:>14.2f}%")
+    dep = metrics["departure"]
+    dest = metrics["destination"]
+    both = metrics["both"]
+    print(
+        f"{'Precision':<20} {dep['precision']:>13.2f}% {dest['precision']:>14.2f}% {both['precision']:>14.2f}%"  # noqa: E501
+    )
+    print(
+        f"{'Recall':<20} {dep['recall']:>13.2f}% {dest['recall']:>14.2f}% {both['recall']:>14.2f}%"  # noqa: E501
+    )
+    print(
+        f"{'F1-Score':<20} {dep['f1_score']:>13.2f}% {dest['f1_score']:>14.2f}% {both['f1_score']:>14.2f}%"  # noqa: E501
+    )
+    print(
+        f"{'Accuracy':<20} {dep['accuracy']:>13.2f}% {dest['accuracy']:>14.2f}% {both['accuracy']:>14.2f}%"  # noqa: E501
+    )
 
     print("\n" + "-" * 70)
     print("LATENCY STATISTICS")
@@ -143,10 +157,14 @@ def evaluate_extractor(dataset_path: str):
 
         for i, error in enumerate(errors[:10], 1):  # Show first 10 errors
             print(f"\n{i}. Sentence: {error['sentence']}")
-            if not error['departure_correct']:
-                print(f"   Departure:   TRUE={error['true_departure']:<15} PRED={error['pred_departure']}")
-            if not error['destination_correct']:
-                print(f"   Destination: TRUE={error['true_destination']:<15} PRED={error['pred_destination']}")
+            if not error["departure_correct"]:
+                true_dep = error["true_departure"]
+                pred_dep = error["pred_departure"]
+                print(f"   Departure:   TRUE={true_dep:<15} PRED={pred_dep}")
+            if not error["destination_correct"]:
+                true_dest = error["true_destination"]
+                pred_dest = error["pred_destination"]
+                print(f"   Destination: TRUE={true_dest:<15} PRED={pred_dest}")
 
         if len(errors) > 10:
             print(f"\n... and {len(errors) - 10} more errors")
@@ -154,15 +172,11 @@ def evaluate_extractor(dataset_path: str):
     print("\n" + "=" * 70)
 
     return {
-        'total': total,
-        'metrics': metrics,
-        'latency': {
-            'avg_ms': avg_latency,
-            'min_ms': min_latency,
-            'max_ms': max_latency
-        },
-        'no_prediction_rate': no_prediction_rate,
-        'errors': errors
+        "total": total,
+        "metrics": metrics,
+        "latency": {"avg_ms": avg_latency, "min_ms": min_latency, "max_ms": max_latency},
+        "no_prediction_rate": no_prediction_rate,
+        "errors": errors,
     }
 
 

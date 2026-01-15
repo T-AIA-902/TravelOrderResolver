@@ -10,6 +10,7 @@ of location names to SNCF station database.
 # This is standard pytest practice, not an error
 
 import pytest
+
 from src.nlp.fuzzy_matcher import StationMatcher
 
 
