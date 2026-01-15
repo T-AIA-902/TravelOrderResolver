@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] Unified Evaluation & Metrics - 2025-01-15
+
+### Added
+- **Unified Evaluation Script** (`evaluation/evaluate_all.py`):
+  - Evaluates all NLP methods (Regex, SpaCy, Fuzzy) with consistent methodology
+  - Supports both JSON and CSV dataset formats
+  - Generates 3 metrics tables: entity extractors, complete solutions, categories
+  - Category-specific metrics: misspelling handling, no-caps handling, order detection
+  - Export results to JSON
+- **Dataset Split Script** (`datasets/scripts/split_dataset.py`):
+  - Splits dataset into train/val/test (70/15/15)
+  - Reproducible with seed parameter
+- **Dataset Splits** (`datasets/splits/`):
+  - `train.csv` (70,000 samples)
+  - `val.csv` (15,000 samples)
+  - `test.csv` (15,000 samples)
+
+### Changed
+- **README.md**: Updated benchmarks section with actual metrics from evaluation
+- **evaluate_all.py**: Added support for VALID/INVALID label mapping to TRIP/NOT_TRIP
+
+### Results on test.csv (15k samples)
+| Model | Entity Accuracy | Intent Accuracy | Latency |
+|-------|-----------------|-----------------|---------|
+| Baseline Regex | 17.8% | 69.3% | 1.7ms |
+| SpaCy | 6.6% | N/A | 7.5ms |
+| Fuzzy | 11.5% | N/A | 22.9ms |
+
 ## [0.1.3] Integration finetuning CamemBERT - 2025-01-15
 
 ### Added
