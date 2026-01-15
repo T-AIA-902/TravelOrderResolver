@@ -1,92 +1,146 @@
-# travel_order_resolver_native.py
+# src/speech/speech_camembert.py
+"""
+Script amélioré pour extraire origine et destination depuis les phrases de voyage.
+- Normalise les textes (minuscules, suppression des accents, ponctuation éliminée)
+- Recherche par n-grams pour matcher des gares multi-mots
+- Utilise rapidfuzz pour fuzzy matching
+- Détecte origine/destination via motifs (de/depuis -> origine, à/vers/pour -> destination)
+- Garantit toujours 3 colonnes dans la sortie CSV (sentenceID, Departure, Destination)
+"""
 
+import re
+import unicodedata
 import pandas as pd
-from transformers import CamembertTokenizer, CamembertModel
 from rapidfuzz import process
 
-# Charger les fichiers à traiter
+# Chemins des fichiers
+SENTENCES_CSV = "datasets/raw/sentences/travel_sentences.csv"
+STATIONS_CSV = "datasets/raw/sncf/gares.csv"
+OUTPUT_CSV = "travel_orders_output.csv"
 
-sentences_df = pd.read_csv("datasets/raw/sentences/travel_sentences.csv",encoding="latin-1")  # phrases de voyage
-stations_df = pd.read_csv("datasets/raw/sncf/gares.csv",encoding="latin-1")  # liste des gares / villes
+# Débogage
+DEBUG = True
 
-stations_list = stations_df['city_name'].tolist()
+# Chargement sécurisé des CSVs (essayer utf-8 puis latin-1)
+def read_csv_fallback(path):
+    try:
+        return pd.read_csv(path, encoding="utf-8")
+    except Exception:
+        return pd.read_csv(path, encoding="latin-1")
 
-# Charger CamemBERT natif
+sentences_df = read_csv_fallback(SENTENCES_CSV)
+stations_df = read_csv_fallback(STATIONS_CSV)
 
-tokenizer = CamembertTokenizer.from_pretrained("camembert-base")
-model = CamembertModel.from_pretrained("camembert-base")
+stations_list = stations_df['city_name'].astype(str).tolist()
 
+# Normalisation des chaînes
+def normalize_text(s: str) -> str:
+    if not isinstance(s, str):
+        s = str(s or "")
+    s = s.lower()
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    s = re.sub(r"[^\w\s]", " ", s)  # retirer ponctuation
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
 
-# Fonctions utilitaires pour extraire les villes et identifier origine/destination
+# Stopwords de base pour éviter de matcher des prépositions / petits mots
+STOPWORDS = {
+    'de', 'depuis', 'a', 'à', 'y', 'il', 'des', 'le', 'la', 'les', 'en', 'du', 'pour',
+    'me', 'je', 'un', 'une', 'se', 'te', 'nous', 'vous', 'qui', 'que', 'quoi', 'ou', 'où',
+    'quand', 'comment', 'a-t-il', 'a', 'est', 'sont', 'y-a-t-il'
+}
 
+# Construire dictionnaires normalisés -> original
+stations_norm = [normalize_text(s) for s in stations_list]
+norm_to_original = {n: o for n, o in zip(stations_norm, stations_list)}
+max_station_words = max((len(n.split()) for n in stations_norm), default=1)
 
-def extract_cities(sentence, stations_list, threshold=80):
-    """
-    Trouver les villes/gares présentes dans une phrase via fuzzy matching.
-    """
-    # Nettoyer la phrase
-    words = sentence.replace(',', '').replace('?', '').replace('.', '').split()
-    found_cities = []
+# Extraire villes via n-grams + fuzzy matching
+def extract_cities(sentence: str, threshold: int = 80):
+    words = normalize_text(sentence).split()
+    found = []
+    # parcourir n-grams du plus long au plus court pour privilégier les correspondances multi-mots
+    for n in range(max_station_words, 0, -1):
+        for i in range(len(words) - n + 1):
+            ngram = " ".join(words[i : i + n])
+            if not ngram:
+                continue
+            # ignorer n-grams trop courts ou mots vides
+            ngram_compact = ngram.replace(' ', '')
+            if len(ngram_compact) < 3:
+                continue
+            if ngram in STOPWORDS:
+                continue
+            match = process.extractOne(ngram, stations_norm)
+            if match:
+                match_norm, score, _ = match
+                if score >= threshold:
+                    found.append((i, n, ngram, match_norm, score))
+    # Trier par position d'apparition et garder uniques tout en conservant le premier match
+    found.sort(key=lambda x: x[0])
+    seen = set()
+    ordered = []
+    for _, _, ngram, match_norm, score in found:
+        orig = norm_to_original.get(match_norm)
+        if orig and orig not in seen:
+            seen.add(orig)
+            ordered.append((orig, ngram, score))
+    return ordered
 
-    for word in words:
-        match, score, _ = process.extractOne(word, stations_list)
-        if score >= threshold:
-            found_cities.append(match)
-
-    return list(set(found_cities))  # retirer doublons
-
-
-def get_origin_destination(sentence, cities):
-    """
-    Identifier l'origine et la destination en utilisant les mots-clés
-    'de', 'depuis', 'à', 'vers'. Si non trouvé, assigner simplement
-    la première et la deuxième ville détectées.
-    """
-    sentence_lower = sentence.lower()
-    origin, destination = None, None
-
+# Détecter origine et destination via motifs simples
+def get_origin_destination(sentence: str, cities: list):
+    s_norm = normalize_text(sentence)
+    origin = None
+    destination = None
     for city in cities:
-        city_lower = city.lower()
-        if f"de {city_lower}" in sentence_lower or f"depuis {city_lower}" in sentence_lower:
-            origin = city
-        elif f"à {city_lower}" in sentence_lower or f"vers {city_lower}" in sentence_lower:
-            destination = city
-
-    # Si toujours non défini mais deux villes détectées
-    if len(cities) == 2 and (origin is None or destination is None):
-        origin, destination = cities[0], cities[1]
-
+        city_name = city[0] if isinstance(city, tuple) else city
+        city_norm = normalize_text(city_name)
+        # motifs pour origine
+        if re.search(rf"\b(de|depuis)\s+{re.escape(city_norm)}\b", s_norm):
+            if origin is None:
+                origin = city_name
+        # motifs pour destination
+        if re.search(rf"\b(a|à|vers|pour|destination)\s+{re.escape(city_norm)}\b", s_norm):
+            if destination is None:
+                destination = city_name
+    # si au moins deux villes détectées, remplir les manquantes
+    city_names = [c[0] if isinstance(c, tuple) else c for c in cities]
+    if (origin is None or destination is None) and len(city_names) >= 2:
+        if origin is None:
+            origin = city_names[0]
+        if destination is None and len(city_names) >= 2:
+            destination = city_names[1]
     return origin, destination
 
-
-# Traitement des phrases
-
+# Traitement
 output_rows = []
+for _, row in sentences_df.iterrows():
+    sentence_id = row.get('sentenceID')
+    sentence = str(row.get('sentence', ''))
 
-for idx, row in sentences_df.iterrows():
-    sentence_id = row['sentenceID']
-    sentence = row['sentence']
+    cities = extract_cities(sentence, threshold=80)
 
-    # Extraire les villes
-    cities = extract_cities(sentence, stations_list)
+    if DEBUG:
+        print("---")
+        print(f"ID={sentence_id} | sentence= {sentence}")
+        print("extracted cities (orig,matched_ngram,score):", cities)
 
     if not cities:
-        # Phrase invalide
-        output_rows.append([sentence_id, "INVALID"])
+        output_rows.append([sentence_id, 'INVALID', 'INVALID'])
         continue
 
-    # Identifier origine et destination
     origin, destination = get_origin_destination(sentence, cities)
 
+    if DEBUG:
+        print(f"origin={origin} destination={destination}")
+
     if origin is None or destination is None:
-        output_rows.append([sentence_id, "INVALID"])
+        output_rows.append([sentence_id, 'INVALID', 'INVALID'])
     else:
         output_rows.append([sentence_id, origin, destination])
 
-# -----------------------------
-# 5. Sauvegarde CSV final
-# -----------------------------
+# Sauvegarde en garantissant 3 colonnes
 output_df = pd.DataFrame(output_rows, columns=['sentenceID', 'Departure', 'Destination'])
-output_df.to_csv("travel_orders_output.csv", index=False, encoding='utf-8')
-
-print("Traitement terminé ! Résultat sauvegardé dans travel_orders_output.csv")
+output_df.to_csv(OUTPUT_CSV, index=False, encoding='utf-8')
+print(f"Traitement terminé ! Résultat sauvegardé dans {OUTPUT_CSV}")

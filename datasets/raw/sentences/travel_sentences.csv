@@ -1,12 +1,13 @@
 sentenceID,sentence,labels
 1,"Je veux aller de Toulouse à Paris.","O O O O B-LOC O B-LOC"
-2,"Comment me rendre à Port Boulet depuis Tours ?","O O O O B-LOC I-LOC O B-LOC"
+2,"Comment me rendre à Port Boulet depuis Tours ?","O O O O B-LOC O B-LOC"
 3,"Je souhaite aller de Bordeaux à Lourdes.","O O O O B-LOC O B-LOC"
 4,"Je voudrais un billet pour Lyon en partant de Marseille.","O O O O O B-LOC O O O B-LOC"
 5,"A quelle heure y a-t-il des trains vers Paris depuis Toulouse ?","O O O O O O O O B-LOC O B-LOC"
 6,"Je vais de Lille à Strasbourg.","O O O B-LOC O B-LOC"
 7,"Je veux me rendre à Nice depuis Avignon.","O O O O B-LOC O B-LOC"
 8,"Aller de Nantes à Rennes.","O O O B-LOC O B-LOC"
-9,"Je souhaite aller de paris à toulous.","O O O B-LOC O B-LOC"
+9,"Je souhaite aller de Paris à Toulouse.","O O O O B-LOC O B-LOC"
 10,"Manger une pomme.","O O O"
-
+11,"je veut allé au mans jusqu'a paris en passanr par laval","O O O B-LOC O B-LOC O O O I-LOC"
+12,"je veux alle de gare du mans à part-dieu","0 0 0 0 B-LOC 0 B-LOC"
