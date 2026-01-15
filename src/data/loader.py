@@ -54,7 +54,8 @@ class DataLoader:
             raise FileNotFoundError(f"Data file not found: {filepath}")
 
         with open(filepath, encoding="utf-8") as f:
-            return json.load(f)
+            data: list[dict[str, Any]] = json.load(f)
+            return data
 
     def load_gares_voyageurs(self) -> list[dict[str, Any]]:
         """
