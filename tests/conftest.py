@@ -92,9 +92,7 @@ def sample_liste_gares() -> list[dict]:
 
 
 @pytest.fixture
-def temp_data_dir(
-    sample_gares_voyageurs: list[dict], sample_liste_gares: list[dict]
-) -> Path:
+def temp_data_dir(sample_gares_voyageurs: list[dict], sample_liste_gares: list[dict]) -> Path:
     """Create a temporary directory with sample SNCF data files."""
     with tempfile.TemporaryDirectory() as tmpdir:
         data_dir = Path(tmpdir)
