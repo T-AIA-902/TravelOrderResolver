@@ -17,7 +17,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from data import DataLoader, StationDatabase, normalize_name
+from data import DataLoader, StationDatabase  # noqa: E402, F401
 
 
 def print_separator(char: str = "-", length: int = 60) -> None:
@@ -131,12 +131,8 @@ def export_city_mapping(db: StationDatabase, output_path: Path) -> None:
 
 def main() -> None:
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Import and validate SNCF station data."
-    )
-    parser.add_argument(
-        "--stats", action="store_true", help="Show database statistics"
-    )
+    parser = argparse.ArgumentParser(description="Import and validate SNCF station data.")
+    parser.add_argument("--stats", action="store_true", help="Show database statistics")
     parser.add_argument(
         "--sample",
         type=int,
@@ -144,9 +140,7 @@ def main() -> None:
         metavar="N",
         help="Show N sample stations",
     )
-    parser.add_argument(
-        "--search", action="store_true", help="Run search tests"
-    )
+    parser.add_argument("--search", action="store_true", help="Run search tests")
     parser.add_argument(
         "--export",
         action="store_true",

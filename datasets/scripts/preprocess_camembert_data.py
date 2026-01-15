@@ -15,7 +15,7 @@ def find_sublist(sublist, main_list):
         return -1
     len_sub = len(sublist)
     for i in range(len(main_list) - len_sub + 1):
-        if main_list[i : i + len_sub] == sublist:
+        if main_list[i : i + len_sub] == sublist:  # noqa: E203
             return i
     return -1
 

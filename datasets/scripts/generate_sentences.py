@@ -21,17 +21,16 @@ import argparse
 import csv
 import json
 import random
-import re
 import sys
 import unicodedata
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from data import StationDatabase
+from data import StationDatabase  # noqa: E402
 
 # =============================================================================
 # DATASET SCHEMA
@@ -263,9 +262,7 @@ def to_uppercase(text: str) -> str:
 
 def random_case(text: str) -> str:
     """Randomly change case of some characters."""
-    return "".join(
-        c.upper() if random.random() > 0.7 else c.lower() for c in text
-    )
+    return "".join(c.upper() if random.random() > 0.7 else c.lower() for c in text)
 
 
 def add_typos(text: str, prob: float = 0.1) -> str:
@@ -281,10 +278,26 @@ def add_typos(text: str, prob: float = 0.1) -> str:
 
     # Common keyboard neighbors for typos
     neighbors = {
-        "a": "zqs", "z": "aes", "e": "zrd", "r": "etf", "t": "ryg",
-        "y": "tuh", "u": "yij", "i": "uok", "o": "ipl", "p": "om",
-        "q": "aws", "s": "qdzx", "d": "sfec", "f": "dgvr", "g": "fhbt",
-        "h": "gjny", "j": "hknu", "k": "jlmi", "l": "kmo", "m": "lkn",
+        "a": "zqs",
+        "z": "aes",
+        "e": "zrd",
+        "r": "etf",
+        "t": "ryg",
+        "y": "tuh",
+        "u": "yij",
+        "i": "uok",
+        "o": "ipl",
+        "p": "om",
+        "q": "aws",
+        "s": "qdzx",
+        "d": "sfec",
+        "f": "dgvr",
+        "g": "fhbt",
+        "h": "gjny",
+        "j": "hknu",
+        "k": "jlmi",
+        "l": "kmo",
+        "m": "lkn",
     }
 
     result = []
@@ -353,7 +366,8 @@ class DatasetGenerator:
 
         # Filter to major stations for more realistic dataset
         self.major_stations = [
-            s.name for s in self.stations
+            s.name
+            for s in self.stations
             if s.short_code  # Has a short code = more important station
         ]
 
@@ -499,24 +513,30 @@ class DatasetGenerator:
 
         print(f"Generating {normal_trip_count} TRIP sentences...")
         for _ in range(normal_trip_count):
-            entries.append(self.generate_trip_sentence(
-                with_intermediate=False,
-                augmentations=pick_augmentation(),
-            ))
+            entries.append(
+                self.generate_trip_sentence(
+                    with_intermediate=False,
+                    augmentations=pick_augmentation(),
+                )
+            )
 
         print(f"Generating {intermediate_count} TRIP sentences with intermediate...")
         for _ in range(intermediate_count):
-            entries.append(self.generate_trip_sentence(
-                with_intermediate=True,
-                augmentations=pick_augmentation(),
-            ))
+            entries.append(
+                self.generate_trip_sentence(
+                    with_intermediate=True,
+                    augmentations=pick_augmentation(),
+                )
+            )
 
         # Generate NOT_TRIP sentences
         print(f"Generating {not_trip_count} NOT_TRIP sentences...")
         for _ in range(not_trip_count):
-            entries.append(self.generate_not_trip_sentence(
-                augmentations=pick_augmentation() if random.random() > 0.3 else None,
-            ))
+            entries.append(
+                self.generate_not_trip_sentence(
+                    augmentations=pick_augmentation() if random.random() > 0.3 else None,
+                )
+            )
 
         # Generate NOT_FRENCH sentences
         print(f"Generating {not_french_count} NOT_FRENCH sentences...")
@@ -573,7 +593,14 @@ def export_to_csv(entries: list[DatasetEntry], filepath: Path) -> None:
     with open(filepath, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
-            fieldnames=["sentence_id", "sentence", "intent", "departure", "destination", "intermediate"],
+            fieldnames=[
+                "sentence_id",
+                "sentence",
+                "intent",
+                "departure",
+                "destination",
+                "intermediate",
+            ],
         )
         writer.writeheader()
         for entry in entries:

@@ -21,7 +21,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from data import StationDatabase, normalize_name
+from data import StationDatabase, normalize_name  # noqa: E402
 
 # Valid intents
 VALID_INTENTS = {"TRIP", "NOT_TRIP", "NOT_FRENCH", "UNKNOWN"}
@@ -40,7 +40,14 @@ def load_csv(filepath: Path) -> list[dict]:
 def validate_schema(entries: list[dict]) -> list[str]:
     """Validate dataset schema."""
     errors = []
-    required_fields = {"sentence_id", "sentence", "intent", "departure", "destination", "intermediate"}
+    required_fields = {
+        "sentence_id",
+        "sentence",
+        "intent",
+        "departure",
+        "destination",
+        "intermediate",
+    }
 
     for i, entry in enumerate(entries):
         # Check required fields
@@ -122,8 +129,7 @@ def analyze_distribution(entries: list[dict]) -> dict:
 
     # Count augmentations (heuristic based on patterns)
     lowercase_count = sum(
-        1 for e in entries
-        if e.get("sentence", "").islower() and e.get("intent") == "TRIP"
+        1 for e in entries if e.get("sentence", "").islower() and e.get("intent") == "TRIP"
     )
 
     return {
@@ -150,7 +156,7 @@ def check_edge_cases(entries: list[dict]) -> list[str]:
         if entry.get("intent") == "TRIP":
             norm_sentence = normalize_name(sentence)
             norm_dep = normalize_name(dep)
-            norm_dest = normalize_name(dest)
+            _norm_dest = normalize_name(dest)  # noqa: F841
 
             # This is expected to fail for sentences with typos
             # We just track it for analysis
