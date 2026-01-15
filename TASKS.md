@@ -39,7 +39,7 @@
 - [x] GitHub Actions: linting automatique
 - [x] GitHub Actions: build et validation
 - [x] GitHub Actions: coverage report
-- [ ] Configurer branch protection rules
+- [x] Configurer branch protection rules
 - [x] Template issues (bug, feature, task)
 - [x] Template pull request
 
@@ -59,36 +59,36 @@
 ## 2. GESTION DES DONNEES
 
 ### 2.1 Import Donnees SNCF [P0]
-- [ ] Telecharger liste des gares SNCF (open data)
-- [ ] Telecharger horaires/lignes SNCF
-- [ ] Parser CSV gares -> base de donnees interne
-- [ ] Parser CSV lignes/connexions
-- [ ] Creer mapping ville <-> gare(s)
-- [ ] Gerer les alias de gares (Paris-Lyon, Paris Gare de Lyon)
-- [ ] Normaliser les noms (accents, tirets, majuscules)
-- [ ] Tests unitaires pour le parsing
+- [x] Telecharger liste des gares SNCF (open data)
+- [x] Telecharger horaires/lignes SNCF
+- [x] Parser JSON gares -> base de donnees interne
+- [ ] Parser JSON lignes/connexions (structure graphe)
+- [x] Creer mapping ville <-> gare(s)
+- [x] Gerer les alias de gares (Paris-Lyon, Paris Gare de Lyon)
+- [x] Normaliser les noms (accents, tirets, majuscules)
+- [x] Tests unitaires pour le parsing
 
 ### 2.2 Creation Dataset NLP [P0]
-- [ ] Definir schema du dataset (sentence, intent, departure, destination, intermediate)
-- [ ] Creer ~100 templates de phrases variees
-- [ ] Generer phrases avec combinaisons de gares (~10000 phrases)
-- [ ] Inclure phrases invalides (NOT_TRIP, NOT_FRENCH, UNKNOWN)
-- [ ] Inclure fautes d'orthographe courantes
-- [ ] Inclure variations sans majuscules
-- [ ] Inclure variations sans accents
-- [ ] Inclure variations avec prenoms-villes (Albert, Paris comme prenom)
-- [ ] Split train/val/test (70/15/15)
+- [x] Definir schema du dataset (sentence, intent, departure, destination, intermediate)
+- [x] Creer ~100 templates de phrases variees (60+ templates implementes)
+- [x] Generer phrases avec combinaisons de gares (~10000 phrases)
+- [x] Inclure phrases invalides (NOT_TRIP, NOT_FRENCH, UNKNOWN)
+- [x] Inclure fautes d'orthographe courantes
+- [x] Inclure variations sans majuscules
+- [x] Inclure variations sans accents
+- [x] Inclure variations avec prenoms-villes (Albert, Paris comme prenom)
+- [x] Split train/val/test (70/15/15)
 - [ ] Creer dataset de cas limites (edge_cases.csv)
 - [ ] Documenter le processus de creation
-- [ ] Script de validation du dataset
+- [x] Script de validation du dataset
 - [ ] Export formats compatibles HuggingFace
 
 ### 2.3 Augmentation de Donnees [P1]
 - [ ] Augmentation par synonymes
-- [ ] Augmentation par fautes de frappe aleatoires
-- [ ] Augmentation par variation de casse
+- [x] Augmentation par fautes de frappe aleatoires
+- [x] Augmentation par variation de casse
 - [ ] Back-translation (FR->EN->FR)
-- [ ] Scripts d'augmentation reproductibles
+- [x] Scripts d'augmentation reproductibles
 
 ### 2.4 Dataset Audio (Bonus) [P2]
 - [ ] Collecter/generer echantillons audio
@@ -106,40 +106,40 @@
 ## 3. MODULE NLP (COEUR DU PROJET)
 
 ### 3.1 Architecture NLP [P0]
-- [ ] Definir interface abstraite BaseModel
-- [ ] Implementer pipeline NLP modulaire
+- [x] Definir interface abstraite BaseModel
+- [x] Implementer pipeline NLP modulaire
 - [ ] Systeme de configuration par YAML/JSON
 - [ ] Logging des predictions et metriques
 
 ### 3.2 Preprocesseur [P0]
-- [ ] Normalisation unicode
-- [ ] Tokenization
-- [ ] Gestion des majuscules/minuscules
-- [ ] Gestion des accents
-- [ ] Gestion des tirets et apostrophes
-- [ ] Nettoyage caracteres speciaux
-- [ ] Tests unitaires preprocesseur
+- [x] Normalisation unicode
+- [x] Tokenization
+- [x] Gestion des majuscules/minuscules
+- [x] Gestion des accents
+- [x] Gestion des tirets et apostrophes
+- [x] Nettoyage caracteres speciaux
+- [x] Tests unitaires preprocesseur
 
 ### 3.3 Classification d'Intention [P0]
-- [ ] Classifier binaire: voyage vs non-voyage
-- [ ] Detection de langue (francais requis)
-- [ ] Codes d'erreur: NOT_TRIP, NOT_FRENCH, UNKNOWN
-- [ ] Tests unitaires classification
+- [x] Classifier binaire: voyage vs non-voyage
+- [x] Detection de langue (francais requis)
+- [x] Codes d'erreur: NOT_TRIP, NOT_FRENCH, UNKNOWN
+- [x] Tests unitaires classification
 
 ### 3.4 Extraction d'Entites (NER) [P0]
-- [ ] Extraction DEPARTURE
-- [ ] Extraction DESTINATION
-- [ ] Distinction correcte depart/destination
-- [ ] Gestion ordre variable dans la phrase
-- [ ] Tests unitaires NER
+- [x] Extraction DEPARTURE
+- [x] Extraction DESTINATION
+- [x] Distinction correcte depart/destination
+- [x] Gestion ordre variable dans la phrase
+- [x] Tests unitaires NER
 
 ### 3.5 Arrêts Intermediaires [P2]
-- [ ] Extraction INTERMEDIATE (via, en passant par)
-- [ ] Gestion de plusieurs intermediaires
-- [ ] Tests unitaires intermediaires
+- [x] Extraction INTERMEDIATE (via, en passant par)
+- [x] Gestion de plusieurs intermediaires
+- [x] Tests unitaires intermediaires
 
 ### 3.6 Matching de Gares [P0]
-- [ ] Matching exact
+- [x] Matching exact
 - [ ] Matching fuzzy (Levenshtein, phonetique)
 - [ ] Gestion homonymes (Paris ville vs Paris prenom)
 - [ ] Desambiguation contextuelle
@@ -147,11 +147,11 @@
 - [ ] Tests unitaires matching
 
 ### 3.7 Modele Baseline (Regex) [P0]
-- [ ] Implementation rules-based
-- [ ] Regex pour patterns courants
-- [ ] Dictionnaire de gares
+- [x] Implementation rules-based
+- [x] Regex pour patterns courants
+- [x] Dictionnaire de gares
 - [ ] Documenter les limites
-- [ ] Tests et metriques baseline
+- [x] Tests et metriques baseline
 
 ### 3.8 Modele SpaCy [P1]
 - [ ] Integration fr_dep_news_trf
@@ -526,4 +526,4 @@
 
 ---
 
-*Derniere mise a jour: 2024-12-05*
+*Derniere mise a jour: 2025-01-09*
