@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - N/A
 
 ### Fixed
-- N/A
+- Test discovery issue: added missing `tests/unit/__init__.py`
 
 ### Security
 - N/A
