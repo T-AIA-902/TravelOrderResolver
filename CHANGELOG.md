@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Integration SpaCy - 2025-01-15)
+- **SpaCy Entity Extractor** (`src/nlp/entity_extractor.py`):
+  - `SpacyEntityExtractor` - Extraction NER avec fr_core_news_lg
+  - `FuzzyEntityExtractor` - Extension avec matching fuzzy RapidFuzz
+- **Fuzzy Matcher** (`src/nlp/fuzzy_matcher.py`):
+  - `StationMatcher` - Matching fuzzy avec RapidFuzz
+  - Utilise `StationDatabase` comme source de données unique
+- **Evaluation** (`evaluation/`):
+  - `metrics.py` - Calcul precision/recall/F1/accuracy
+  - `evaluate_spacy.py` - Évaluation extracteur SpaCy
+  - `evaluate_fuzzy.py` - Évaluation extracteur fuzzy
+- **Tests** (`tests/unit/`):
+  - `test_entity_extractor.py` - 27 tests extracteurs
+  - `test_fuzzy_matcher.py` - 26 tests fuzzy matcher
+
+### Changed (Integration SpaCy - 2025-01-15)
+- **Data module** - `normalize_name()` utilise maintenant `unidecode` pour une normalisation plus robuste des accents
+- **Evaluation scripts** - Utilisent `datasets/generated/test.csv` (1501 phrases) au lieu d'un dataset séparé
+
 ### Added
 - Initial project structure
 - README with documentation
