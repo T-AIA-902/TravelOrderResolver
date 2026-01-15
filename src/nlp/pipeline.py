@@ -87,7 +87,8 @@ class NLPPipeline:
         Returns:
             List of PredictionResults.
         """
-        return self.model.batch_predict(texts)
+        results: list[PredictionResult] = self.model.batch_predict(texts)
+        return results
 
     def set_model(self, model: BaseModel) -> None:
         """
@@ -100,7 +101,8 @@ class NLPPipeline:
 
     def get_model_name(self) -> str:
         """Get current model name."""
-        return self.model.name
+        name: str = self.model.name
+        return name
 
     def __repr__(self) -> str:
         return f"NLPPipeline(model={self.model.name})"
