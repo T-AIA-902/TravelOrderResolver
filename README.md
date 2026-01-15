@@ -239,20 +239,20 @@ curl -X POST http://localhost:8000/parse \
 | Baseline Regex | 17.8% | 42.1% | 26.5% | 32.5% | 1.7ms |
 | SpaCy | 6.6% | 20.9% | 11.6% | 14.6% | 7.5ms |
 | Fuzzy | 11.5% | 38.3% | 22.3% | 27.5% | 22.9ms |
-| CamemBERT | - | - | - | - | - |
+| CamemBERT (zero-shot) | 6.7% | 29.7% | 19.9% | 23.2% | 1.2ms |
 | Flan-T5 | - | - | - | - | - |
 
 ### Metriques par categorie
 
-| Categorie | Regex | SpaCy | Fuzzy |
-|-----------|-------|-------|-------|
-| Intent Classification | 69.3% | N/A | N/A |
-| Departure Precision | 32.7% | 21.5% | 33.9% |
-| Departure Recall | 20.6% | 8.1% | 12.8% |
-| Destination Precision | 51.5% | 20.2% | 42.6% |
-| Destination Recall | 32.4% | 15.1% | 31.8% |
-| Misspelling Handling | 7.9% | 0.0% | 6.1% |
-| No-caps Handling | 15.4% | 0.3% | 5.1% |
+| Categorie | Regex | SpaCy | Fuzzy | CamemBERT |
+|-----------|-------|-------|-------|-----------|
+| Intent Classification | 69.3% | N/A | N/A | N/A |
+| Departure Precision | 32.7% | 21.5% | 33.9% | 28.1% |
+| Departure Recall | 20.6% | 8.1% | 12.8% | 12.2% |
+| Destination Precision | 51.5% | 20.2% | 42.6% | 31.4% |
+| Destination Recall | 32.4% | 15.1% | 31.8% | 27.5% |
+| Misspelling Handling | 7.9% | 0.0% | 6.1% | 0.0% |
+| No-caps Handling | 15.4% | 0.3% | 5.1% | 6.0% |
 
 *Script: `poetry run python evaluation/evaluate_all.py --dataset datasets/splits/test.csv`*
 
