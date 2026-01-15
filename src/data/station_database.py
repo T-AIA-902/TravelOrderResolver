@@ -156,12 +156,13 @@ class StationDatabase:
         Initialize the station database.
 
         Args:
-            data_loader: DataLoader instance. Creates a new one if not provided.
+            data_loader: DataLoader instance.
+                        Creates a new one if not provided.
         """
         self.loader = data_loader or DataLoader()
-        self._stations: dict[str, Station] = {}  # UIC code -> Station
-        self._name_index: dict[str, list[str]] = {}  # normalized name -> UIC codes
-        self._city_index: dict[str, list[str]] = {}  # city name -> UIC codes
+        self._stations: dict[str, Station] = {}  # UIC -> Station
+        self._name_index: dict[str, list[str]] = {}  # norm name -> UICs
+        self._city_index: dict[str, list[str]] = {}  # city -> UICs
         self._alias_index: dict[str, list[str]] = {}  # alias -> UIC codes
         self._loaded = False
 
@@ -267,7 +268,7 @@ class StationDatabase:
                     department=entry.get("departemen", ""),
                     is_passenger=entry.get("voyageurs", "N") == "O",
                     is_freight=entry.get("fret", "N") == "O",
-                    line_codes=[entry["code_ligne"]] if entry.get("code_ligne") else [],
+                    line_codes=([entry["code_ligne"]] if entry.get("code_ligne") else []),
                 )
                 self._stations[uic] = station
 
