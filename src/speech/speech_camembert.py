@@ -1,13 +1,3 @@
-# src/speech/speech_camembert.py
-"""
-Script amélioré pour extraire origine et destination depuis les phrases de voyage.
-- Normalise les textes (minuscules, suppression des accents, ponctuation éliminée)
-- Recherche par n-grams pour matcher des gares multi-mots
-- Utilise rapidfuzz pour fuzzy matching
-- Détecte origine/destination via motifs (de/depuis -> origine, à/vers/pour -> destination)
-- Garantit toujours 3 colonnes dans la sortie CSV (sentenceID, Departure, Destination)
-"""
-
 import re
 import unicodedata
 import pandas as pd
