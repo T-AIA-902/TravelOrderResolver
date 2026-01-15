@@ -93,11 +93,18 @@ synonyms = {
 
 
 def generate_valid_sentence(dep, dest):
+    polite = random.choice(synonyms["intent_polite"])
+    noun = random.choice(synonyms["noun_trip"])
+    prep_from = random.choice(synonyms["prep_from"])
+    prep_to = random.choice(synonyms["prep_to"])
+    question = random.choice(synonyms["intent_question"])
+    imperative = random.choice(synonyms["intent_imperative"])
+
     structures = [
-        f"{random.choice(synonyms['intent_polite'])} {random.choice(synonyms['noun_trip'])} {random.choice(synonyms['prep_from'])} {dep} {random.choice(synonyms['prep_to'])} {dest}",
-        f"{random.choice(synonyms['noun_trip'])} {random.choice(synonyms['prep_to'])} {dest} {random.choice(synonyms['prep_from'])} {dep}",
-        f"{random.choice(synonyms['intent_question'])} {random.choice(synonyms['noun_trip'])} {random.choice(synonyms['prep_to'])} {dest} ?",
-        f"{random.choice(synonyms['intent_imperative'])} {random.choice(synonyms['noun_trip'])} entre {dep} et {dest}",
+        f"{polite} {noun} {prep_from} {dep} {prep_to} {dest}",
+        f"{noun} {prep_to} {dest} {prep_from} {dep}",
+        f"{question} {noun} {prep_to} {dest} ?",
+        f"{imperative} {noun} entre {dep} et {dest}",
         f"train {dep} {dest}",
         f"billet {dest} depuis {dep}",
         f"{dep} - {dest}",
@@ -191,9 +198,9 @@ def main():
     df_output.to_csv(OUTPUT_CSV, index=False, encoding="utf-8")
 
     print(f"✨ Terminé ! Fichier généré : {OUTPUT_CSV}")
-    print(
-        f"📊 Statistiques : {len(df_output[df_output['label']=='VALID'])} valides / {len(df_output[df_output['label']=='INVALID'])} invalides."
-    )
+    valid_count = len(df_output[df_output["label"] == "VALID"])
+    invalid_count = len(df_output[df_output["label"] == "INVALID"])
+    print(f"📊 Statistiques : {valid_count} valides / {invalid_count} invalides.")
     print(df_output.head(10))
 
 

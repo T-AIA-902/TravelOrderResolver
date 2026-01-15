@@ -293,7 +293,7 @@
 - [x] Accuracy globale
 - [x] Metriques par categorie (intent, departure, destination)
 - [ ] Matrice de confusion
-- [ ] Export metriques JSON/CSV
+- [x] Export metriques JSON/CSV
 
 ### 7.2 Monitoring Ressources [P2]
 - [ ] Tracking CPU par requete
@@ -319,9 +319,9 @@
 ## 8. EVALUATION & BENCHMARKING
 
 ### 8.1 Benchmark Multi-Modeles [P1]
-- [ ] Script de benchmark automatise
-- [ ] Comparaison tous les modeles sur meme dataset
-- [ ] Tableau comparatif (accuracy, latence, taille)
+- [x] Script de benchmark automatise (`evaluation/evaluate_all.py`)
+- [x] Comparaison tous les modeles sur meme dataset
+- [x] Tableau comparatif (accuracy, latence, taille)
 - [ ] Graphiques de comparaison
 - [ ] Selection du meilleur modele
 
@@ -332,8 +332,8 @@
 - [ ] Notebook d'analyse detaillee
 
 ### 8.3 Robustesse [P1]
-- [ ] Tests avec fautes d'orthographe
-- [ ] Tests sans majuscules
+- [x] Tests avec fautes d'orthographe (3219 samples evalues)
+- [x] Tests sans majuscules (7904 samples evalues)
 - [ ] Tests sans accents
 - [ ] Tests avec bruit (mots parasites)
 - [ ] Tests adversariaux
@@ -527,4 +527,4 @@
 
 ---
 
-*Derniere mise a jour: 2025-01-15*
+*Derniere mise a jour: 2026-01-15*
