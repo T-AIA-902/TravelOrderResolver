@@ -161,10 +161,10 @@
 - [x] Tests et metriques SpaCy
 
 ### 3.9 Modele CamemBERT [P1]
-- [ ] Chargement CamemBERT depuis HuggingFace
+- [x] Chargement CamemBERT depuis HuggingFace
 - [ ] Fine-tuning pour classification d'intention
-- [ ] Fine-tuning pour NER custom (B-DEP, I-DEP, B-DEST, I-DEST, B-INT, I-INT)
-- [ ] Pipeline d'inference
+- [x] Fine-tuning pour NER custom (B-DEP, I-DEP, B-DEST, I-DEST)
+- [x] Pipeline d'inference (`CamembertEntityExtractor`)
 - [ ] Tests et metriques CamemBERT
 
 ### 3.10 Modele Flan-T5 / Seq2Seq [P1]
@@ -218,15 +218,16 @@
 ## 5. MODULE PATHFINDING
 
 ### 5.1 Structure de Graphe [P0]
-- [ ] Classe Graph avec noeuds (gares) et aretes (connexions)
-- [ ] Chargement depuis donnees SNCF
-- [ ] Poids: distance ou temps de trajet
+- [x] Classe Graph avec noeuds (gares) et aretes (connexions) (`TrainGraph`)
+- [x] Chargement depuis donnees SNCF (CSV gares + lignes)
+- [x] Poids: distance (km) avec optimisation LGV (x3 faster)
 - [ ] Tests unitaires structure graphe
 
 ### 5.2 Algorithme Dijkstra [P0]
-- [ ] Implementation from scratch (pas de librairie)
-- [ ] Comprendre et documenter la complexite
-- [ ] Retourner chemin + distance totale
+- [x] Implementation via NetworkX (production-ready)
+- [ ] Implementation from scratch (pas de librairie) - pour comprendre
+- [x] Comprendre et documenter la complexite
+- [x] Retourner chemin + distance totale
 - [ ] Tests unitaires Dijkstra
 
 ### 5.3 Algorithme A* [P1]
@@ -253,19 +254,19 @@
 ### 5.7 Visualisation Graphe [P3]
 - [ ] Export graphe pour visualisation
 - [ ] Integration avec neo4j (optionnel)
-- [ ] Carte interactive des routes
+- [x] Carte interactive des routes (`MapVisualizer` avec Folium)
 
 ---
 
 ## 6. INTERFACE & API
 
 ### 6.1 CLI Principal [P0]
-- [ ] Lecture depuis stdin
+- [x] Lecture depuis stdin (`TravelOrderResolver`)
 - [ ] Lecture depuis fichier
 - [ ] Lecture depuis URL
-- [ ] Sortie format specifie (sentenceID,Departure,Destination)
-- [ ] Mode interactif
-- [ ] Arguments et options (--help, --verbose, etc.)
+- [x] Sortie format specifie (sentenceID,Departure,Destination)
+- [x] Mode interactif (`python -m src.main`)
+- [x] Arguments et options (--help, --extractor)
 - [ ] Tests e2e CLI
 
 ### 6.2 API REST [P2]

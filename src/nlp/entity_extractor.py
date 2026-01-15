@@ -1,8 +1,12 @@
 """
-Entity extraction module using spaCy NER.
+Entity extraction module for travel order resolution.
 
-This module extracts travel-related entities (departure, destination, intermediate stops)
-from French sentences using spaCy's pre-trained transformer model.
+This module provides multiple entity extraction backends:
+- SpacyEntityExtractor: Uses spaCy fr_core_news_lg NER
+- FuzzyEntityExtractor: SpaCy + RapidFuzz station matching
+- CamembertEntityExtractor: Fine-tuned CamemBERT NER model
+
+All extractors share a common interface: extract_entities(text) -> Dict
 """
 
 from typing import Any, Dict, List, Optional, Union, cast
@@ -286,6 +290,78 @@ class FuzzyEntityExtractor(SpacyEntityExtractor):
         entities["intermediate"] = normalized_intermediate
 
         return entities
+
+
+class CamembertEntityExtractor:
+    """
+    Extract entities using fine-tuned CamemBERT NER model.
+
+    This extractor uses a CamemBERT model fine-tuned on French travel requests
+    with BIO-tagged labels: B-DEP, I-DEP, B-DEST, I-DEST, O.
+
+    Advantages over SpaCy:
+    - Trained specifically on travel domain data
+    - Better handling of French station names
+    - Direct departure/destination classification (no heuristics needed)
+    """
+
+    def __init__(self, model_path: str = "models/camembert-ner") -> None:
+        """
+        Initialize the CamemBERT entity extractor.
+
+        Args:
+            model_path: Path to the fine-tuned CamemBERT model directory
+        """
+        try:
+            from transformers import pipeline
+        except ImportError:
+            raise ImportError(
+                "transformers not available. Install with: pip install transformers torch"
+            )
+
+        print(f"Loading CamemBERT NER model from {model_path}...")
+        self.nlp = pipeline(  # type: ignore[call-overload]
+            "ner", model=model_path, aggregation_strategy="simple"
+        )
+        print("CamemBERT model loaded successfully!")
+
+    def extract_entities(self, text: str) -> Dict[str, Union[Optional[str], List[str]]]:
+        """
+        Extract departure and destination using CamemBERT NER.
+
+        The model directly predicts DEP (departure) and DEST (destination) labels,
+        so no heuristics are needed to classify entities.
+
+        Args:
+            text: Input sentence (e.g., "Je veux aller de Paris à Lyon")
+
+        Returns:
+            Dictionary with extracted entities:
+            {
+                "departure": "Paris",
+                "destination": "Lyon",
+                "intermediate": []
+            }
+        """
+        results = self.nlp(text)
+
+        departure: Optional[str] = None
+        destination: Optional[str] = None
+
+        for entity in results:
+            label = entity["entity_group"]
+            word = entity["word"].strip()
+
+            if "DEP" in label and departure is None:
+                departure = word
+            elif "DEST" in label and destination is None:
+                destination = word
+
+        return {
+            "departure": departure,
+            "destination": destination,
+            "intermediate": [],  # CamemBERT model doesn't handle intermediate stops yet
+        }
 
 
 def main():
