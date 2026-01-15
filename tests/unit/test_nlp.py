@@ -131,7 +131,8 @@ class TestBaselineRegexModel:
         assert result.intent == Intent.TRIP
         assert "Paris" in result.departure
         assert "Marseille" in result.destination
-        assert len(result.intermediates) == 1 or "Lyon" in str(result.intermediates)
+        has_intermediate = len(result.intermediates) == 1
+        assert has_intermediate or "Lyon" in str(result.intermediates)
 
     def test_not_french_english(self, model: BaselineRegexModel) -> None:
         """Test English detection."""

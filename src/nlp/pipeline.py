@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..data import StationDatabase
-from .models import BaselineRegexModel, BaseModel, Intent, PredictionResult
+from .models import BaselineRegexModel, BaseModel, PredictionResult
 from .preprocessor import Preprocessor, PreprocessorConfig
 
 
@@ -49,8 +49,8 @@ class NLPPipeline:
         self.station_db = station_db
 
         # Initialize preprocessor
-        preprocessor_config = self.config.preprocessor_config or PreprocessorConfig()
-        self.preprocessor = Preprocessor(preprocessor_config)
+        prep_config = self.config.preprocessor_config or PreprocessorConfig()
+        self.preprocessor = Preprocessor(prep_config)
 
         # Initialize model
         self.model = self._create_model()
@@ -60,9 +60,8 @@ class NLPPipeline:
         model_name = self.config.model_name.lower()
 
         if model_name == "baseline_regex":
-            return BaselineRegexModel(
-                station_db=self.station_db if self.config.use_station_matching else None
-            )
+            station = self.station_db if self.config.use_station_matching else None
+            return BaselineRegexModel(station_db=station)
         else:
             raise ValueError(f"Unknown model: {model_name}")
 

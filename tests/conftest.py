@@ -98,11 +98,13 @@ def temp_data_dir(sample_gares_voyageurs: list[dict], sample_liste_gares: list[d
         data_dir = Path(tmpdir)
 
         # Write sample gares-de-voyageurs.json
-        with open(data_dir / "gares-de-voyageurs.json", "w", encoding="utf-8") as f:
+        gares_path = data_dir / "gares-de-voyageurs.json"
+        with open(gares_path, "w", encoding="utf-8") as f:
             json.dump(sample_gares_voyageurs, f, ensure_ascii=False)
 
         # Write sample liste-des-gares.json
-        with open(data_dir / "liste-des-gares.json", "w", encoding="utf-8") as f:
+        liste_path = data_dir / "liste-des-gares.json"
+        with open(liste_path, "w", encoding="utf-8") as f:
             json.dump(sample_liste_gares, f, ensure_ascii=False)
 
         yield data_dir
