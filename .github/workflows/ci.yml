@@ -43,12 +43,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/share/boost
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -62,7 +56,7 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install
-          poetry run python -m spacy download fr_core_news_sm
+          poetry run python -m spacy download fr_core_news_lg
 
       - name: Run tests
         run: poetry run pytest --cov=src --cov-report=xml

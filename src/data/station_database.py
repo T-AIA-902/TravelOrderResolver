@@ -6,9 +6,10 @@ with normalization, alias management, and search capabilities.
 """
 
 import re
-import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
+
+from unidecode import unidecode
 
 from .loader import DataLoader
 
@@ -87,12 +88,11 @@ def normalize_name(name: str) -> str:
     if not name:
         return ""
 
-    # Convert to lowercase
-    result = name.lower()
+    # Remove accents using unidecode (more robust than unicodedata)
+    result = unidecode(name)
 
-    # Remove accents using unicode normalization
-    result = unicodedata.normalize("NFD", result)
-    result = "".join(c for c in result if unicodedata.category(c) != "Mn")
+    # Convert to lowercase
+    result = result.lower()
 
     # Replace hyphens and apostrophes with spaces
     result = re.sub(r"[-'`]", " ", result)
