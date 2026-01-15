@@ -134,10 +134,11 @@ Un résultat `INVALID` signifie que **le modèle ne peut pas garantir** une extr
 -   phrases complexes
 -   ordre implicite
 -   structures longues
+-   ne reconnait pas la provenance / destination en ne nommant que le nom de la gare (ex. "Part-Dieu")
 
 ## 6\. Évaluation qualitative (baseline)
 
-Sur le dataset de test fourni (~10 phrases) :
+Sur le dataset de test (~10 phrases) :
 
 -   Précision élevée sur les structures simples
 -   Faux négatifs fréquents sur :
