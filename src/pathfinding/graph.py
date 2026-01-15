@@ -50,8 +50,10 @@ class TrainGraph:
         Initialize the railway graph.
 
         Args:
-            gares_json: Path to stations JSON file (default: datasets/raw/sncf/gares-de-voyageurs.json)
-            lignes_json: Path to lines JSON file (default: datasets/raw/sncf/lignes-par-type.json)
+            gares_json: Path to stations JSON file
+                (default: datasets/raw/sncf/gares-de-voyageurs.json)
+            lignes_json: Path to lines JSON file
+                (default: datasets/raw/sncf/lignes-par-type.json)
         """
         gares_json = gares_json or DEFAULT_GARES_JSON
         lignes_json = lignes_json or DEFAULT_LIGNES_JSON
