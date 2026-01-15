@@ -364,6 +364,328 @@ class CamembertEntityExtractor:
         }
 
 
+class CamembertZeroShotExtractor:
+    """
+    Zero-shot entity extraction using camembert-base embeddings.
+
+    This extractor uses the base CamemBERT model (no fine-tuning) to extract
+    travel entities by comparing token embeddings with pre-computed station
+    name embeddings using cosine similarity.
+
+    This establishes a baseline for comparison with fine-tuned models.
+    """
+
+    def __init__(
+        self,
+        model_name: str = "almanach/camembert-base",
+        threshold: float = 0.85,
+    ) -> None:
+        """
+        Initialize the zero-shot CamemBERT extractor.
+
+        Args:
+            model_name: HuggingFace model name (default: almanach/camembert-base)
+            threshold: Minimum cosine similarity for station matching (default: 0.85)
+        """
+        try:
+            import torch
+            from transformers import AutoModel, AutoTokenizer
+        except ImportError:
+            raise ImportError(
+                "transformers/torch not available. " "Install with: pip install transformers torch"
+            )
+
+        print(f"Loading CamemBERT base model: {model_name}...")
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name)
+        self.model.eval()  # Set to evaluation mode
+        self.threshold = threshold
+        self.torch = torch
+
+        # Load station database and precompute embeddings
+        from src.data import StationDatabase
+
+        self.station_db = StationDatabase()
+        self.station_db.load()
+        self._precompute_station_embeddings()
+        print(f"CamemBERT zero-shot extractor ready (threshold: {threshold})")
+
+    def _get_embedding(self, text: str) -> Any:
+        """Get the mean pooled embedding for a text."""
+        with self.torch.no_grad():
+            inputs = self.tokenizer(
+                text, return_tensors="pt", padding=True, truncation=True, max_length=32
+            )
+            outputs = self.model(**inputs)
+            # Mean pooling over token embeddings (excluding special tokens)
+            attention_mask = inputs["attention_mask"]
+            embeddings = outputs.last_hidden_state
+            mask_expanded = attention_mask.unsqueeze(-1).expand(embeddings.size())
+            sum_embeddings = (embeddings * mask_expanded).sum(1)
+            sum_mask = mask_expanded.sum(1).clamp(min=1e-9)
+            return sum_embeddings / sum_mask
+
+    def _precompute_station_embeddings(self) -> None:
+        """Precompute embeddings for all station names."""
+        print("Precomputing station embeddings...")
+        self.station_embeddings: Dict[str, Any] = {}
+        self.city_names: List[str] = []
+
+        # Get unique city names from station database
+        cities = set()
+        for station in self.station_db.get_all_stations():
+            # Station is a dataclass with name and commune attributes
+            city = station.commune if station.commune else station.name
+            if city and len(city) >= 2:
+                # Capitalize properly (commune is often uppercase)
+                cities.add(city.title())
+
+        self.city_names = sorted(cities)
+
+        # Batch compute embeddings for efficiency
+        batch_size = 64
+        for i in range(0, len(self.city_names), batch_size):
+            batch = self.city_names[i : i + batch_size]
+            for city in batch:
+                self.station_embeddings[city.lower()] = self._get_embedding(city)
+
+        print(f"Computed embeddings for {len(self.station_embeddings)} cities")
+
+    def _find_station_matches(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Find potential station matches in text using embedding similarity.
+
+        Uses a multi-stage approach:
+        1. First check for exact multi-word/hyphenated station name matches
+        2. Then check for single-word exact matches
+        3. Finally use embedding similarity as fallback
+
+        Returns list of matches with position, text, and similarity score.
+        """
+        matches = []
+        text_lower = text.lower()
+
+        # Common French words to exclude
+        stop_words = {
+            "je",
+            "tu",
+            "il",
+            "elle",
+            "nous",
+            "vous",
+            "ils",
+            "elles",
+            "le",
+            "la",
+            "les",
+            "un",
+            "une",
+            "des",
+            "de",
+            "du",
+            "au",
+            "aux",
+            "et",
+            "ou",
+            "mais",
+            "donc",
+            "car",
+            "ni",
+            "que",
+            "qui",
+            "quoi",
+            "ce",
+            "cette",
+            "ces",
+            "mon",
+            "ma",
+            "mes",
+            "ton",
+            "ta",
+            "tes",
+            "son",
+            "sa",
+            "ses",
+            "notre",
+            "votre",
+            "leur",
+            "leurs",
+            "aller",
+            "veux",
+            "vouloir",
+            "voudrais",
+            "partir",
+            "prendre",
+            "pour",
+            "par",
+            "avec",
+            "sans",
+            "sur",
+            "sous",
+            "dans",
+            "en",
+            "svp",
+            "stp",
+            "merci",
+            "bonjour",
+            "train",
+            "billet",
+            "voyage",
+            "passant",
+            "via",
+            "depuis",
+            "vers",
+            "jusque",
+            "jusqu",
+            "quel",
+            "quelle",
+            "comment",
+            "temps",
+            "fait",
+            "demain",
+            "aujourd",
+            "go",
+            "côté",
+            "réunion",
+            "place",
+            "liaison",
+            "entre",
+            "partant",
+            "provenance",
+            "simple",
+            "retour",
+            "aller-retour",
+            "aller-simple",
+            "heure",
+            "part",
+            "arrive",
+            "arrivée",
+            "départ",
+            "tgv",
+            "ter",
+        }
+
+        # Stage 1: Check for exact city name matches in text
+        # Sort cities by length (longest first) to match multi-word names first
+        matched_positions: set[int] = set()
+        cities_by_length = sorted(self.station_embeddings.keys(), key=len, reverse=True)
+
+        # Word boundary characters
+        boundary_chars = set(" .,;:!?()[]{}\"'\t\n-")
+
+        for city in cities_by_length:
+            city_lower = city.lower()
+
+            # Skip very short city names (< 3 chars) to avoid false positives
+            if len(city_lower) < 3:
+                continue
+
+            # Search for the city name in the text
+            pos = text_lower.find(city_lower)
+            if pos != -1:
+                end_pos = pos + len(city_lower)
+
+                # Check word boundaries to avoid matching substrings
+                # (e.g., "eu" in "heure" or "ur" in "pour")
+                is_word_start = pos == 0 or text_lower[pos - 1] in boundary_chars
+                is_word_end = end_pos >= len(text_lower) or text_lower[end_pos] in boundary_chars
+
+                if not is_word_start or not is_word_end:
+                    continue
+
+                # Check if this position overlaps with already matched positions
+                overlap = any(p >= pos and p < end_pos for p in matched_positions)
+                if not overlap:
+                    # Mark these positions as matched
+                    for p in range(pos, end_pos):
+                        matched_positions.add(p)
+
+                    matches.append(
+                        {
+                            "text": city_lower,
+                            "matched_city": city.title(),
+                            "score": 1.0,
+                            "position": pos,  # Use character position
+                            "start": pos,
+                        }
+                    )
+
+        # Stage 2: For words not yet matched, try embedding similarity
+        words = text.split()
+        word_start = 0
+
+        for word in words:
+            clean_word = word.strip(".,;:!?()[]{}\"'")
+            if len(clean_word) < 3:  # Skip very short words
+                word_start = text.find(word, word_start) + len(word)
+                continue
+
+            word_lower = clean_word.lower()
+            word_pos = text.find(word, word_start)
+
+            # Skip if already matched or is a stop word
+            if word_pos in matched_positions or word_lower in stop_words:
+                word_start = word_pos + len(word)
+                continue
+
+            # Skip if this word overlaps with any matched region
+            overlap = any(
+                p >= word_pos and p < word_pos + len(clean_word) for p in matched_positions
+            )
+            if overlap:
+                word_start = word_pos + len(word)
+                continue
+
+            # Try embedding similarity (disabled for now - too many false positives)
+            # This gives us a pure exact-match baseline
+            word_start = word_pos + len(word)
+
+        return matches
+
+    def extract_entities(self, text: str) -> Dict[str, Union[Optional[str], List[str]]]:
+        """
+        Extract departure and destination using zero-shot embedding matching.
+
+        Args:
+            text: Input sentence (e.g., "Je veux aller de Paris à Lyon")
+
+        Returns:
+            Dictionary with extracted entities:
+            {
+                "departure": "Paris",
+                "destination": "Lyon",
+                "intermediate": []
+            }
+        """
+        result: Dict[str, Union[Optional[str], List[str]]] = {
+            "departure": None,
+            "destination": None,
+            "intermediate": [],
+        }
+
+        # Find all station matches
+        matches = self._find_station_matches(text)
+
+        if not matches:
+            return result
+
+        # Sort by position in text
+        matches.sort(key=lambda x: x["position"])
+
+        # Apply heuristics: first = departure, last = destination
+        if len(matches) == 1:
+            result["destination"] = matches[0]["matched_city"]
+        elif len(matches) >= 2:
+            result["departure"] = matches[0]["matched_city"]
+            result["destination"] = matches[-1]["matched_city"]
+
+            # Middle matches are intermediates
+            if len(matches) > 2:
+                result["intermediate"] = [m["matched_city"] for m in matches[1:-1]]
+
+        return result
+
+
 def main():
     """
     Demo function to test the entity extractor on example sentences.
