@@ -39,11 +39,13 @@ class BaselineRegexModel(BaseModel):
         self.fuzzy_threshold = fuzzy_threshold
 
         # Preprocessor for text normalization
-        self.preprocessor = Preprocessor(PreprocessorConfig(
-            lowercase=True,
-            remove_accents=False,
-            normalize_whitespace=True,
-        ))
+        self.preprocessor = Preprocessor(
+            PreprocessorConfig(
+                lowercase=True,
+                remove_accents=False,
+                normalize_whitespace=True,
+            )
+        )
 
         # Compile regex patterns
         self._compile_patterns()
@@ -75,10 +77,7 @@ class BaselineRegexModel(BaseModel):
             r"\bvia\b",
             r"\ben\s+passant\s+par\b",
         ]
-        self.trip_pattern = re.compile(
-            "|".join(self.trip_indicators),
-            re.IGNORECASE | re.UNICODE
-        )
+        self.trip_pattern = re.compile("|".join(self.trip_indicators), re.IGNORECASE | re.UNICODE)
 
         # Patterns for non-French detection
         self.non_french_indicators = [
@@ -97,8 +96,7 @@ class BaselineRegexModel(BaseModel):
             r"\bun\s+billete\b",
         ]
         self.non_french_pattern = re.compile(
-            "|".join(self.non_french_indicators),
-            re.IGNORECASE | re.UNICODE
+            "|".join(self.non_french_indicators), re.IGNORECASE | re.UNICODE
         )
 
         # Patterns for departure/destination extraction
@@ -108,38 +106,27 @@ class BaselineRegexModel(BaseModel):
             r"(?:[aà]|vers|direction|pour|jusqu['\s]?[aà])\s+(.+?)"
             r"(?:\s*[,.]|\s+(?:en\s+passant|via|demain|ce\s+soir|pour)|$)"
         )
-        self.de_a_pattern = re.compile(
-            de_a_regex, re.IGNORECASE | re.UNICODE
-        )
+        self.de_a_pattern = re.compile(de_a_regex, re.IGNORECASE | re.UNICODE)
 
         # Format: "X vers/direction Y"
         self.vers_pattern = re.compile(
-            r"^(.+?)\s+(?:vers|direction|-|puis)\s+(.+?)(?:\s*[,.]|$)",
-            re.IGNORECASE | re.UNICODE
+            r"^(.+?)\s+(?:vers|direction|-|puis)\s+(.+?)(?:\s*[,.]|$)", re.IGNORECASE | re.UNICODE
         )
 
         # Format: "a Y depuis/en partant de X"
-        a_depuis_regex = (
-            r"[aà]\s+(.+?)\s+(?:depuis|en\s+partant\s+de)\s+(.+?)"
-            r"(?:\s*[,.]|$)"
-        )
-        self.a_depuis_pattern = re.compile(
-            a_depuis_regex, re.IGNORECASE | re.UNICODE
-        )
+        a_depuis_regex = r"[aà]\s+(.+?)\s+(?:depuis|en\s+partant\s+de)\s+(.+?)" r"(?:\s*[,.]|$)"
+        self.a_depuis_pattern = re.compile(a_depuis_regex, re.IGNORECASE | re.UNICODE)
 
         # Intermediate station patterns
         via_regex = (
             r"(?:via|en\s+passant\s+par|avec\s+(?:un\s+)?arr[eê]t\s+[aà]|puis)"
             r"\s+(.+?)(?:\s+(?:puis|et)|$)"
         )
-        self.via_pattern = re.compile(
-            via_regex, re.IGNORECASE | re.UNICODE
-        )
+        self.via_pattern = re.compile(via_regex, re.IGNORECASE | re.UNICODE)
 
         # Three station pattern: "X puis Y puis Z"
         self.three_station_pattern = re.compile(
-            r"^(.+?)\s+puis\s+(.+?)\s+puis\s+(.+?)$",
-            re.IGNORECASE | re.UNICODE
+            r"^(.+?)\s+puis\s+(.+?)\s+puis\s+(.+?)$", re.IGNORECASE | re.UNICODE
         )
 
     def _detect_language(self, text: str) -> bool:
@@ -158,17 +145,35 @@ class BaselineRegexModel(BaseModel):
 
         # Check for French indicators
         french_indicators = [
-            r"\bje\b", r"\bvoudrais\b", r"\bveux\b", r"\bsouhaite\b",
-            r"\baller\b", r"\bprendre\b", r"\bpartir\b", r"\bvoyager\b",
-            r"\bun\b", r"\bune\b", r"\ble\b", r"\bla\b", r"\bles\b",
-            r"\bde\b", r"\bdu\b", r"\b[aà]\b", r"\bpour\b", r"\bdepuis\b",
-            r"\bbonjour\b", r"\bmerci\b", r"\bs'il\b",
-            r"\bvers\b", r"\bpuis\b", r"\bdirection\b", r"\bdepuis\b",
+            r"\bje\b",
+            r"\bvoudrais\b",
+            r"\bveux\b",
+            r"\bsouhaite\b",
+            r"\baller\b",
+            r"\bprendre\b",
+            r"\bpartir\b",
+            r"\bvoyager\b",
+            r"\bun\b",
+            r"\bune\b",
+            r"\ble\b",
+            r"\bla\b",
+            r"\bles\b",
+            r"\bde\b",
+            r"\bdu\b",
+            r"\b[aà]\b",
+            r"\bpour\b",
+            r"\bdepuis\b",
+            r"\bbonjour\b",
+            r"\bmerci\b",
+            r"\bs'il\b",
+            r"\bvers\b",
+            r"\bpuis\b",
+            r"\bdirection\b",
+            r"\bdepuis\b",
         ]
 
         french_count = sum(
-            1 for pattern in french_indicators
-            if re.search(pattern, text, re.IGNORECASE)
+            1 for pattern in french_indicators if re.search(pattern, text, re.IGNORECASE)
         )
 
         # If French indicators found, it's French
@@ -210,9 +215,7 @@ class BaselineRegexModel(BaseModel):
         # Default to NOT_TRIP
         return Intent.NOT_TRIP, 0.6
 
-    def _extract_stations(
-        self, text: str
-    ) -> tuple[str, str, list[str], list[TravelEntity]]:
+    def _extract_stations(self, text: str) -> tuple[str, str, list[str], list[TravelEntity]]:
         """
         Extract station names from text.
 
@@ -287,17 +290,11 @@ class BaselineRegexModel(BaseModel):
 
         # Build entities
         if departure:
-            entities.append(TravelEntity(
-                departure, normalize_name(departure), "DEPARTURE"
-            ))
+            entities.append(TravelEntity(departure, normalize_name(departure), "DEPARTURE"))
         if destination:
-            entities.append(TravelEntity(
-                destination, normalize_name(destination), "DESTINATION"
-            ))
+            entities.append(TravelEntity(destination, normalize_name(destination), "DESTINATION"))
         for via in intermediates:
-            entities.append(TravelEntity(
-                via, normalize_name(via), "INTERMEDIATE"
-            ))
+            entities.append(TravelEntity(via, normalize_name(via), "INTERMEDIATE"))
 
         return departure, destination, intermediates, entities
 
@@ -313,16 +310,76 @@ class BaselineRegexModel(BaseModel):
         """
         # Words to filter out
         stopwords = {
-            "je", "tu", "il", "elle", "nous", "vous", "ils", "elles",
-            "le", "la", "les", "un", "une", "des", "de", "du", "au", "aux",
-            "a", "à", "et", "ou", "mais", "donc", "car", "ni", "or",
-            "pour", "par", "sur", "sous", "avec", "sans", "dans", "en",
-            "aller", "prendre", "partir", "voyager", "veux", "voudrais",
-            "train", "billet", "trajet", "gare", "direction", "vers",
-            "demain", "aujourd'hui", "soir", "matin", "ce", "cette",
-            "comment", "quel", "quelle", "est", "sont", "avoir", "être",
-            "puis", "via", "passant", "arret", "correspondance",
-            "bonjour", "merci", "s'il", "vous", "plait",
+            "je",
+            "tu",
+            "il",
+            "elle",
+            "nous",
+            "vous",
+            "ils",
+            "elles",
+            "le",
+            "la",
+            "les",
+            "un",
+            "une",
+            "des",
+            "de",
+            "du",
+            "au",
+            "aux",
+            "a",
+            "à",
+            "et",
+            "ou",
+            "mais",
+            "donc",
+            "car",
+            "ni",
+            "or",
+            "pour",
+            "par",
+            "sur",
+            "sous",
+            "avec",
+            "sans",
+            "dans",
+            "en",
+            "aller",
+            "prendre",
+            "partir",
+            "voyager",
+            "veux",
+            "voudrais",
+            "train",
+            "billet",
+            "trajet",
+            "gare",
+            "direction",
+            "vers",
+            "demain",
+            "aujourd'hui",
+            "soir",
+            "matin",
+            "ce",
+            "cette",
+            "comment",
+            "quel",
+            "quelle",
+            "est",
+            "sont",
+            "avoir",
+            "être",
+            "puis",
+            "via",
+            "passant",
+            "arret",
+            "correspondance",
+            "bonjour",
+            "merci",
+            "s'il",
+            "vous",
+            "plait",
         }
 
         # Split on common delimiters
@@ -369,10 +426,7 @@ class BaselineRegexModel(BaseModel):
 
         # Remove leading articles and prepositions
         name = re.sub(
-            r"^(?:le|la|les|un|une|du|de la|de l'|d'|l')\s+",
-            "",
-            name,
-            flags=re.IGNORECASE
+            r"^(?:le|la|les|un|une|du|de la|de l'|d'|l')\s+", "", name, flags=re.IGNORECASE
         )
 
         # Remove common trailing words
@@ -380,7 +434,7 @@ class BaselineRegexModel(BaseModel):
             r"\s+(?:demain|aujourd'hui|ce soir|s'il vous plait|please|svp)$",
             "",
             name,
-            flags=re.IGNORECASE
+            flags=re.IGNORECASE,
         )
 
         return name.strip()
@@ -438,9 +492,7 @@ class BaselineRegexModel(BaseModel):
             if self.station_db:
                 departure = self._match_station(departure) or departure
                 destination = self._match_station(destination) or destination
-                intermediates = [
-                    self._match_station(s) or s for s in intermediates
-                ]
+                intermediates = [self._match_station(s) or s for s in intermediates]
 
             result.departure = departure
             result.destination = destination
@@ -453,3 +505,23 @@ class BaselineRegexModel(BaseModel):
                 result.intent_confidence = 0.5
 
         return result
+
+    def extract_entities(self, text: str) -> dict:
+        """
+        Extract entities in the format expected by TravelOrderResolver.
+
+        This is an adapter method that wraps predict() to provide a consistent
+        interface across all extractors.
+
+        Args:
+            text: Input text.
+
+        Returns:
+            Dictionary with departure, destination, and intermediate stops.
+        """
+        result = self.predict(text)
+        return {
+            "departure": result.departure,
+            "destination": result.destination,
+            "intermediate": result.intermediates or [],
+        }
