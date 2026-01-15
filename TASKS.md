@@ -140,11 +140,11 @@
 
 ### 3.6 Matching de Gares [P0]
 - [x] Matching exact
-- [ ] Matching fuzzy (Levenshtein, phonetique)
+- [x] Matching fuzzy (Levenshtein, phonetique)
 - [ ] Gestion homonymes (Paris ville vs Paris prenom)
 - [ ] Desambiguation contextuelle
 - [ ] Score de confiance pour chaque match
-- [ ] Tests unitaires matching
+- [x] Tests unitaires matching
 
 ### 3.7 Modele Baseline (Regex) [P0]
 - [x] Implementation rules-based
@@ -154,11 +154,11 @@
 - [x] Tests et metriques baseline
 
 ### 3.8 Modele SpaCy [P1]
-- [ ] Integration fr_dep_news_trf
-- [ ] Extraction NER avec SpaCy
-- [ ] Post-processing pour depart/destination
+- [x] Integration fr_dep_news_trf
+- [x] Extraction NER avec SpaCy
+- [x] Post-processing pour depart/destination
 - [ ] Fine-tuning SpaCy NER (optionnel)
-- [ ] Tests et metriques SpaCy
+- [x] Tests et metriques SpaCy
 
 ### 3.9 Modele CamemBERT [P1]
 - [ ] Chargement CamemBERT depuis HuggingFace
@@ -288,9 +288,9 @@
 ## 7. MONITORING & OBSERVABILITE
 
 ### 7.1 Metriques de Performance [P0]
-- [ ] Precision, Recall, F1-Score
-- [ ] Accuracy globale
-- [ ] Metriques par categorie (intent, departure, destination)
+- [x] Precision, Recall, F1-Score
+- [x] Accuracy globale
+- [x] Metriques par categorie (intent, departure, destination)
 - [ ] Matrice de confusion
 - [ ] Export metriques JSON/CSV
 
@@ -526,4 +526,4 @@
 
 ---
 
-*Derniere mise a jour: 2025-01-09*
+*Derniere mise a jour: 2025-01-15*
