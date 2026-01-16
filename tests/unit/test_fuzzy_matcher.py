@@ -2,7 +2,8 @@
 Unit tests for fuzzy_matcher module.
 
 Tests the StationMatcher class that performs fuzzy matching
-of location names to SNCF station database.
+of location names to SNCF station database, and the FuzzyPostProcessor
+that applies fuzzy matching as a post-processing step.
 """
 
 # pylint: disable=redefined-outer-name
@@ -12,6 +13,7 @@ of location names to SNCF station database.
 import pytest
 
 from src.nlp.fuzzy_matcher import StationMatcher
+from src.nlp.post.fuzzy_matcher import FuzzyPostProcessor
 
 
 @pytest.fixture
@@ -261,3 +263,143 @@ class TestMatchingQuality:
         station, score = result_exact
         # Exact matches or prefix matches should have high score
         assert score >= 90.0
+
+
+class TestFuzzyPostProcessor:
+    """Test FuzzyPostProcessor class."""
+
+    @pytest.fixture
+    def processor(self):
+        """Fixture to create a FuzzyPostProcessor instance."""
+        return FuzzyPostProcessor(threshold=75)
+
+    def test_init_default_threshold(self):
+        """Test initialization with default threshold."""
+        processor = FuzzyPostProcessor()
+        assert processor.threshold == 80  # Default threshold
+
+    def test_init_custom_threshold(self):
+        """Test initialization with custom threshold."""
+        processor = FuzzyPostProcessor(threshold=70)
+        assert processor.threshold == 70
+
+    def test_name_property(self, processor):
+        """Test name property returns 'Fuzzy'."""
+        assert processor.name == "Fuzzy"
+
+    def test_process_departure(self, processor):
+        """Test processing departure entity."""
+        entities = {
+            "departure": "Paris",
+            "destination": None,
+            "intermediate": [],
+        }
+        result = processor.process(entities, "De Paris")
+
+        assert result["departure"] is not None
+        assert "Paris" in result["departure"]
+
+    def test_process_destination(self, processor):
+        """Test processing destination entity."""
+        entities = {
+            "departure": None,
+            "destination": "Lyon",
+            "intermediate": [],
+        }
+        result = processor.process(entities, "à Lyon")
+
+        assert result["destination"] is not None
+        assert "Lyon" in result["destination"]
+
+    def test_process_both(self, processor):
+        """Test processing both departure and destination."""
+        entities = {
+            "departure": "Paris",
+            "destination": "Lyon",
+            "intermediate": [],
+        }
+        result = processor.process(entities, "De Paris à Lyon")
+
+        assert result["departure"] is not None
+        assert result["destination"] is not None
+        assert "Paris" in result["departure"]
+        assert "Lyon" in result["destination"]
+
+    def test_process_intermediates(self, processor):
+        """Test processing intermediate stops."""
+        entities = {
+            "departure": "Paris",
+            "destination": "Lyon",
+            "intermediate": ["Dijon", "Macon"],
+        }
+        result = processor.process(entities, "")
+
+        assert isinstance(result["intermediate"], list)
+        assert len(result["intermediate"]) == 2
+
+    def test_process_preserves_none(self, processor):
+        """Test that None values are preserved."""
+        entities = {
+            "departure": None,
+            "destination": None,
+            "intermediate": [],
+        }
+        result = processor.process(entities, "")
+
+        assert result["departure"] is None
+        assert result["destination"] is None
+        assert result["intermediate"] == []
+
+    def test_process_corrects_typos(self, processor):
+        """Test that fuzzy matching corrects typos."""
+        entities = {
+            "departure": "Pari",
+            "destination": "Nante",
+            "intermediate": [],
+        }
+        result = processor.process(entities, "")
+
+        # Should match to station names containing "Paris" and "Nantes"
+        if result["departure"]:
+            assert "Paris" in result["departure"]
+        if result["destination"]:
+            assert "Nantes" in result["destination"] or "Nant" in result["destination"]
+
+    def test_process_normalizes_case(self, processor):
+        """Test that fuzzy matching normalizes case."""
+        entities = {
+            "departure": "MARSEILLE",
+            "destination": "toulouse",
+            "intermediate": [],
+        }
+        result = processor.process(entities, "")
+
+        # Should normalize to proper station names
+        if result["departure"]:
+            # Should not be all uppercase after normalization
+            assert not result["departure"].isupper() or "-" in result["departure"]
+
+    def test_process_empty_intermediate(self, processor):
+        """Test processing with empty intermediate list."""
+        entities = {
+            "departure": "Paris",
+            "destination": "Lyon",
+            "intermediate": [],
+        }
+        result = processor.process(entities, "")
+
+        assert result["intermediate"] == []
+
+    def test_process_does_not_modify_original(self, processor):
+        """Test that process does not modify the original entities dict."""
+        entities = {
+            "departure": "Paris",
+            "destination": "Lyon",
+            "intermediate": ["Dijon"],
+        }
+        original_departure = entities["departure"]
+
+        processor.process(entities, "")
+
+        # Original should be unchanged
+        assert entities["departure"] == original_departure

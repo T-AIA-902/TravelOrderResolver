@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] Modular NLP Architecture & Performance - 2025-01-16
+
+### Added
+- **Modular NLP Architecture** (`src/nlp/`):
+  - `interfaces.py` - ABC classes: `IntentClassifier`, `EntityExtractor`, `PostProcessor`
+  - `intent/` - Intent classifiers: `RegexIntentClassifier`, `CamembertIntentClassifier`
+  - `entity/` - Entity extractors: `RegexEntityExtractor`, `SpacyEntityExtractor`, `CamembertEntityExtractor`
+  - `post/` - Post-processors: `FuzzyPostProcessor`
+- **Batched Inference**:
+  - `CamembertIntentClassifier.classify_batch()` - GPU-efficient batching (batch_size=128)
+  - `SpacyEntityExtractor.extract_batch()` - Uses `nlp.pipe()` for batched processing
+- **FuzzyMatcher Optimizations** (`src/nlp/fuzzy_matcher.py`):
+  - Pre-built `first_words` index in `__init__` (computed once, reused for all queries)
+  - In-memory LRU cache `_match_cache` for repeated queries
+  - `clear_cache()` and `get_cache_stats()` methods
+  - `process_batch()` method for batch processing
+- **Short Dataset Splits** (`datasets/splits/short-splits/`):
+  - `test.csv` (1,500 samples), `train.csv` (7,000 samples), `val.csv` (1,500 samples)
+  - Faster evaluation iterations during development
+- **Unified Evaluation Script** (`evaluation/evaluate_all.py`):
+  - 5 evaluation tables: Intent, Entity, Entity+Fuzzy, Combined, Combined+Fuzzy
+  - Model caching at startup (avoid re-initializing CamemBERT 4x)
+  - JSON export with `--output-json` flag
+
+### Changed
+- **Data Generator Fix** (`datasets/scripts/generate_camembert_data.py`):
+  - Fixed phantom departure bug: dest-only templates now correctly have `departure=None`
+  - Split templates into `structures_both` and `structures_dest_only`
+  - Uses `StationDatabase` instead of CSV file
+- **README.md**: Updated with 5 evaluation tables and modular architecture
+- **TASKS.md**: Added fuzzy threshold evaluation and dest-only metrics TODOs
+
+### Performance
+- Evaluation time reduced from 60+ min to ~10 min (model caching + batching)
+- FuzzyMatcher speedup via caching (repeated queries hit cache)
+
+### Results on short-splits/test.csv (1,500 samples)
+| Pipeline | Intent Acc | Entity Acc | Latency |
+|----------|------------|------------|---------|
+| Regex + CamemBERT + Fuzzy | 71.9% | 28.6% | 1.4ms |
+
 ## [0.1.5] CamemBERT Zero-Shot Baseline - 2025-01-16
 
 ### Added
