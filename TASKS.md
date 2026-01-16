@@ -106,8 +106,8 @@
 ## 3. MODULE NLP (COEUR DU PROJET)
 
 ### 3.1 Architecture NLP [P0]
-- [x] Definir interface abstraite BaseModel
-- [x] Implementer pipeline NLP modulaire
+- [x] Definir interface abstraite BaseModel (IntentClassifier, EntityExtractor, PostProcessor ABCs)
+- [x] Implementer pipeline NLP modulaire (src/nlp/intent/, entity/, post/)
 - [ ] Systeme de configuration par YAML/JSON
 - [ ] Logging des predictions et metriques
 
@@ -144,6 +144,8 @@
 - [ ] Gestion homonymes (Paris ville vs Paris prenom)
 - [ ] Desambiguation contextuelle
 - [ ] Score de confiance pour chaque match
+- [ ] Evaluer tradeoffs seuil fuzzy (80/85/90%) - typo detection vs faux positifs
+- [ ] Evaluer impact des samples dest-only sur metriques departure (filtrer ou reporter separement)
 - [x] Tests unitaires matching
 
 ### 3.7 Modele Baseline (Regex) [P0]
@@ -321,9 +323,10 @@
 ### 8.1 Benchmark Multi-Modeles [P1]
 - [x] Script de benchmark automatise (`evaluation/evaluate_all.py`)
 - [x] Comparaison tous les modeles sur meme dataset
-- [x] Tableau comparatif (accuracy, latence, taille)
+- [x] Tableau comparatif (accuracy, latence, taille) - 5 tables dans README
+- [x] Export JSON des metriques (`--output-json`)
 - [ ] Graphiques de comparaison
-- [ ] Selection du meilleur modele
+- [x] Selection du meilleur modele (Regex + CamemBERT + Fuzzy)
 
 ### 8.2 Analyse d'Erreurs [P1]
 - [ ] Categorisation des erreurs
@@ -475,8 +478,8 @@
 ### 13.2 Optimisation Inference [P3]
 - [ ] Quantization des modeles
 - [ ] ONNX export
-- [ ] Batch processing
-- [ ] Caching intelligent
+- [x] Batch processing (CamemBERT classify_batch, SpaCy extract_batch)
+- [x] Caching intelligent (FuzzyMatcher _match_cache, pre-built indices)
 
 ### 13.3 Tests de Charge [P3]
 - [ ] Benchmark avec 1000+ requetes
@@ -527,4 +530,4 @@
 
 ---
 
-*Derniere mise a jour: 2025-01-16*
+*Derniere mise a jour: 2025-01-16 (v0.2.0 - Modular Architecture)*

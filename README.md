@@ -230,31 +230,57 @@ curl -X POST http://localhost:8000/parse \
 
 ## Benchmarks
 
-> Evalue sur `datasets/splits/test.csv` (15,000 samples - split 70/15/15)
+> Evalue sur `datasets/splits/short-splits/test.csv` (1,500 samples)
+> Architecture modulaire: Intent classifiers + Entity extractors + Post-processors (Fuzzy)
 
-### Metriques NLP (Entity Extraction)
+### Table 1: Intent Classification
+
+| Modele | Accuracy | Latence |
+|--------|----------|---------|
+| Regex | 71.9% | 0.07ms |
+| CamemBERT | 34.9% | 26.6ms |
+
+### Table 2: Entity Extraction (sans fuzzy)
 
 | Modele | Accuracy | Precision | Recall | F1-Score | Latence |
 |--------|----------|-----------|--------|----------|---------|
-| Baseline Regex | 17.8% | 42.1% | 26.5% | 32.5% | 1.7ms |
-| SpaCy | 6.6% | 20.9% | 11.6% | 14.6% | 7.5ms |
-| Fuzzy | 11.5% | 38.3% | 22.3% | 27.5% | 22.9ms |
-| CamemBERT (zero-shot) | 6.7% | 29.7% | 19.9% | 23.2% | 1.2ms |
-| Flan-T5 | - | - | - | - | - |
+| Regex | 6.0% | 10.6% | 9.7% | 10.1% | 0.03ms |
+| SpaCy | 11.0% | 19.7% | 11.8% | 14.5% | 2.7ms |
+| CamemBERT | 12.7% | 30.8% | 22.0% | 25.3% | 1.3ms |
 
-### Metriques par categorie
+### Table 3: Entity Extraction + Fuzzy Post-Processing
 
-| Categorie | Regex | SpaCy | Fuzzy | CamemBERT |
-|-----------|-------|-------|-------|-----------|
-| Intent Classification | 69.3% | N/A | N/A | N/A |
-| Departure Precision | 32.7% | 21.5% | 33.9% | 28.1% |
-| Departure Recall | 20.6% | 8.1% | 12.8% | 12.2% |
-| Destination Precision | 51.5% | 20.2% | 42.6% | 31.4% |
-| Destination Recall | 32.4% | 15.1% | 31.8% | 27.5% |
-| Misspelling Handling | 7.9% | 0.0% | 6.1% | 0.0% |
-| No-caps Handling | 15.4% | 0.3% | 5.1% | 6.0% |
+| Modele | Accuracy | Precision | Recall | F1-Score | Latence |
+|--------|----------|-----------|--------|----------|---------|
+| Regex + Fuzzy | 22.3% | 41.5% | 37.7% | 39.4% | 32.4ms |
+| SpaCy + Fuzzy | 20.4% | 36.5% | 22.4% | 27.3% | 1.5ms |
+| CamemBERT + Fuzzy | 28.6% | 49.7% | 35.2% | 40.6% | 3.7ms |
 
-*Script: `poetry run python evaluation/evaluate_all.py --dataset datasets/splits/test.csv`*
+### Table 4: Combined Pipeline (Intent + Entity)
+
+| Intent | Entity | Intent Acc | Entity Acc | Latence |
+|--------|--------|------------|------------|---------|
+| Regex | Regex | 71.9% | 6.0% | 0.1ms |
+| Regex | SpaCy | 71.9% | 11.0% | 6.7ms |
+| Regex | CamemBERT | 71.9% | 12.7% | 1.3ms |
+| CamemBERT | Regex | 34.9% | 6.0% | 26.9ms |
+| CamemBERT | SpaCy | 34.9% | 11.0% | 35.1ms |
+| CamemBERT | CamemBERT | 34.9% | 12.7% | 27.8ms |
+
+### Table 5: Combined Pipeline + Fuzzy
+
+| Intent | Entity | Intent Acc | Entity Acc | Latence |
+|--------|--------|------------|------------|---------|
+| **Regex** | **Regex + Fuzzy** | **71.9%** | **22.3%** | **1.4ms** |
+| Regex | SpaCy + Fuzzy | 71.9% | 20.4% | 7.1ms |
+| **Regex** | **CamemBERT + Fuzzy** | **71.9%** | **28.6%** | **1.4ms** |
+| CamemBERT | Regex + Fuzzy | 34.9% | 22.3% | 26.4ms |
+| CamemBERT | SpaCy + Fuzzy | 34.9% | 20.4% | 34.6ms |
+| CamemBERT | CamemBERT + Fuzzy | 34.9% | 28.6% | 28.0ms |
+
+**Best Pipeline**: Regex (intent) + CamemBERT (entity) + Fuzzy (post-processing)
+
+*Script: `poetry run python evaluation/evaluate_all.py --eval-type all --dataset datasets/splits/short-splits/test.csv --output-json evaluation_results.json`*
 
 ---
 
