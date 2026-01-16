@@ -1,4 +1,4 @@
-.PHONY: install install-dev install-ml test lint format clean run help
+.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-camembert demo-spacy demo-fuzzy demo-regex demo-all
 
 # Default target
 .DEFAULT_GOAL := help
@@ -45,14 +45,14 @@ test-e2e: ## Run end-to-end tests only
 	poetry run pytest tests/e2e -v
 
 lint: ## Run all linters
-	poetry run flake8 src tests
+	poetry run flake8 src tests evaluation
 	poetry run mypy src
-	poetry run isort --check-only src tests
-	poetry run black --check src tests
+	poetry run isort --check-only src tests evaluation
+	poetry run black --check src tests evaluation
 
 format: ## Format code with black and isort
-	poetry run isort src tests
-	poetry run black src tests
+	poetry run isort src tests evaluation
+	poetry run black src tests evaluation
 
 typecheck: ## Run type checking
 	poetry run mypy src
@@ -74,6 +74,30 @@ run-demo: ## Launch Gradio demo (if available)
 	poetry run python -m src.api.demo
 
 # =============================================================================
+# DEMOS (Interactive with map visualization)
+# =============================================================================
+
+demo: demo-camembert ## Run demo with default (CamemBERT) extractor
+
+demo-camembert: ## Demo with CamemBERT extractor
+	@echo "Demo: CamemBERT extractor"
+	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor camembert
+
+demo-spacy: ## Demo with SpaCy extractor
+	@echo "Demo: SpaCy extractor"
+	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor spacy
+
+demo-fuzzy: ## Demo with SpaCy + Fuzzy extractor
+	@echo "Demo: SpaCy + Fuzzy extractor"
+	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor fuzzy
+
+demo-regex: ## Demo with Regex extractor
+	@echo "Demo: Regex extractor"
+	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor regex
+
+demo-all: demo-regex demo-spacy demo-fuzzy demo-camembert ## Run demo with all extractors
+
+# =============================================================================
 # NLP & TRAINING
 # =============================================================================
 
@@ -86,8 +110,11 @@ train-camembert: ## Fine-tune CamemBERT
 train-flan: ## Fine-tune Flan-T5
 	poetry run python training/fine_tune_flan_t5.py
 
-benchmark: ## Run model benchmark
-	poetry run python evaluation/benchmark.py
+evaluate: ## Run NLP evaluation (5 tables, short dataset)
+	poetry run python evaluation/evaluate_all.py --eval-type all --dataset datasets/splits/short-splits/test.csv --output-json evaluation_results.json
+
+evaluate-full: ## Run NLP evaluation (5 tables, full dataset)
+	poetry run python evaluation/evaluate_all.py --eval-type all --dataset datasets/splits/test.csv --output-json evaluation_results.json
 
 # =============================================================================
 # DATA
