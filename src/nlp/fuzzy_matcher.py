@@ -5,9 +5,13 @@ This module uses RapidFuzz to match extracted location entities (potentially
 with typos, case variations) to the official SNCF stations database.
 
 Uses StationDatabase as the single source of truth for station data.
+
+Performance optimizations:
+- In-memory cache for repeated queries (same city name = same result)
+- Pre-built first_words index (computed once at init, not per query)
 """
 
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from rapidfuzz import fuzz, process
 
@@ -40,12 +44,25 @@ class StationMatcher:
 
         # Build search index from StationDatabase
         # Map: normalized name -> original name
-        self.search_index = {}
+        self.search_index: Dict[str, str] = {}
         for station in self.db.get_all_stations(passenger_only=False):
             self.search_index[station.name_normalized] = station.name
 
         # List of normalized names for fuzzy search
         self.normalized_names = list(self.search_index.keys())
+
+        # Pre-build first_words index (computed once, reused for all queries)
+        # Maps first word -> list of full normalized names
+        self.first_words: Dict[str, List[str]] = {}
+        for normalized_name in self.normalized_names:
+            first_word = normalized_name.split(" ")[0]
+            if first_word not in self.first_words:
+                self.first_words[first_word] = []
+            self.first_words[first_word].append(normalized_name)
+        self.first_word_keys = list(self.first_words.keys())
+
+        # Initialize LRU cache for match_station
+        self._match_cache: Dict[str, Optional[Tuple[str, float]]] = {}
 
         print(f"Loaded {len(self.search_index)} SNCF stations from StationDatabase")
         print(f"Fuzzy matching threshold: {self.threshold}%")
@@ -72,6 +89,8 @@ class StationMatcher:
         Special handling: if query is a simple city name (e.g., "Paris"),
         it will match any station starting with that city (e.g., "Paris-Gare-de-Lyon").
 
+        Results are cached for performance (same query = same result).
+
         Args:
             query: Location name to match (e.g., "pari", "Lion", "Strasbourg")
             top_n: Number of top matches to return (default: 1)
@@ -92,6 +111,10 @@ class StationMatcher:
         # Normalize the query
         normalized_query = self.normalize_query(query)
 
+        # Check cache first (huge speedup for repeated queries)
+        if normalized_query in self._match_cache:
+            return self._match_cache[normalized_query]
+
         # Step 1: Check for exact prefix match (e.g., "paris" -> "paris gare de lyon")
         # This handles cases where user says "Paris" but stations are "Paris-Est", etc.
         # Note: normalize_name() converts hyphens to spaces
@@ -100,22 +123,15 @@ class StationMatcher:
                 # Found a station that starts with query
                 # Return with high confidence (95%) since it's a prefix match
                 original_name = self.search_index[normalized_name]
-                return (original_name, 95.0)
+                result = (original_name, 95.0)
+                self._match_cache[normalized_query] = result
+                return result
 
-        # Step 2: Build a mapping of first words to station names
-        # This allows us to match "lyon" to "lyon st paul" more effectively
-        # Note: normalize_name() converts hyphens to spaces
-        first_words: dict[str, list[str]] = {}
-        for normalized_name in self.normalized_names:
-            first_word = normalized_name.split(" ")[0]
-            if first_word not in first_words:
-                first_words[first_word] = []
-            first_words[first_word].append(normalized_name)
-
+        # Step 2: Use pre-built first_words index (no longer rebuilt every call)
         # Step 3: Try fuzzy matching on first words only
         first_word_matches = process.extract(
             normalized_query,
-            list(first_words.keys()),
+            self.first_word_keys,
             scorer=fuzz.ratio,
             limit=10,
         )
@@ -129,12 +145,12 @@ class StationMatcher:
         )
 
         # Step 5: Combine results with boosted scores for first-word matches
-        all_matches = {}
+        all_matches: Dict[str, float] = {}
 
         # Add first-word matches with boost
         for first_word, score, _ in first_word_matches:
             # Pick the first station with this first word
-            station_name = first_words[first_word][0]
+            station_name = self.first_words[first_word][0]
             # Boost score significantly since we matched the primary city name
             # Higher boost ensures major cities are preferred over obscure stations
             boosted_score = min(100, score + 20)
@@ -149,6 +165,7 @@ class StationMatcher:
                 all_matches[station_name] = score
 
         if not all_matches:
+            self._match_cache[normalized_query] = None
             return None
 
         # Step 6: Find best match
@@ -156,15 +173,20 @@ class StationMatcher:
         best_station, best_score = best_match
 
         if best_score < self.threshold:
+            self._match_cache[normalized_query] = None
             return None
 
         # Return the original station name (not normalized)
         original_name = self.search_index[best_station]
-        return (original_name, best_score)
+        result = (original_name, best_score)
+        self._match_cache[normalized_query] = result
+        return result
 
     def match_stations_batch(self, queries: List[str]) -> List[Optional[Tuple[str, float]]]:
         """
         Match multiple queries in batch.
+
+        Uses caching for efficiency - repeated queries are instant.
 
         Args:
             queries: List of location names to match
@@ -180,6 +202,17 @@ class StationMatcher:
             [('Paris', 90.0), ('Lyon', 90.0), ('Marseille', 100.0)]
         """
         return [self.match_station(query) for query in queries]
+
+    def clear_cache(self) -> None:
+        """Clear the match cache. Useful for testing or memory management."""
+        self._match_cache.clear()
+
+    def get_cache_stats(self) -> Dict[str, int]:
+        """Return cache statistics for monitoring."""
+        return {
+            "cache_size": len(self._match_cache),
+            "stations_count": len(self.search_index),
+        }
 
     def match_with_details(self, query: str, top_n: int = 5) -> List[Tuple[str, float]]:
         """

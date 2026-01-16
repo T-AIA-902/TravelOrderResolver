@@ -1,13 +1,22 @@
 """
 Unified NLP evaluation script for Travel Order Resolver.
 
-This script evaluates all available NLP methods (regex, spacy, fuzzy)
-and generates comprehensive metrics tables for the README.
+This script evaluates all available NLP methods using the modular architecture:
+- Intent classifiers (Regex, CamemBERT)
+- Entity extractors (Regex, SpaCy, CamemBERT)
+- Post-processors (Fuzzy)
+
+Produces 5 evaluation tables:
+1. Intent Classification
+2. Entity Extraction (without fuzzy)
+3. Entity Extraction + Fuzzy
+4. Combined (Intent x Entity)
+5. Combined + Fuzzy (full pipeline)
 
 Usage:
-    python evaluation/evaluate_all.py
-    python evaluation/evaluate_all.py --models spacy fuzzy
-    python evaluation/evaluate_all.py --output-json results.json
+    python evaluation/evaluate_all.py --eval-type all
+    python evaluation/evaluate_all.py --eval-type intent
+    python evaluation/evaluate_all.py --eval-type entity
 """
 
 import argparse
@@ -15,17 +24,12 @@ import csv
 import json
 import sys
 import time
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Add src to path to import our modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.data import StationDatabase  # noqa: E402
-from src.nlp.entity_extractor import FuzzyEntityExtractor, SpacyEntityExtractor  # noqa: E402
-from src.nlp.models.baseline_regex import BaselineRegexModel  # noqa: E402
 
 # =============================================================================
 # Dataset Loading
@@ -36,25 +40,19 @@ def load_dataset(filepath: str) -> list:
     """
     Load dataset from JSON or CSV file.
 
-    Handles two formats:
-    - JSON (test.json): {"sentence", "intent", "departure", "destination"}
-    - CSV (splits/*.csv): {"text", "label", "departure", "destination"}
-
     Returns normalized format with keys: sentence, intent, departure, destination
     """
     filepath = Path(filepath)
 
     if filepath.suffix == ".json":
         with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data
+            return json.load(f)
 
     elif filepath.suffix == ".csv":
         with open(filepath, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             data = []
             for row in reader:
-                # Map CSV format to standard format
                 sample = {
                     "sentence": row.get("text", row.get("sentence", "")),
                     "intent": map_label_to_intent(row.get("label", row.get("intent", ""))),
@@ -70,20 +68,13 @@ def load_dataset(filepath: str) -> list:
 
 
 def map_label_to_intent(label: str) -> str:
-    """
-    Map CSV labels to standard intent format.
-
-    VALID -> TRIP
-    INVALID -> NOT_TRIP
-    """
+    """Map CSV labels to standard intent format."""
     label = label.upper().strip()
     if label == "VALID":
         return "TRIP"
     elif label == "INVALID":
         return "NOT_TRIP"
-    else:
-        # Already in standard format
-        return label
+    return label
 
 
 # =============================================================================
@@ -95,10 +86,10 @@ def map_label_to_intent(label: str) -> str:
 class EntityMetrics:
     """Metrics for entity extraction (departure or destination)."""
 
-    tp: int = 0  # True positives
-    fp: int = 0  # False positives
-    fn: int = 0  # False negatives
-    tn: int = 0  # True negatives
+    tp: int = 0
+    fp: int = 0
+    fn: int = 0
+    tn: int = 0
 
     @property
     def precision(self) -> float:
@@ -120,33 +111,87 @@ class EntityMetrics:
 
 
 @dataclass
-class EvaluationResults:
-    """Complete evaluation results for a single model."""
+class IntentResults:
+    """Results for intent classification evaluation."""
 
-    model_name: str
+    name: str
+    correct: int = 0
+    total: int = 0
+    latencies: list = field(default_factory=list)
 
-    # Intent metrics
-    intent_correct: int = 0
-    intent_total: int = 0
+    @property
+    def accuracy(self) -> float:
+        if self.total == 0:
+            return 0.0
+        return self.correct / self.total
 
-    # Entity metrics (both correct)
-    entity_correct: int = 0
-    entity_total: int = 0
+    @property
+    def avg_latency_ms(self) -> float:
+        if not self.latencies:
+            return 0.0
+        return sum(self.latencies) / len(self.latencies)
 
-    # Per-entity metrics
+
+@dataclass
+class EntityResults:
+    """Results for entity extraction evaluation."""
+
+    name: str
+    correct: int = 0
+    total: int = 0
     departure_metrics: EntityMetrics = field(default_factory=EntityMetrics)
     destination_metrics: EntityMetrics = field(default_factory=EntityMetrics)
+    latencies: list = field(default_factory=list)
 
-    # Category-specific metrics
+    # Category metrics
     misspelling_correct: int = 0
     misspelling_total: int = 0
     lowercase_correct: int = 0
     lowercase_total: int = 0
-    order_correct: int = 0
-    order_total: int = 0
 
-    # Latency
+    @property
+    def accuracy(self) -> float:
+        if self.total == 0:
+            return 0.0
+        return self.correct / self.total
+
+    @property
+    def avg_latency_ms(self) -> float:
+        if not self.latencies:
+            return 0.0
+        return sum(self.latencies) / len(self.latencies)
+
+    @property
+    def avg_precision(self) -> float:
+        return (self.departure_metrics.precision + self.destination_metrics.precision) / 2
+
+    @property
+    def avg_recall(self) -> float:
+        return (self.departure_metrics.recall + self.destination_metrics.recall) / 2
+
+    @property
+    def avg_f1(self) -> float:
+        return (self.departure_metrics.f1_score + self.destination_metrics.f1_score) / 2
+
+
+@dataclass
+class CombinedResults:
+    """Results for combined evaluation (intent + entity)."""
+
+    intent_name: str
+    entity_name: str
+    with_fuzzy: bool = False
+
+    intent_correct: int = 0
+    intent_total: int = 0
+    entity_correct: int = 0
+    entity_total: int = 0
     latencies: list = field(default_factory=list)
+
+    @property
+    def name(self) -> str:
+        suffix = " + Fuzzy" if self.with_fuzzy else ""
+        return f"{self.intent_name} + {self.entity_name}{suffix}"
 
     @property
     def intent_accuracy(self) -> float:
@@ -166,182 +211,6 @@ class EvaluationResults:
             return 0.0
         return sum(self.latencies) / len(self.latencies)
 
-    @property
-    def misspelling_accuracy(self) -> float:
-        if self.misspelling_total == 0:
-            return 0.0
-        return self.misspelling_correct / self.misspelling_total
-
-    @property
-    def lowercase_accuracy(self) -> float:
-        if self.lowercase_total == 0:
-            return 0.0
-        return self.lowercase_correct / self.lowercase_total
-
-    @property
-    def order_accuracy(self) -> float:
-        if self.order_total == 0:
-            return 0.0
-        return self.order_correct / self.order_total
-
-
-# =============================================================================
-# Model Adapters
-# =============================================================================
-
-
-class ModelAdapter(ABC):
-    """Abstract base class for model adapters."""
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Return the model name."""
-        pass
-
-    @abstractmethod
-    def extract_entities(self, text: str) -> dict:
-        """Extract entities from text. Returns dict with departure, destination."""
-        pass
-
-    def classify_intent(self, text: str) -> Optional[str]:
-        """Classify intent. Returns None if not supported."""
-        return None
-
-
-class SpacyAdapter(ModelAdapter):
-    """Adapter for SpaCy entity extractor (no intent classification)."""
-
-    def __init__(self):
-        self._model = SpacyEntityExtractor()
-
-    @property
-    def name(self) -> str:
-        return "SpaCy"
-
-    def extract_entities(self, text: str) -> dict:
-        return self._model.extract_entities(text)
-
-
-class FuzzyAdapter(ModelAdapter):
-    """Adapter for Fuzzy entity extractor (no intent classification)."""
-
-    def __init__(self, threshold: int = 75):
-        self._model = FuzzyEntityExtractor(fuzzy_threshold=threshold)
-
-    @property
-    def name(self) -> str:
-        return "Fuzzy"
-
-    def extract_entities(self, text: str) -> dict:
-        return self._model.extract_entities(text)
-
-
-class RegexAdapter(ModelAdapter):
-    """Adapter for Baseline Regex model (intent + entities)."""
-
-    def __init__(self):
-        station_db = StationDatabase()
-        station_db.load()
-        self._model = BaselineRegexModel(station_db=station_db)
-
-    @property
-    def name(self) -> str:
-        return "Baseline Regex"
-
-    def extract_entities(self, text: str) -> dict:
-        result = self._model.predict(text)
-        return {
-            "departure": result.departure or None,
-            "destination": result.destination or None,
-            "intermediate": result.intermediates or [],
-        }
-
-    def classify_intent(self, text: str) -> Optional[str]:
-        result = self._model.predict(text)
-        return result.intent.value
-
-
-class SpacyRegexAdapter(ModelAdapter):
-    """Adapter combining Regex (intent) + SpaCy (entities)."""
-
-    def __init__(self):
-        station_db = StationDatabase()
-        station_db.load()
-        self._regex_model = BaselineRegexModel(station_db=station_db)
-        self._spacy_model = SpacyEntityExtractor()
-
-    @property
-    def name(self) -> str:
-        return "SpaCy + Regex"
-
-    def extract_entities(self, text: str) -> dict:
-        return self._spacy_model.extract_entities(text)
-
-    def classify_intent(self, text: str) -> Optional[str]:
-        result = self._regex_model.predict(text)
-        return result.intent.value
-
-
-class FuzzyRegexAdapter(ModelAdapter):
-    """Adapter combining Regex (intent) + Fuzzy (entities)."""
-
-    def __init__(self, threshold: int = 75):
-        station_db = StationDatabase()
-        station_db.load()
-        self._regex_model = BaselineRegexModel(station_db=station_db)
-        self._fuzzy_model = FuzzyEntityExtractor(fuzzy_threshold=threshold)
-
-    @property
-    def name(self) -> str:
-        return "Fuzzy + Regex"
-
-    def extract_entities(self, text: str) -> dict:
-        return self._fuzzy_model.extract_entities(text)
-
-    def classify_intent(self, text: str) -> Optional[str]:
-        result = self._regex_model.predict(text)
-        return result.intent.value
-
-
-class CamembertAdapter(ModelAdapter):
-    """Adapter for CamemBERT zero-shot entity extractor (no intent classification)."""
-
-    def __init__(self, threshold: float = 0.85):
-        from src.nlp.entity_extractor import CamembertZeroShotExtractor
-
-        self._model = CamembertZeroShotExtractor(threshold=threshold)
-
-    @property
-    def name(self) -> str:
-        return "CamemBERT"
-
-    def extract_entities(self, text: str) -> dict:
-        return self._model.extract_entities(text)
-
-
-class CamembertRegexAdapter(ModelAdapter):
-    """Adapter combining Regex (intent) + CamemBERT (entities)."""
-
-    def __init__(self, threshold: float = 0.85):
-        from src.nlp.entity_extractor import CamembertZeroShotExtractor
-
-        station_db = StationDatabase()
-        station_db.load()
-        self._regex_model = BaselineRegexModel(station_db=station_db)
-        self._camembert_model = CamembertZeroShotExtractor(threshold=threshold)
-
-    @property
-    def name(self) -> str:
-        return "CamemBERT + Regex"
-
-    def extract_entities(self, text: str) -> dict:
-        return self._camembert_model.extract_entities(text)
-
-    def classify_intent(self, text: str) -> Optional[str]:
-        result = self._regex_model.predict(text)
-        return result.intent.value
-
 
 # =============================================================================
 # Helper Functions
@@ -356,11 +225,7 @@ def normalize_location(location: Optional[str]) -> Optional[str]:
 
 
 def normalize_fuzzy_station(station: Optional[str]) -> Optional[str]:
-    """
-    Extract city name from full SNCF station name.
-    'Paris-Gare-de-Lyon' -> 'Paris'
-    'Lyon-Part-Dieu' -> 'Lyon'
-    """
+    """Extract city name from full SNCF station name."""
     if station is None or station == "":
         return None
     station = str(station).strip()
@@ -370,48 +235,23 @@ def normalize_fuzzy_station(station: Optional[str]) -> Optional[str]:
 
 
 def is_misspelled_sample(sentence: str, departure: str, destination: str) -> bool:
-    """
-    Detect if the sentence contains misspelled station names.
-    If the ground truth doesn't appear exactly in the sentence,
-    the sentence contains a misspelling.
-    """
+    """Detect if sentence contains misspelled station names."""
     sentence_lower = sentence.lower()
-
-    if departure:
-        dep_lower = departure.lower()
-        if dep_lower not in sentence_lower:
-            return True
-
-    if destination:
-        dest_lower = destination.lower()
-        if dest_lower not in sentence_lower:
-            return True
-
+    if departure and departure.lower() not in sentence_lower:
+        return True
+    if destination and destination.lower() not in sentence_lower:
+        return True
     return False
 
 
 def is_lowercase_sample(sentence: str) -> bool:
-    """Detect if the sentence starts with a lowercase letter."""
+    """Detect if sentence starts with lowercase."""
     if not sentence:
         return False
     for char in sentence:
         if char.isalpha():
             return char.islower()
     return False
-
-
-def get_order_from_sentence(sentence: str, departure: str, destination: str) -> Optional[tuple]:
-    """
-    Get the order of departure and destination in the sentence.
-    Returns (dep_pos, dest_pos) or None if not found.
-    """
-    sentence_lower = sentence.lower()
-    dep_pos = sentence_lower.find(departure.lower()) if departure else -1
-    dest_pos = sentence_lower.find(destination.lower()) if destination else -1
-
-    if dep_pos >= 0 and dest_pos >= 0:
-        return (dep_pos, dest_pos)
-    return None
 
 
 def update_entity_metrics(
@@ -432,7 +272,7 @@ def update_entity_metrics(
     elif predicted is None and ground_truth is not None:
         metrics.fn += 1
         return False
-    else:  # Both None
+    else:
         metrics.tn += 1
         return True
 
@@ -442,110 +282,257 @@ def update_entity_metrics(
 # =============================================================================
 
 
-def evaluate_model(
-    adapter: ModelAdapter,
+def evaluate_intent_classifiers(
+    classifiers: List[Tuple[str, Any]], data: list, batch_size: int = 128
+) -> Dict[str, IntentResults]:
+    """Evaluate all intent classifiers."""
+    results = {}
+
+    # Extract all sentences and true intents
+    sentences = [sample["sentence"] for sample in data]
+    true_intents = [sample["intent"] for sample in data]
+
+    for name, classifier in classifiers:
+        print(f"  Evaluating intent: {name}...")
+        r = IntentResults(name=name)
+
+        # Use batched classification if available (for CamemBERT)
+        if hasattr(classifier, "classify_batch"):
+            print(f"    Using batched inference (batch_size={batch_size})...")
+            start = time.perf_counter()
+            predictions = classifier.classify_batch(sentences, batch_size=batch_size)
+            end = time.perf_counter()
+
+            total_time_ms = (end - start) * 1000
+            avg_latency = total_time_ms / len(sentences)
+
+            for pred, true_intent in zip(predictions, true_intents):
+                pred_intent, confidence = pred
+                r.latencies.append(avg_latency)
+                r.total += 1
+                if pred_intent == true_intent:
+                    r.correct += 1
+        else:
+            # Sequential classification for other classifiers
+            for sentence, true_intent in zip(sentences, true_intents):
+                start = time.perf_counter()
+                pred_intent, confidence = classifier.classify(sentence)
+                end = time.perf_counter()
+
+                r.latencies.append((end - start) * 1000)
+                r.total += 1
+
+                if pred_intent == true_intent:
+                    r.correct += 1
+
+        results[name] = r
+        print(f"    Done. Accuracy: {r.accuracy*100:.1f}%")
+
+    return results
+
+
+def evaluate_entity_extractors(
+    extractors: List[Tuple[str, Any]],
     data: list,
-    include_intent: bool = False,
+    fuzzy_post: Any = None,
     normalize_fuzzy: bool = False,
-) -> EvaluationResults:
-    """
-    Evaluate a model on the test dataset.
+    batch_size: int = 128,
+) -> Dict[str, EntityResults]:
+    """Evaluate all entity extractors."""
+    results = {}
 
-    Args:
-        adapter: Model adapter to evaluate
-        data: List of test samples (dicts)
-        include_intent: Whether to evaluate intent classification
-        normalize_fuzzy: Whether to normalize fuzzy station names (both pred and ground truth)
+    # Filter TRIP samples once
+    trip_samples = [s for s in data if s["intent"] == "TRIP"]
+    sentences = [s["sentence"] for s in trip_samples]
 
-    Returns:
-        EvaluationResults with all metrics
-    """
-    results = EvaluationResults(model_name=adapter.name)
+    for name, extractor in extractors:
+        suffix = " + Fuzzy" if fuzzy_post else ""
+        display_name = f"{name}{suffix}"
+        print(f"  Evaluating entity: {display_name}...")
 
-    for sample in data:
-        sentence = sample["sentence"]
-        true_intent = sample["intent"]
+        r = EntityResults(name=display_name)
 
-        # Keep original ground truth for category detection
-        orig_true_departure = normalize_location(sample.get("departure"))
-        orig_true_destination = normalize_location(sample.get("destination"))
+        # Use batched extraction if available
+        if hasattr(extractor, "extract_batch"):
+            print(f"    Using batched inference (batch_size={batch_size})...")
+            start = time.perf_counter()
+            all_entities = extractor.extract_batch(sentences, batch_size=batch_size)
+            end = time.perf_counter()
 
-        # Values used for comparison (may be normalized for fuzzy)
-        true_departure = orig_true_departure
-        true_destination = orig_true_destination
+            total_time_ms = (end - start) * 1000
+            avg_latency = total_time_ms / len(sentences) if sentences else 0
 
-        # Measure latency
-        start_time = time.perf_counter()
-        entities = adapter.extract_entities(sentence)
-        intent_pred = adapter.classify_intent(sentence) if include_intent else None
-        end_time = time.perf_counter()
-        results.latencies.append((end_time - start_time) * 1000)
+            for sample, entities in zip(trip_samples, all_entities):
+                sentence = sample["sentence"]
+                orig_true_dep = normalize_location(sample.get("departure"))
+                orig_true_dest = normalize_location(sample.get("destination"))
+                true_dep = orig_true_dep
+                true_dest = orig_true_dest
 
-        # Get predicted entities
-        pred_departure = normalize_location(entities.get("departure"))
-        pred_destination = normalize_location(entities.get("destination"))
+                # Apply fuzzy post-processing if provided
+                if fuzzy_post:
+                    entities = fuzzy_post.process(entities, sentence)
 
-        # Normalize for fuzzy comparison (both predictions AND ground truth)
-        if normalize_fuzzy:
-            pred_departure = normalize_fuzzy_station(pred_departure)
-            pred_destination = normalize_fuzzy_station(pred_destination)
-            true_departure = normalize_fuzzy_station(true_departure)
-            true_destination = normalize_fuzzy_station(true_destination)
+                r.latencies.append(avg_latency)
 
-        # Evaluate intent (if applicable)
-        if include_intent and intent_pred is not None:
-            results.intent_total += 1
-            if intent_pred == true_intent:
-                results.intent_correct += 1
+                # Get predictions
+                pred_dep = normalize_location(entities.get("departure"))
+                pred_dest = normalize_location(entities.get("destination"))
 
-        # Only evaluate entity extraction on TRIP sentences
-        if true_intent != "TRIP":
-            continue
+                # Normalize for fuzzy comparison
+                if normalize_fuzzy:
+                    pred_dep = normalize_fuzzy_station(pred_dep)
+                    pred_dest = normalize_fuzzy_station(pred_dest)
+                    true_dep = normalize_fuzzy_station(true_dep)
+                    true_dest = normalize_fuzzy_station(true_dest)
 
-        results.entity_total += 1
+                r.total += 1
 
-        # Update departure metrics
-        dep_correct = update_entity_metrics(
-            results.departure_metrics, pred_departure, true_departure
-        )
+                # Update metrics
+                dep_correct = update_entity_metrics(r.departure_metrics, pred_dep, true_dep)
+                dest_correct = update_entity_metrics(r.destination_metrics, pred_dest, true_dest)
 
-        # Update destination metrics
-        dest_correct = update_entity_metrics(
-            results.destination_metrics, pred_destination, true_destination
-        )
-
-        # Both correct?
-        both_correct = dep_correct and dest_correct
-        if both_correct:
-            results.entity_correct += 1
-
-        # Category: Misspelling handling (use original ground truth)
-        if is_misspelled_sample(sentence, orig_true_departure or "", orig_true_destination or ""):
-            results.misspelling_total += 1
-            if both_correct:
-                results.misspelling_correct += 1
-
-        # Category: Lowercase handling
-        if is_lowercase_sample(sentence):
-            results.lowercase_total += 1
-            if both_correct:
-                results.lowercase_correct += 1
-
-        # Category: Order detection (use original ground truth)
-        if orig_true_departure and orig_true_destination:
-            order = get_order_from_sentence(sentence, orig_true_departure, orig_true_destination)
-            if order is not None:
-                dep_pos, dest_pos = order
-                results.order_total += 1
-                # Check if model got the order right
+                both_correct = dep_correct and dest_correct
                 if both_correct:
-                    results.order_correct += 1
-                elif pred_departure == true_destination and pred_destination == true_departure:
-                    # Model swapped departure and destination
-                    pass  # Already counted as wrong
-                elif dep_correct or dest_correct:
-                    # Partially correct
-                    results.order_correct += 1
+                    r.correct += 1
+
+                # Category metrics
+                if is_misspelled_sample(sentence, orig_true_dep or "", orig_true_dest or ""):
+                    r.misspelling_total += 1
+                    if both_correct:
+                        r.misspelling_correct += 1
+
+                if is_lowercase_sample(sentence):
+                    r.lowercase_total += 1
+                    if both_correct:
+                        r.lowercase_correct += 1
+        else:
+            # Sequential extraction for extractors without batch support
+            for sample in trip_samples:
+                sentence = sample["sentence"]
+                orig_true_dep = normalize_location(sample.get("departure"))
+                orig_true_dest = normalize_location(sample.get("destination"))
+                true_dep = orig_true_dep
+                true_dest = orig_true_dest
+
+                # Extract entities
+                start = time.perf_counter()
+                entities = extractor.extract(sentence)
+
+                # Apply fuzzy post-processing if provided
+                if fuzzy_post:
+                    entities = fuzzy_post.process(entities, sentence)
+
+                end = time.perf_counter()
+                r.latencies.append((end - start) * 1000)
+
+                # Get predictions
+                pred_dep = normalize_location(entities.get("departure"))
+                pred_dest = normalize_location(entities.get("destination"))
+
+                # Normalize for fuzzy comparison
+                if normalize_fuzzy:
+                    pred_dep = normalize_fuzzy_station(pred_dep)
+                    pred_dest = normalize_fuzzy_station(pred_dest)
+                    true_dep = normalize_fuzzy_station(true_dep)
+                    true_dest = normalize_fuzzy_station(true_dest)
+
+                r.total += 1
+
+                # Update metrics
+                dep_correct = update_entity_metrics(r.departure_metrics, pred_dep, true_dep)
+                dest_correct = update_entity_metrics(r.destination_metrics, pred_dest, true_dest)
+
+                both_correct = dep_correct and dest_correct
+                if both_correct:
+                    r.correct += 1
+
+                # Category metrics
+                if is_misspelled_sample(sentence, orig_true_dep or "", orig_true_dest or ""):
+                    r.misspelling_total += 1
+                    if both_correct:
+                        r.misspelling_correct += 1
+
+                if is_lowercase_sample(sentence):
+                    r.lowercase_total += 1
+                    if both_correct:
+                        r.lowercase_correct += 1
+
+        results[display_name] = r
+        print(f"    Done. Accuracy: {r.accuracy*100:.1f}%")
+
+    return results
+
+
+def evaluate_combined(
+    intent_classifiers: List[Tuple[str, Any]],
+    entity_extractors: List[Tuple[str, Any]],
+    data: list,
+    fuzzy_post: Any = None,
+    normalize_fuzzy: bool = False,
+) -> List[CombinedResults]:
+    """Evaluate all combinations of intent classifiers and entity extractors."""
+    results = []
+
+    for intent_name, intent_clf in intent_classifiers:
+        for entity_name, entity_ext in entity_extractors:
+            suffix = " + Fuzzy" if fuzzy_post else ""
+            print(f"  Evaluating combined: {intent_name} + {entity_name}{suffix}...")
+
+            r = CombinedResults(
+                intent_name=intent_name,
+                entity_name=entity_name,
+                with_fuzzy=fuzzy_post is not None,
+            )
+
+            for sample in data:
+                sentence = sample["sentence"]
+                true_intent = sample["intent"]
+
+                # Get ground truth
+                orig_true_dep = normalize_location(sample.get("departure"))
+                orig_true_dest = normalize_location(sample.get("destination"))
+                true_dep = orig_true_dep
+                true_dest = orig_true_dest
+
+                start = time.perf_counter()
+
+                # Classify intent
+                pred_intent, _ = intent_clf.classify(sentence)
+
+                # Extract entities
+                entities = entity_ext.extract(sentence)
+                if fuzzy_post:
+                    entities = fuzzy_post.process(entities, sentence)
+
+                end = time.perf_counter()
+                r.latencies.append((end - start) * 1000)
+
+                # Intent evaluation
+                r.intent_total += 1
+                if pred_intent == true_intent:
+                    r.intent_correct += 1
+
+                # Entity evaluation (only on TRIP samples)
+                if true_intent == "TRIP":
+                    pred_dep = normalize_location(entities.get("departure"))
+                    pred_dest = normalize_location(entities.get("destination"))
+
+                    if normalize_fuzzy:
+                        pred_dep = normalize_fuzzy_station(pred_dep)
+                        pred_dest = normalize_fuzzy_station(pred_dest)
+                        true_dep = normalize_fuzzy_station(true_dep)
+                        true_dest = normalize_fuzzy_station(true_dest)
+
+                    r.entity_total += 1
+                    if pred_dep == true_dep and pred_dest == true_dest:
+                        r.entity_correct += 1
+
+            results.append(r)
+            print(
+                f"    Done. Intent: {r.intent_accuracy*100:.1f}%, "
+                f"Entity: {r.entity_accuracy*100:.1f}%"
+            )
 
     return results
 
@@ -555,175 +542,160 @@ def evaluate_model(
 # =============================================================================
 
 
-def print_table_1_extractors(results: dict):
-    """Print Table 1: Entity extractors only (SpaCy, Fuzzy, CamemBERT)."""
+def print_table_intent(results: Dict[str, IntentResults]):
+    """Print Table 1: Intent Classification."""
     print("\n" + "=" * 80)
-    print("TABLE 1: EXTRACTEURS D'ENTITES (Entity Extraction Only)")
+    print("TABLE 1: INTENT CLASSIFICATION")
     print("=" * 80)
-    print("\n| Methode | Accuracy | Precision | Recall | F1-Score | Latence |")
-    print("|---------|----------|-----------|--------|----------|---------|")
+    print("\n| Model | Accuracy | Latency |")
+    print("|-------|----------|---------|")
 
-    for name in ["SpaCy", "Fuzzy", "CamemBERT"]:
-        if name in results:
-            r = results[name]
-            dep = r.departure_metrics
-            dest = r.destination_metrics
-            # Average precision/recall/f1 for departure and destination
-            avg_precision = (dep.precision + dest.precision) / 2
-            avg_recall = (dep.recall + dest.recall) / 2
-            avg_f1 = (dep.f1_score + dest.f1_score) / 2
-            print(
-                f"| {name:<7} | {r.entity_accuracy*100:>7.1f}% | "
-                f"{avg_precision*100:>8.1f}% | {avg_recall*100:>5.1f}% | "
-                f"{avg_f1*100:>7.1f}% | {r.avg_latency_ms:>6.1f}ms |"
-            )
-
-
-def print_table_2_complete(results: dict):
-    """Print Table 2: Complete solutions (Intent + Entities)."""
-    print("\n" + "=" * 80)
-    print("TABLE 2: SOLUTIONS COMPLETES (Intent + Entity Extraction)")
-    print("=" * 80)
-    print("\n| Methode | Intent Acc | Entity Acc | Precision | Recall | F1-Score | Latence |")
-    print("|---------|------------|------------|-----------|--------|----------|---------|")
-
-    for name in ["Baseline Regex", "SpaCy + Regex", "Fuzzy + Regex", "CamemBERT + Regex"]:
-        if name in results:
-            r = results[name]
-            dep = r.departure_metrics
-            dest = r.destination_metrics
-            avg_precision = (dep.precision + dest.precision) / 2
-            avg_recall = (dep.recall + dest.recall) / 2
-            avg_f1 = (dep.f1_score + dest.f1_score) / 2
-            print(
-                f"| {name:<13} | {r.intent_accuracy*100:>9.1f}% | "
-                f"{r.entity_accuracy*100:>9.1f}% | {avg_precision*100:>8.1f}% | "
-                f"{avg_recall*100:>5.1f}% | {avg_f1*100:>7.1f}% | {r.avg_latency_ms:>6.1f}ms |"
-            )
-
-
-def print_table_3_categories(results: dict):
-    """Print Table 3: Category-specific metrics."""
-    print("\n" + "=" * 80)
-    print("TABLE 3: METRIQUES PAR CATEGORIE")
-    print("=" * 80)
-
-    # Get complete solution names
-    complete_names = ["Baseline Regex", "SpaCy + Regex", "Fuzzy + Regex", "CamemBERT + Regex"]
-    available = [n for n in complete_names if n in results]
-
-    if not available:
-        print("No complete solutions evaluated.")
-        return
-
-    # Header
-    header = "| Categorie |"
-    for name in available:
-        header += f" {name:<13} |"
-    print(f"\n{header}")
-
-    divider = "|-----------|"
-    for _ in available:
-        divider += "---------------|"
-    print(divider)
-
-    # Departure Precision
-    row = "| Dep. Precision |"
-    for name in available:
-        r = results[name]
-        row += f" {r.departure_metrics.precision*100:>12.1f}% |"
-    print(row)
-
-    # Departure Recall
-    row = "| Dep. Recall |"
-    for name in available:
-        r = results[name]
-        row += f" {r.departure_metrics.recall*100:>12.1f}% |"
-    print(row)
-
-    # Departure F1
-    row = "| Dep. F1 |"
-    for name in available:
-        r = results[name]
-        row += f" {r.departure_metrics.f1_score*100:>12.1f}% |"
-    print(row)
-
-    # Destination Precision
-    row = "| Dest. Precision |"
-    for name in available:
-        r = results[name]
-        row += f" {r.destination_metrics.precision*100:>12.1f}% |"
-    print(row)
-
-    # Destination Recall
-    row = "| Dest. Recall |"
-    for name in available:
-        r = results[name]
-        row += f" {r.destination_metrics.recall*100:>12.1f}% |"
-    print(row)
-
-    # Destination F1
-    row = "| Dest. F1 |"
-    for name in available:
-        r = results[name]
-        row += f" {r.destination_metrics.f1_score*100:>12.1f}% |"
-    print(row)
-
-    # Order Detection
-    row = "| Dep/Dest Order |"
-    for name in available:
-        r = results[name]
-        if r.order_total > 0:
-            row += f" {r.order_accuracy*100:>11.1f}% |"
-        else:
-            row += f" {'N/A':>12} |"
-    print(row)
-
-    # Misspelling Handling
-    row = "| Misspelling |"
-    for name in available:
-        r = results[name]
-        if r.misspelling_total > 0:
-            row += f" {r.misspelling_accuracy*100:>5.1f}% ({r.misspelling_total:>3}) |"
-        else:
-            row += f" {'N/A':>12} |"
-    print(row)
-
-    # Lowercase Handling
-    row = "| No-caps |"
-    for name in available:
-        r = results[name]
-        if r.lowercase_total > 0:
-            row += f" {r.lowercase_accuracy*100:>5.1f}% ({r.lowercase_total:>3}) |"
-        else:
-            row += f" {'N/A':>12} |"
-    print(row)
-
-
-def export_results_json(results: dict, output_path: str):
-    """Export results to JSON file."""
-    export_data = {}
     for name, r in results.items():
-        export_data[name] = {
-            "intent_accuracy": r.intent_accuracy,
-            "entity_accuracy": r.entity_accuracy,
-            "departure_precision": r.departure_metrics.precision,
-            "departure_recall": r.departure_metrics.recall,
-            "departure_f1": r.departure_metrics.f1_score,
-            "destination_precision": r.destination_metrics.precision,
-            "destination_recall": r.destination_metrics.recall,
-            "destination_f1": r.destination_metrics.f1_score,
-            "avg_latency_ms": r.avg_latency_ms,
-            "misspelling_accuracy": r.misspelling_accuracy,
-            "misspelling_total": r.misspelling_total,
-            "lowercase_accuracy": r.lowercase_accuracy,
-            "lowercase_total": r.lowercase_total,
-            "order_accuracy": r.order_accuracy,
-            "order_total": r.order_total,
-        }
+        print(f"| {name:<15} | {r.accuracy*100:>7.1f}% | {r.avg_latency_ms:>6.1f}ms |")
+
+
+def print_table_entity(results: Dict[str, EntityResults], title: str, table_num: int):
+    """Print entity extraction table."""
+    print("\n" + "=" * 80)
+    print(f"TABLE {table_num}: {title}")
+    print("=" * 80)
+    print("\n| Model | Accuracy | Precision | Recall | F1-Score | Latency |")
+    print("|-------|----------|-----------|--------|----------|---------|")
+
+    for name, r in results.items():
+        print(
+            f"| {name:<20} | {r.accuracy*100:>7.1f}% | "
+            f"{r.avg_precision*100:>8.1f}% | {r.avg_recall*100:>5.1f}% | "
+            f"{r.avg_f1*100:>7.1f}% | {r.avg_latency_ms:>6.1f}ms |"
+        )
+
+
+def print_table_combined(results: List[CombinedResults], title: str, table_num: int):
+    """Print combined evaluation table."""
+    print("\n" + "=" * 80)
+    print(f"TABLE {table_num}: {title}")
+    print("=" * 80)
+    print("\n| Intent | Entity | Intent Acc | Entity Acc | Latency |")
+    print("|--------|--------|------------|------------|---------|")
+
+    for r in results:
+        suffix = " + Fuzzy" if r.with_fuzzy else ""
+        print(
+            f"| {r.intent_name:<10} | {r.entity_name + suffix:<18} | "
+            f"{r.intent_accuracy*100:>9.1f}% | {r.entity_accuracy*100:>9.1f}% | "
+            f"{r.avg_latency_ms:>6.1f}ms |"
+        )
+
+
+def export_results_json(
+    intent_results: Dict[str, IntentResults],
+    entity_results: Dict[str, EntityResults],
+    entity_fuzzy_results: Dict[str, EntityResults],
+    combined_results: List[CombinedResults],
+    combined_fuzzy_results: List[CombinedResults],
+    output_path: str,
+):
+    """Export all results to JSON file."""
+    export_data = {
+        "intent": {
+            name: {"accuracy": r.accuracy, "latency_ms": r.avg_latency_ms}
+            for name, r in intent_results.items()
+        },
+        "entity": {
+            name: {
+                "accuracy": r.accuracy,
+                "precision": r.avg_precision,
+                "recall": r.avg_recall,
+                "f1": r.avg_f1,
+                "latency_ms": r.avg_latency_ms,
+            }
+            for name, r in entity_results.items()
+        },
+        "entity_fuzzy": {
+            name: {
+                "accuracy": r.accuracy,
+                "precision": r.avg_precision,
+                "recall": r.avg_recall,
+                "f1": r.avg_f1,
+                "latency_ms": r.avg_latency_ms,
+            }
+            for name, r in entity_fuzzy_results.items()
+        },
+        "combined": [
+            {
+                "intent": r.intent_name,
+                "entity": r.entity_name,
+                "intent_accuracy": r.intent_accuracy,
+                "entity_accuracy": r.entity_accuracy,
+                "latency_ms": r.avg_latency_ms,
+            }
+            for r in combined_results
+        ],
+        "combined_fuzzy": [
+            {
+                "intent": r.intent_name,
+                "entity": r.entity_name,
+                "intent_accuracy": r.intent_accuracy,
+                "entity_accuracy": r.entity_accuracy,
+                "latency_ms": r.avg_latency_ms,
+            }
+            for r in combined_fuzzy_results
+        ],
+    }
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(export_data, f, indent=2, ensure_ascii=False)
+
+
+# =============================================================================
+# Model Factory
+# =============================================================================
+
+
+def create_intent_classifiers(models: List[str]) -> List[Tuple[str, Any]]:
+    """Create intent classifiers based on model list."""
+    classifiers = []
+
+    if "regex" in models or "all" in models:
+        from src.nlp.intent import RegexIntentClassifier
+
+        classifiers.append(("Regex", RegexIntentClassifier()))
+
+    if "camembert" in models or "all" in models:
+        from src.nlp.intent import CamembertIntentClassifier
+
+        classifiers.append(("CamemBERT", CamembertIntentClassifier()))
+
+    return classifiers
+
+
+def create_entity_extractors(models: List[str]) -> List[Tuple[str, Any]]:
+    """Create entity extractors based on model list."""
+    extractors = []
+
+    if "regex" in models or "all" in models:
+        from src.nlp.entity import RegexEntityExtractor
+
+        extractors.append(("Regex", RegexEntityExtractor()))
+
+    if "spacy" in models or "all" in models:
+        from src.nlp.entity import SpacyEntityExtractor
+
+        extractors.append(("SpaCy", SpacyEntityExtractor()))
+
+    if "camembert" in models or "all" in models:
+        from src.nlp.entity import CamembertEntityExtractor
+
+        extractors.append(("CamemBERT", CamembertEntityExtractor()))
+
+    return extractors
+
+
+def create_fuzzy_post_processor() -> Any:
+    """Create fuzzy post-processor."""
+    from src.nlp.post import FuzzyPostProcessor
+
+    return FuzzyPostProcessor()
 
 
 # =============================================================================
@@ -737,13 +709,24 @@ def main():
         "--dataset",
         type=str,
         default=None,
-        help="Path to test dataset (JSON or CSV). Default: datasets/generated/test.json",
+        help="Path to test dataset (JSON or CSV)",
     )
-    parser.add_argument("--output-json", type=str, default=None, help="Export results to JSON file")
+    parser.add_argument(
+        "--output-json",
+        type=str,
+        default=None,
+        help="Export results to JSON file",
+    )
+    parser.add_argument(
+        "--eval-type",
+        choices=["intent", "entity", "entity_fuzzy", "combined", "combined_fuzzy", "all"],
+        default="all",
+        help="Type of evaluation to run (default: all)",
+    )
     parser.add_argument(
         "--models",
         nargs="+",
-        choices=["spacy", "fuzzy", "regex", "spacy_regex", "fuzzy_regex", "camembert", "camembert_regex", "all"],
+        choices=["regex", "spacy", "camembert", "all"],
         default=["all"],
         help="Models to evaluate (default: all)",
     )
@@ -752,112 +735,140 @@ def main():
 
     # Resolve dataset path
     dataset_path = args.dataset or (
-        Path(__file__).parent.parent / "datasets" / "generated" / "test.json"
+        Path(__file__).parent.parent / "datasets" / "splits" / "test.csv"
     )
 
     print("=" * 80)
-    print("UNIFIED NLP EVALUATION - Travel Order Resolver")
+    print("UNIFIED NLP EVALUATION - Travel Order Resolver (Refactored)")
     print("=" * 80)
 
-    # Load dataset (supports both JSON and CSV)
+    # Load dataset
     print(f"\nLoading dataset from: {dataset_path}")
     data = load_dataset(str(dataset_path))
     print(f"Loaded {len(data)} samples")
 
     # Count by intent
-    intent_counts = {}
+    intent_counts: Dict[str, int] = {}
     for sample in data:
         intent = sample["intent"]
         intent_counts[intent] = intent_counts.get(intent, 0) + 1
     print(f"Intent distribution: {intent_counts}")
 
-    # Determine which models to evaluate
-    if "all" in args.models:
-        model_list = ["spacy", "fuzzy", "regex", "spacy_regex", "fuzzy_regex", "camembert", "camembert_regex"]
-    else:
-        model_list = args.models
+    # Initialize results
+    intent_results: Dict[str, IntentResults] = {}
+    entity_results: Dict[str, EntityResults] = {}
+    entity_fuzzy_results: Dict[str, EntityResults] = {}
+    combined_results: List[CombinedResults] = []
+    combined_fuzzy_results: List[CombinedResults] = []
 
-    results = {}
+    eval_type = args.eval_type
+    models = args.models
 
-    # Initialize and evaluate each model
+    # ==========================================================================
+    # Create models ONCE and reuse across all evaluations
+    # ==========================================================================
     print("\n" + "-" * 80)
-    print("EVALUATING MODELS...")
+    print("LOADING MODELS...")
     print("-" * 80)
 
-    # Entity extractors (no intent)
-    if "spacy" in model_list:
-        print("\n[1/5] Initializing SpaCy...")
-        adapter = SpacyAdapter()
-        print("      Evaluating SpaCy...")
-        results["SpaCy"] = evaluate_model(adapter, data, include_intent=False)
-        print(f"      Done. Entity accuracy: {results['SpaCy'].entity_accuracy*100:.1f}%")
+    # Determine which models we need
+    need_intent = eval_type in ["intent", "combined", "combined_fuzzy", "all"]
+    need_entity = eval_type in ["entity", "entity_fuzzy", "combined", "combined_fuzzy", "all"]
+    need_fuzzy = eval_type in ["entity_fuzzy", "combined_fuzzy", "all"]
 
-    if "fuzzy" in model_list:
-        print("\n[2/5] Initializing Fuzzy...")
-        adapter = FuzzyAdapter()
-        print("      Evaluating Fuzzy...")
-        results["Fuzzy"] = evaluate_model(adapter, data, include_intent=False, normalize_fuzzy=True)
-        print(f"      Done. Entity accuracy: {results['Fuzzy'].entity_accuracy*100:.1f}%")
+    classifiers = create_intent_classifiers(models) if need_intent else []
+    extractors = create_entity_extractors(models) if need_entity else []
+    fuzzy_post = create_fuzzy_post_processor() if need_fuzzy else None
 
-    # Complete solutions (intent + entities)
-    if "regex" in model_list:
-        print("\n[3/5] Initializing Baseline Regex...")
-        adapter = RegexAdapter()
-        print("      Evaluating Baseline Regex...")
-        results["Baseline Regex"] = evaluate_model(adapter, data, include_intent=True)
-        print(
-            f"      Done. Intent: {results['Baseline Regex'].intent_accuracy*100:.1f}%, "
-            f"Entity: {results['Baseline Regex'].entity_accuracy*100:.1f}%"
-        )
+    print("Models loaded successfully!")
 
-    if "spacy_regex" in model_list:
-        print("\n[4/5] Initializing SpaCy + Regex...")
-        adapter = SpacyRegexAdapter()
-        print("      Evaluating SpaCy + Regex...")
-        results["SpaCy + Regex"] = evaluate_model(adapter, data, include_intent=True)
-        print(
-            f"      Done. Intent: {results['SpaCy + Regex'].intent_accuracy*100:.1f}%, "
-            f"Entity: {results['SpaCy + Regex'].entity_accuracy*100:.1f}%"
-        )
+    # ==========================================================================
+    # Table 1: Intent Classification
+    # ==========================================================================
+    if eval_type in ["intent", "all"]:
+        print("\n" + "-" * 80)
+        print("EVALUATING INTENT CLASSIFIERS...")
+        print("-" * 80)
 
-    if "fuzzy_regex" in model_list:
-        print("\n[5/7] Initializing Fuzzy + Regex...")
-        adapter = FuzzyRegexAdapter()
-        print("      Evaluating Fuzzy + Regex...")
-        results["Fuzzy + Regex"] = evaluate_model(
-            adapter, data, include_intent=True, normalize_fuzzy=True
-        )
-        print(
-            f"      Done. Intent: {results['Fuzzy + Regex'].intent_accuracy*100:.1f}%, "
-            f"Entity: {results['Fuzzy + Regex'].entity_accuracy*100:.1f}%"
-        )
+        if classifiers:
+            intent_results = evaluate_intent_classifiers(classifiers, data)
 
-    # CamemBERT models
-    if "camembert" in model_list:
-        print("\n[6/7] Initializing CamemBERT (zero-shot)...")
-        adapter = CamembertAdapter()
-        print("      Evaluating CamemBERT...")
-        results["CamemBERT"] = evaluate_model(adapter, data, include_intent=False)
-        print(f"      Done. Entity accuracy: {results['CamemBERT'].entity_accuracy*100:.1f}%")
+    # ==========================================================================
+    # Table 2: Entity Extraction (without fuzzy)
+    # ==========================================================================
+    if eval_type in ["entity", "all"]:
+        print("\n" + "-" * 80)
+        print("EVALUATING ENTITY EXTRACTORS...")
+        print("-" * 80)
 
-    if "camembert_regex" in model_list:
-        print("\n[7/7] Initializing CamemBERT + Regex...")
-        adapter = CamembertRegexAdapter()
-        print("      Evaluating CamemBERT + Regex...")
-        results["CamemBERT + Regex"] = evaluate_model(adapter, data, include_intent=True)
-        print(
-            f"      Done. Intent: {results['CamemBERT + Regex'].intent_accuracy*100:.1f}%, "
-            f"Entity: {results['CamemBERT + Regex'].entity_accuracy*100:.1f}%"
-        )
+        if extractors:
+            entity_results = evaluate_entity_extractors(extractors, data)
 
-    # Print results tables
-    print_table_1_extractors(results)
-    print_table_2_complete(results)
-    print_table_3_categories(results)
+    # ==========================================================================
+    # Table 3: Entity Extraction + Fuzzy
+    # ==========================================================================
+    if eval_type in ["entity_fuzzy", "all"]:
+        print("\n" + "-" * 80)
+        print("EVALUATING ENTITY EXTRACTORS + FUZZY...")
+        print("-" * 80)
+
+        if extractors:
+            entity_fuzzy_results = evaluate_entity_extractors(
+                extractors, data, fuzzy_post=fuzzy_post, normalize_fuzzy=True
+            )
+
+    # ==========================================================================
+    # Table 4: Combined (Intent x Entity)
+    # ==========================================================================
+    if eval_type in ["combined", "all"]:
+        print("\n" + "-" * 80)
+        print("EVALUATING COMBINED (Intent x Entity)...")
+        print("-" * 80)
+
+        if classifiers and extractors:
+            combined_results = evaluate_combined(classifiers, extractors, data)
+
+    # ==========================================================================
+    # Table 5: Combined + Fuzzy
+    # ==========================================================================
+    if eval_type in ["combined_fuzzy", "all"]:
+        print("\n" + "-" * 80)
+        print("EVALUATING COMBINED + FUZZY...")
+        print("-" * 80)
+
+        if classifiers and extractors:
+            combined_fuzzy_results = evaluate_combined(
+                classifiers, extractors, data, fuzzy_post=fuzzy_post, normalize_fuzzy=True
+            )
+
+    # ==========================================================================
+    # Print Results
+    # ==========================================================================
+    if intent_results:
+        print_table_intent(intent_results)
+
+    if entity_results:
+        print_table_entity(entity_results, "ENTITY EXTRACTION (without fuzzy)", 2)
+
+    if entity_fuzzy_results:
+        print_table_entity(entity_fuzzy_results, "ENTITY EXTRACTION + FUZZY", 3)
+
+    if combined_results:
+        print_table_combined(combined_results, "COMBINED (Intent x Entity)", 4)
+
+    if combined_fuzzy_results:
+        print_table_combined(combined_fuzzy_results, "COMBINED + FUZZY", 5)
 
     # Export to JSON if requested
     if args.output_json:
-        export_results_json(results, args.output_json)
+        export_results_json(
+            intent_results,
+            entity_results,
+            entity_fuzzy_results,
+            combined_results,
+            combined_fuzzy_results,
+            args.output_json,
+        )
         print(f"\n\nResults exported to: {args.output_json}")
 
     print("\n" + "=" * 80)
