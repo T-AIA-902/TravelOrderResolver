@@ -8,9 +8,9 @@
 ## LEGENDE
 
 - `[P0]` Critique - Requis pour validation
-- `[P1]` Important - Attendu pour une bonne note
+- `[P1]` Important - Attendu
 - `[P2]` Bonus explicite du cahier des charges
-- `[P3]` Excellence - Au-dela des attentes
+- `[P3]` Excellence
 
 ---
 
@@ -20,7 +20,7 @@
 - [x] Creer structure de dossiers complete
 - [x] Initialiser pyproject.toml avec Poetry
 - [x] Configurer .gitignore complet (Python, ML, IDE)
-- [ ] Creer requirements.txt pour compatibilite pip
+- [x] Creer requirements.txt pour compatibilite pip
 - [x] Ecrire README.md professionnel avec badges
 - [x] Ajouter LICENSE (MIT)
 - [x] Creer CONTRIBUTING.md
@@ -96,10 +96,10 @@
 - [ ] Documenter format et sources
 
 ### 2.5 Collaboration Inter-groupes [P1]
-- [ ] Definir format d'echange de datasets
-- [ ] Contribuer au dataset collectif
-- [ ] Integrer dataset des autres groupes
-- [ ] Documenter les contributions
+- [x] Definir format d'echange de datasets
+- [x] Contribuer au dataset collectif
+- [x] Integrer dataset des autres groupes
+- [x] Documenter les contributions
 
 ---
 
@@ -183,10 +183,10 @@
 - [ ] Comparaison avec fine-tuning classique
 
 ### 3.12 Modele Ensemble [P3]
-- [ ] Combiner predictions de plusieurs modeles
+- [x] Combiner predictions de plusieurs modeles
 - [ ] Voting ou stacking
 - [ ] Selection dynamique du meilleur modele
-- [ ] Tests et metriques ensemble
+- [x] Tests et metriques ensemble
 
 ### 3.13 Support Multilingue [P2]
 - [ ] Detection de langue automatique
@@ -300,7 +300,7 @@
 ### 7.2 Monitoring Ressources [P2]
 - [ ] Tracking CPU par requete
 - [ ] Tracking RAM par requete
-- [ ] Tracking temps d'execution
+- [x] Tracking temps d'execution
 - [ ] Tracking GPU utilization (si applicable)
 
 ### 7.3 Empreinte Carbone [P2]
@@ -338,7 +338,7 @@
 - [x] Tests avec fautes d'orthographe (3219 samples evalues)
 - [x] Tests sans majuscules (7904 samples evalues)
 - [ ] Tests sans accents
-- [ ] Tests avec bruit (mots parasites)
+- [x] Tests avec bruit (mots parasites)
 - [ ] Tests adversariaux
 
 ### 8.4 Etudes d'Ablation [P3]
@@ -352,8 +352,8 @@
 ## 9. DOCUMENTATION
 
 ### 9.1 Documentation Technique [P0]
-- [ ] Architecture complete du systeme
-- [ ] Description du pipeline NLP
+- [x] Architecture complete du systeme
+- [x] Description du pipeline NLP
 - [ ] Description des algorithmes de pathfinding
 - [ ] Diagrammes (Mermaid/PlantUML)
 
@@ -413,29 +413,32 @@
 - [ ] Docstrings Google style
 - [ ] Pas de code duplique
 - [ ] Respect PEP8
-- [ ] Mypy sans erreurs
+- [x] Black sans erreurs
+- [x] iSort sans erreurs
+- [x] Flake8 sans erreurs
+- [x] Mypy sans erreurs
 
 ---
 
 ## 11. GESTION DE PROJET
 
 ### 11.1 Organisation Equipe [P1]
-- [ ] Definir roles (NLP Lead, Data, Pathfinding, Infra)
-- [ ] Definir canaux de communication
-- [ ] Planning des reunions
-- [ ] Definition of Done pour les taches
+- [x] Definir roles (NLP Lead, Data, Pathfinding, Infra)
+- [x] Definir canaux de communication
+- [x] Planning des reunions
+- [x] Definition of Done pour les taches
 
 ### 11.2 Gestion Git [P1]
-- [ ] Branching strategy (feature branches)
+- [x] Branching strategy (feature branches)
 - [ ] Commits reguliers de tous les membres
-- [ ] Messages de commit conventionnels
-- [ ] Code review obligatoire
-- [ ] Pas de force push sur main
+- [x] Messages de commit conventionnels
+- [x] Code review obligatoire
+- [x] Pas de force push sur main
 
 ### 11.3 Suivi Avancement [P1]
 - [ ] Board Kanban (GitHub Projects)
 - [ ] Milestones pour les deadlines
-- [ ] Daily/Weekly sync
+- [x] Daily/Weekly sync
 - [ ] Retrospectives
 
 ### 11.4 Gestion des Risques [P3]
@@ -468,7 +471,7 @@
 
 ---
 
-## 13. BONUS SUPPLEMENTAIRES (EXCELLENCE)
+## 13. BONUS SUPPLEMENTAIRES
 
 ### 13.1 Interpretabilite [P3]
 - [ ] Visualisation de l'attention
