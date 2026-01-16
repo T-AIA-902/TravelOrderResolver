@@ -1,14 +1,18 @@
 import random
+import sys
 import unicodedata
+from pathlib import Path
 
 import pandas as pd
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 try:
     from faker import Faker
 except ImportError:
     Faker = None
 
-INPUT_CSV = "gares-de-voyageurs.csv"
 OUTPUT_CSV = "dataset_train_sncf.csv"
 NUM_SAMPLES = 100000
 RATIO_INVALID = 0.20
@@ -16,26 +20,18 @@ RATIO_INVALID = 0.20
 fake = Faker("fr_FR") if Faker else None
 
 
-def load_stations(filename):
-    print(f"📂 Chargement des gares depuis {filename}...")
-    try:
-        df = pd.read_csv(filename, sep=";", on_bad_lines="skip", encoding="utf-8")
+def load_stations():
+    """Load stations from StationDatabase (JSON source)."""
+    from data import StationDatabase
 
-        if "Nom" not in df.columns:
-            df = pd.read_csv(filename, sep=";", encoding="latin-1")
+    print("📂 Chargement des gares depuis StationDatabase...")
+    db = StationDatabase()
+    db.load()
 
-        if "Nom" not in df.columns:
-            raise ValueError("Colonne 'Nom' introuvable.")
-
-        stations = df["Nom"].dropna().unique().tolist()
-        stations = [s for s in stations if len(s) > 2]
-
-        print(f"✅ {len(stations)} gares chargées avec succès.")
-        return stations
-
-    except Exception as e:
-        print(f"⚠️ Erreur lecture CSV ({e}). Utilisation mode secours.")
-        return ["Paris", "Lyon", "Marseille", "Bordeaux", "Lille", "Toulouse", "Albert"]
+    # Get all passenger station names
+    stations = [s.name for s in db.get_all_stations(passenger_only=True)]
+    print(f"✅ {len(stations)} gares chargées avec succès.")
+    return stations
 
 
 synonyms = {
@@ -93,6 +89,13 @@ synonyms = {
 
 
 def generate_valid_sentence(dep, dest):
+    """
+    Generate a valid travel request sentence.
+
+    Returns:
+        Tuple of (sentence, actual_dep, actual_dest) where actual_dep may be None
+        for destination-only templates.
+    """
     polite = random.choice(synonyms["intent_polite"])
     noun = random.choice(synonyms["noun_trip"])
     prep_from = random.choice(synonyms["prep_from"])
@@ -100,10 +103,10 @@ def generate_valid_sentence(dep, dest):
     question = random.choice(synonyms["intent_question"])
     imperative = random.choice(synonyms["intent_imperative"])
 
-    structures = [
+    # Templates with both departure and destination
+    structures_both = [
         f"{polite} {noun} {prep_from} {dep} {prep_to} {dest}",
         f"{noun} {prep_to} {dest} {prep_from} {dep}",
-        f"{question} {noun} {prep_to} {dest} ?",
         f"{imperative} {noun} entre {dep} et {dest}",
         f"train {dep} {dest}",
         f"billet {dest} depuis {dep}",
@@ -111,7 +114,19 @@ def generate_valid_sentence(dep, dest):
         f"Je dois aller à {dest} pour une réunion, je pars de {dep}",
         f"Réserve moi une place pour {dest} en provenance de {dep}",
     ]
-    return random.choice(structures)
+
+    # Templates with only destination (no departure in text)
+    structures_dest_only = [
+        f"{question} {noun} {prep_to} {dest} ?",
+    ]
+
+    # 85% both, 15% dest-only (realistic ratio)
+    if random.random() < 0.85:
+        sentence = random.choice(structures_both)
+        return sentence, dep, dest
+    else:
+        sentence = random.choice(structures_dest_only)
+        return sentence, None, dest  # No departure for dest-only templates
 
 
 def generate_invalid_sentence(stations):
@@ -153,7 +168,7 @@ def apply_noise(text):
 
 
 def main():
-    cities = load_stations(INPUT_CSV)
+    cities = load_stations()
     data = []
 
     print(f"🚀 Génération de {NUM_SAMPLES} phrases...")
@@ -167,7 +182,7 @@ def main():
             while dep == dest:
                 dest = random.choice(cities)
 
-            raw_text = generate_valid_sentence(dep, dest)
+            raw_text, actual_dep, actual_dest = generate_valid_sentence(dep, dest)
             final_text = apply_noise(raw_text)
 
             data.append(
@@ -175,8 +190,8 @@ def main():
                     "id": i,
                     "text": final_text,
                     "label": "VALID",
-                    "departure": dep,
-                    "destination": dest,
+                    "departure": actual_dep,  # May be None for dest-only templates
+                    "destination": actual_dest,
                 }
             )
 
