@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] GPU Support, Docker Updates & Post Module Refactoring - 2025-01-22
+
+### Added
+- **Device Utility Module** (`src/utils/device.py`):
+  - `get_torch_device(preferred)` - Auto-detect PyTorch device (cuda/cpu)
+  - `setup_spacy_device(preferred)` - Configure SpaCy GPU via `prefer_gpu()`
+  - `get_device_info()` - Get device diagnostics (GPU name, CUDA availability)
+- **GPU Support for CamemBERT Models**:
+  - `CamembertIntentClassifier`: Added `device` parameter, passes to HuggingFace pipeline
+  - `CamembertEntityExtractor`: Added `device` parameter, moves model and tensors to GPU
+- **GPU Support for SpaCy**:
+  - `SpacyEntityExtractor`: Added `device` parameter, calls `spacy.prefer_gpu()` before loading
+- **Evaluation CLI `--device` Flag**:
+  - New argument: `--device {auto,cuda,cpu}` (default: auto)
+  - Displays GPU info at startup when available
+
+### Changed
+- **Docker Files Updated**:
+  - `docker/Dockerfile`: GPU base image (`pytorch:2.1.0-cuda12.1`), `fr_dep_news_trf` model, CLI entry point
+  - `docker/Dockerfile.training`: Updated poetry install command
+  - `docker/docker-compose.yml`: Removed dead API service, added `evaluate` service, GPU reservations
+- **Post Module Refactored** (`src/nlp/post/`):
+  - Moved `src/nlp/fuzzy_matcher.py` → `src/nlp/post/station_matcher.py`
+  - Renamed `src/nlp/post/fuzzy_matcher.py` → `src/nlp/post/fuzzy_post_processor.py`
+  - Clear separation: `station_matcher.py` (core logic) vs `fuzzy_post_processor.py` (pipeline adapter)
+  - Updated `post/__init__.py` to export both `FuzzyPostProcessor` and `StationMatcher`
+
+### Architecture
+Per-model device selection with `device="auto"`:
+
+| Model Type | GPU Support | Auto-Detection |
+|------------|-------------|----------------|
+| Regex (intent/entity) | N/A | Pure Python, always CPU |
+| Langdetect | N/A | Pure Python, always CPU |
+| CamemBERT (intent/entity) | Yes | `torch.cuda.is_available()` |
+| SpaCy | Yes | `spacy.prefer_gpu()` |
+
+### Dependencies
+- PyTorch 2.5.1+cu121 (CUDA 12.1 support)
+- SpaCy GPU requires: `pip install spacy[cuda12x]`
+
+---
+
 ## [0.3.2] Multilingual Support & Langdetect - 2025-01-22
 
 ### Added
