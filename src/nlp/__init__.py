@@ -5,11 +5,13 @@ This module provides natural language processing capabilities
 for extracting travel information from French text.
 
 Architecture:
-- IntentClassifier: Classify text as TRIP, NOT_TRIP, etc.
+- LanguageDetector: Detect language of input text (FRENCH, ENGLISH, UNKNOWN)
+- IntentClassifier: Classify text as TRIP, NOT_TRIP, UNKNOWN
 - EntityExtractor: Extract departure, destination, and intermediate stations
 - PostProcessor: Post-process extracted entities (e.g., fuzzy matching)
 
 Available implementations:
+- Language: RegexLanguageDetector
 - Intent: RegexIntentClassifier, CamembertIntentClassifier
 - Entity: RegexEntityExtractor, SpacyEntityExtractor, CamembertEntityExtractor
 - Post: FuzzyPostProcessor
@@ -22,10 +24,10 @@ from .entity import CamembertEntityExtractor, RegexEntityExtractor, SpacyEntityE
 from .intent import CamembertIntentClassifier, RegexIntentClassifier
 
 # Core interfaces
-from .interfaces import EntityExtractor, IntentClassifier, PostProcessor
+from .interfaces import EntityExtractor, IntentClassifier, LanguageDetector, PostProcessor
 
-# Legacy models (still available for backwards compatibility)
-from .models import BaselineRegexModel, BaseModel, Intent, PredictionResult, TravelEntity
+# Language detectors
+from .language import RegexLanguageDetector
 
 # Pipeline
 from .pipeline import NLPPipeline, PipelineConfig, parse_travel_request
@@ -36,11 +38,17 @@ from .post import FuzzyPostProcessor
 # Preprocessor
 from .preprocessor import Preprocessor, PreprocessorConfig, preprocess, tokenize
 
+# Types
+from .types import Intent, Language, PredictionResult, TravelEntity
+
 __all__ = [
     # Interfaces
+    "LanguageDetector",
     "IntentClassifier",
     "EntityExtractor",
     "PostProcessor",
+    # Language detectors
+    "RegexLanguageDetector",
     # Intent classifiers
     "RegexIntentClassifier",
     "CamembertIntentClassifier",
@@ -50,10 +58,9 @@ __all__ = [
     "CamembertEntityExtractor",
     # Post-processors
     "FuzzyPostProcessor",
-    # Legacy models
-    "BaseModel",
-    "BaselineRegexModel",
+    # Types
     "Intent",
+    "Language",
     "PredictionResult",
     "TravelEntity",
     # Pipeline

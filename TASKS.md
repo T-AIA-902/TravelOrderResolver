@@ -533,4 +533,4 @@
 
 ---
 
-*Derniere mise a jour: 2025-01-22 (v0.3.0 - 100k STT Dataset with Intermediate Stops)*
+*Derniere mise a jour: 2025-01-22 (v0.3.0 - Modular Evaluation & Repository Cleanup)*
