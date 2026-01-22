@@ -314,10 +314,10 @@ pre-commit install
 
 | Nom | Github | Contact Epitech |
 |-----|------|---------|
-| Romain Bernier | @Romain-Ber | romain.bernier@epitech.eu |
-| Victor Vattier | @VictorVattierEpitech | email@epitech.eu |
-| Marine Gayet | @Marinegyt | marine.gayet@epitech.eu |
-| Camille Kerserho | @Camserho | camille.kerserho@epitech.eu |
+| Romain Bernier | [@Romain-Ber](https://github.com/Romain-Ber) | romain.bernier@epitech.eu |
+| Victor Vattier | [@VictorVattierEpitech](https://github.com/VictorVattierEpitech) | email@epitech.eu |
+| Marine Gayet | [@Marinegyt](https://github.com/Marinegyt) | marine.gayet@epitech.eu |
+| Camille Kerserho | [@Camserho](https://github.com/Camserho) | camille.kerserho@epitech.eu |
 
 ---
 
