@@ -64,7 +64,9 @@ class CamembertEntityExtractor(EntityExtractor):
         self.station_db = StationDatabase()
         self.station_db.load()
         self._precompute_station_embeddings()
-        print(f"CamemBERT zero-shot extractor ready (device: {self.device}, threshold: {threshold})")
+        print(
+            f"CamemBERT zero-shot extractor ready (device: {self.device}, threshold: {threshold})"
+        )
 
     @property
     def name(self) -> str:

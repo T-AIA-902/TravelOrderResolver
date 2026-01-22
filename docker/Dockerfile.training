@@ -32,8 +32,8 @@ COPY pyproject.toml poetry.lock* ./
 # Install all dependencies including ML and dev
 RUN poetry install --with ml,dev --no-interaction --no-ansi
 
-# Download spaCy transformer model (for GPU training/inference)
-RUN python -m spacy download fr_dep_news_trf
+# Download spaCy model
+RUN python -m spacy download fr_core_news_lg
 
 # Copy all source code
 COPY . .
