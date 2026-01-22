@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 """
-100k STT Dataset Generator for Travel Order Resolver.
+Base Dataset Generator for Travel Order Resolver.
 
-Generates a large-scale dataset simulating realistic Whisper
-speech-to-text transcription output for French railway travel requests.
+Generates a clean dataset (no STT errors) of French railway travel requests.
+Use augment_stt.py to add realistic transcription errors.
 
 Dataset schema:
-- sentence_id: Unique identifier (STT000001 format)
-- sentence: Input text (may contain STT errors)
+- sentence_id: Unique identifier (BASE000001 format)
+- sentence: Clean input text (no errors)
 - intent: TRIP | NOT_TRIP | UNKNOWN
 - language: FRENCH | ENGLISH | SPANISH | GERMAN | ITALIAN | UNKNOWN
-- departure: Clean departure station name
-- destination: Clean destination station name
-- intermediate: Clean intermediate station name (for "via" routes)
+- departure: Departure station name
+- destination: Destination station name
+- intermediate: Intermediate station name (for "via" routes)
 
 Usage:
-    python generate_stt_dataset.py [--output DIR] [--count N] [--seed S]
+    python generate_base.py [--output DIR] [--count N] [--seed S]
 
 Example:
-    python generate_stt_dataset.py --count 100000 --seed 42 --output datasets/generated/
+    python generate_base.py --count 100000 --seed 42 --output datasets/base/
 """
 
 import argparse
@@ -34,12 +34,6 @@ from typing import Literal
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from data import StationDatabase  # noqa: E402
-from data.stt_augmentation import (  # noqa: E402
-    ERROR_PROFILES,
-    STTAugmenter,
-    STTErrorConfig,
-    create_augmenter,
-)
 
 # =============================================================================
 # DATASET SCHEMA
@@ -867,8 +861,8 @@ UNKNOWN_TEMPLATES = [
 # =============================================================================
 
 
-class STTDatasetGenerator:
-    """Generator for 100k STT simulation dataset."""
+class BaseDatasetGenerator:
+    """Generator for clean base dataset (no STT errors)."""
 
     def __init__(
         self,
@@ -880,36 +874,6 @@ class STTDatasetGenerator:
         self.stations = [s.name for s in station_db.get_all_stations(passenger_only=True)]
         self.major_stations = [s.name for s in station_db.get_all_stations() if s.short_code]
 
-        # Create augmenters for different intensities
-        self.augmenters = {
-            "clean": create_augmenter("clean", seed),
-            "light": create_augmenter("light", seed),
-            "moderate": create_augmenter("moderate", seed),
-            "heavy": create_augmenter("heavy", seed),
-        }
-
-        # Create TRIP-safe augmenters (no truncation to preserve ground truth)
-        self.trip_augmenters: dict[str, STTAugmenter] = {}
-        for intensity in ["clean", "light", "moderate", "heavy"]:
-            config = ERROR_PROFILES[intensity]
-            trip_config = STTErrorConfig(
-                filler_words=config.filler_words,
-                false_starts=config.false_starts,
-                repetitions=config.repetitions,
-                incomplete=0.0,  # DISABLED for TRIP entries
-                phonetic_confusion=config.phonetic_confusion,
-                station_misspelling=config.station_misspelling,
-                punctuation_errors=config.punctuation_errors,
-                capitalization_errors=config.capitalization_errors,
-                number_format=config.number_format,
-                code_switching=config.code_switching,
-                hallucinations=config.hallucinations,
-                noise_artifacts=config.noise_artifacts,
-                accent_variations=config.accent_variations,
-                homophones=config.homophones,
-            )
-            self.trip_augmenters[intensity] = STTAugmenter(config=trip_config, seed=seed)
-
         if seed is not None:
             random.seed(seed)
 
@@ -918,7 +882,7 @@ class STTDatasetGenerator:
     def _get_id(self) -> str:
         """Generate unique sentence ID."""
         self.entry_count += 1
-        return f"STT{self.entry_count:06d}"
+        return f"BASE{self.entry_count:06d}"
 
     def _random_station(self, exclude: list[str] | None = None) -> str:
         """Get a random station name."""
@@ -927,20 +891,8 @@ class STTDatasetGenerator:
             pool = [s for s in pool if s not in exclude]
         return random.choice(pool) if pool else random.choice(self.stations)
 
-    def _pick_intensity(self) -> str:
-        """Pick STT error intensity based on distribution."""
-        r = random.random()
-        if r < 0.20:
-            return "clean"
-        elif r < 0.60:
-            return "light"
-        elif r < 0.90:
-            return "moderate"
-        else:
-            return "heavy"
-
     def _generate_trip_fr(self) -> DatasetEntry:
-        """Generate a French TRIP entry."""
+        """Generate a French TRIP entry (clean, no STT errors)."""
         dep = self._random_station()
         dest = self._random_station(exclude=[dep])
 
@@ -953,16 +905,6 @@ class STTDatasetGenerator:
         else:
             sentence = template.format(dep=dep, dest=dest)
             departure = dep
-
-        # Apply STT augmentation (using TRIP-safe augmenters without truncation)
-        intensity = self._pick_intensity()
-        augmenter = self.trip_augmenters[intensity]
-
-        # Optionally corrupt station names in sentence
-        station_to_corrupt = dep if departure else dest
-        sentence = augmenter.augment(
-            sentence, apply_to_station=station_to_corrupt if random.random() < 0.3 else None
-        )
 
         return DatasetEntry(
             sentence_id=self._get_id(),
@@ -1064,23 +1006,13 @@ class STTDatasetGenerator:
     # -------------------------------------------------------------------------
 
     def _generate_trip_fr_intermediate(self) -> DatasetEntry:
-        """Generate a French TRIP entry with intermediate stop."""
+        """Generate a French TRIP entry with intermediate stop (clean, no STT errors)."""
         dep = self._random_station()
         via = self._random_station(exclude=[dep])
         dest = self._random_station(exclude=[dep, via])
 
         template = random.choice(TRIP_INTERMEDIATE_TEMPLATES_FR)
         sentence = template.format(dep=dep, dest=dest, via=via)
-
-        # Apply STT augmentation (using TRIP-safe augmenters without truncation)
-        intensity = self._pick_intensity()
-        augmenter = self.trip_augmenters[intensity]
-
-        # Optionally corrupt station names in sentence
-        station_to_corrupt = random.choice([dep, via, dest])
-        sentence = augmenter.augment(
-            sentence, apply_to_station=station_to_corrupt if random.random() < 0.3 else None
-        )
 
         return DatasetEntry(
             sentence_id=self._get_id(),
@@ -1178,11 +1110,6 @@ class STTDatasetGenerator:
             sentence = template.format(station=station)
         else:
             sentence = template
-
-        # Apply light STT augmentation to some
-        if random.random() < 0.3:
-            intensity = random.choice(["light", "moderate"])
-            sentence = self.augmenters[intensity].augment(sentence)
 
         return DatasetEntry(
             sentence_id=self._get_id(),
@@ -1504,13 +1431,13 @@ def print_stats(entries: list[DatasetEntry], name: str = "Dataset") -> None:
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Generate 100k STT simulation dataset for travel order resolution."
+        description="Generate clean base dataset for travel order resolution."
     )
     parser.add_argument(
         "--output",
         type=str,
         default=None,
-        help="Output directory (default: datasets/generated/)",
+        help="Output directory (default: datasets/base/)",
     )
     parser.add_argument(
         "--count",
@@ -1537,7 +1464,7 @@ def main() -> None:
     if args.output:
         output_dir = Path(args.output)
     else:
-        output_dir = Path(__file__).parent.parent / "generated"
+        output_dir = Path(__file__).parent.parent / "base"
 
     # Load station database
     print("Loading station database...")
@@ -1547,8 +1474,8 @@ def main() -> None:
     print(f"Loaded {stats['passenger_stations']} passenger stations.")
 
     # Generate dataset
-    print(f"\nGenerating dataset with {args.count} entries...")
-    generator = STTDatasetGenerator(station_db, seed=args.seed)
+    print(f"\nGenerating clean base dataset with {args.count} entries...")
+    generator = BaseDatasetGenerator(station_db, seed=args.seed)
     entries = generator.generate_dataset(total=args.count)
 
     # Print full dataset stats
@@ -1566,14 +1493,14 @@ def main() -> None:
     print(f"\nExporting to {output_dir}...")
 
     if args.format in ("csv", "both"):
-        export_to_csv(entries, output_dir / "stt_dataset_100k.csv")
+        export_to_csv(entries, output_dir / "base_dataset_100k.csv")
         export_to_csv(train, output_dir / "train.csv")
         export_to_csv(val, output_dir / "val.csv")
         export_to_csv(test, output_dir / "test.csv")
         print("  CSV files exported.")
 
     if args.format in ("json", "both"):
-        export_to_json(entries, output_dir / "stt_dataset_100k.json")
+        export_to_json(entries, output_dir / "base_dataset_100k.json")
         export_to_json(train, output_dir / "train.json")
         export_to_json(val, output_dir / "val.json")
         export_to_json(test, output_dir / "test.json")
