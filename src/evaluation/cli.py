@@ -2,9 +2,14 @@
 Command-line interface for evaluation.
 
 Usage:
-    python -m src.evaluation.cli --eval-type all
-    python -m src.evaluation.cli --eval-type intent --models regex
-    python -m src.evaluation.cli --device cuda  # Force GPU
+    python -m src.evaluation --eval-type all
+    python -m src.evaluation --eval-type intent --models regex
+    python -m src.evaluation --device cuda  # Force GPU
+
+    # Granular model selection (cherry-pick specific combinations):
+    python -m src.evaluation --intent-model regex --entity-model spacy --fuzzy
+    python -m src.evaluation --language-model langdetect
+    python -m src.evaluation --intent-model regex camembert spacy --entity-model spacy
 """
 
 import argparse
@@ -47,6 +52,11 @@ def create_intent_classifiers(
         from src.nlp.intent import CamembertIntentClassifier
 
         classifiers.append(("CamemBERT", CamembertIntentClassifier(device=device)))
+
+    if "spacy" in models or "all" in models:
+        from src.nlp.intent import SpacyIntentClassifier
+
+        classifiers.append(("SpaCy", SpacyIntentClassifier(device=device)))
 
     return classifiers
 
@@ -147,6 +157,34 @@ def main() -> None:
         help="Device for ML models: auto (detect), cuda (GPU), cpu (default: auto)",
     )
 
+    # Granular model selection (overrides --models when specified)
+    parser.add_argument(
+        "--intent-model",
+        nargs="+",
+        choices=["regex", "camembert", "spacy"],
+        default=None,
+        help="Intent classifier(s) to use. Overrides --models for intent.",
+    )
+    parser.add_argument(
+        "--entity-model",
+        nargs="+",
+        choices=["regex", "spacy", "camembert"],
+        default=None,
+        help="Entity extractor(s) to use. Overrides --models for entity.",
+    )
+    parser.add_argument(
+        "--language-model",
+        nargs="+",
+        choices=["regex", "langdetect"],
+        default=None,
+        help="Language detector(s) to use. Overrides --models for language.",
+    )
+    parser.add_argument(
+        "--fuzzy",
+        action="store_true",
+        help="Enable fuzzy post-processing for entity extraction.",
+    )
+
     args = parser.parse_args()
 
     # Resolve dataset path
@@ -189,6 +227,24 @@ def main() -> None:
     models = args.models
     device: DeviceType = args.device
 
+    # Granular model options (override --models when specified)
+    intent_models = args.intent_model or models
+    entity_models = args.entity_model or models
+    language_models = args.language_model or models
+    use_fuzzy = args.fuzzy or eval_type in ["entity_fuzzy", "combined_fuzzy", "all"]
+
+    # Auto-infer eval_type when granular options are provided
+    granular_provided = args.intent_model or args.entity_model or args.language_model
+    if granular_provided:
+        if args.language_model and not args.intent_model and not args.entity_model:
+            eval_type = "language"
+        elif args.intent_model and not args.entity_model:
+            eval_type = "intent"
+        elif args.entity_model and not args.intent_model:
+            eval_type = "entity_fuzzy" if use_fuzzy else "entity"
+        elif args.intent_model and args.entity_model:
+            eval_type = "combined_fuzzy" if use_fuzzy else "combined"
+
     # Load models
     print("\n" + "-" * 80)
     print("LOADING MODELS...")
@@ -206,13 +262,13 @@ def main() -> None:
 
     need_intent = eval_type in ["intent", "combined", "combined_fuzzy", "all"]
     need_entity = eval_type in ["entity", "entity_fuzzy", "combined", "combined_fuzzy", "all"]
-    need_fuzzy = eval_type in ["entity_fuzzy", "combined_fuzzy", "all"]
+    need_fuzzy = use_fuzzy and need_entity
     need_language = eval_type in ["language", "all"]
 
-    classifiers = create_intent_classifiers(models, device=device) if need_intent else []
-    extractors = create_entity_extractors(models, device=device) if need_entity else []
+    classifiers = create_intent_classifiers(intent_models, device=device) if need_intent else []
+    extractors = create_entity_extractors(entity_models, device=device) if need_entity else []
     fuzzy_post = create_fuzzy_post_processor() if need_fuzzy else None
-    language_detectors = create_language_detectors(models) if need_language else []
+    language_detectors = create_language_detectors(language_models) if need_language else []
 
     print("Models loaded successfully!")
 
