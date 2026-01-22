@@ -39,6 +39,10 @@ def evaluate_combined(
 
     for intent_name, intent_clf in intent_classifiers:
         for entity_name, entity_ext in entity_extractors:
+            # Clear fuzzy cache for fair comparison between pipeline combinations
+            if fuzzy_post and hasattr(fuzzy_post, "matcher"):
+                fuzzy_post.matcher.clear_cache()
+
             suffix = " + Fuzzy" if fuzzy_post else ""
             print(f"  Evaluating combined: {intent_name} + {entity_name}{suffix}...")
 

@@ -61,6 +61,7 @@ def evaluate_intent_classifiers(
                     r.correct += 1
 
                 _update_language_stats(r, lang, is_correct)
+                _update_class_metrics(r, pred_intent, true_intent)
         else:
             # Sequential classification
             total = len(sentences)
@@ -82,6 +83,7 @@ def evaluate_intent_classifiers(
                     r.correct += 1
 
                 _update_language_stats(r, lang, is_correct)
+                _update_class_metrics(r, pred_intent, true_intent)
 
             callback(total, total)
 
@@ -105,3 +107,22 @@ def _update_language_stats(r: IntentResults, lang: str, is_correct: bool) -> Non
         r.unknown_total += 1
         if is_correct:
             r.unknown_correct += 1
+
+
+def _update_class_metrics(r: IntentResults, pred_intent: str, true_intent: str) -> None:
+    """Update per-class TP/FP/FN metrics for intent classification."""
+    classes = {
+        "TRIP": r.trip_metrics,
+        "NOT_TRIP": r.not_trip_metrics,
+        "UNKNOWN": r.unknown_intent_metrics,
+    }
+
+    for cls, m in classes.items():
+        if pred_intent == cls and true_intent == cls:
+            m.tp += 1
+        elif pred_intent == cls and true_intent != cls:
+            m.fp += 1
+        elif pred_intent != cls and true_intent == cls:
+            m.fn += 1
+        else:
+            m.tn += 1

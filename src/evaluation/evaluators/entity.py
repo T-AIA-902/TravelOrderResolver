@@ -59,13 +59,21 @@ def evaluate_entity_extractors(
                 batch_size=batch_size,
                 progress_callback=callback,
             )
-            end = time.perf_counter()
+            extraction_time_ms = (time.perf_counter() - start) * 1000
 
-            total_time_ms = (end - start) * 1000
+            # Time fuzzy post-processing if enabled
+            fuzzy_time_ms = 0.0
+            if fuzzy_post:
+                start = time.perf_counter()
+                all_entities = [fuzzy_post.process(e, s) for e, s in zip(all_entities, sentences)]
+                fuzzy_time_ms = (time.perf_counter() - start) * 1000
+
+            total_time_ms = extraction_time_ms + fuzzy_time_ms
             avg_latency = total_time_ms / len(sentences) if sentences else 0
 
             for sample, entities in zip(trip_samples, all_entities):
-                _process_sample(r, sample, entities, fuzzy_post, normalize_fuzzy, avg_latency)
+                # Pass None for fuzzy_post since already applied above
+                _process_sample(r, sample, entities, None, normalize_fuzzy, avg_latency)
         else:
             # Sequential extraction
             total = len(trip_samples)
