@@ -312,12 +312,12 @@ pre-commit install
 
 ## Equipe
 
-| Nom | Role | Contact |
+| Nom | Github | Contact Epitech |
 |-----|------|---------|
-| Romain Bernier | | email@epitech.eu |
-| Victor Vattier | | email@epitech.eu |
-| Marine Gayet | | email@epitech.eu |
-| Camille Kerserho | | email@epitech.eu |
+| Romain Bernier | @Romain-Ber | romain.bernier@epitech.eu |
+| Victor Vattier | @VictorVattierEpitech | email@epitech.eu |
+| Marine Gayet | @Marinegyt | marine.gayet@epitech.eu |
+| Camille Kerserho | @Camserho | camille.kerserho@epitech.eu |
 
 ---
 
