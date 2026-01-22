@@ -64,18 +64,20 @@ class TestRegexIntentClassifierClassify:
         assert intent == "TRIP"
         assert 0.0 <= confidence <= 1.0
 
-    def test_classify_english_as_not_french(self, regex_classifier):
-        """Test classification of English text as NOT_FRENCH."""
+    def test_classify_english_trip(self, regex_classifier):
+        """Test classification of English travel text as TRIP (language is separate)."""
         intent, confidence = regex_classifier.classify("I want to go from Paris to Lyon")
 
-        assert intent == "NOT_FRENCH"
+        # Intent classifier detects travel patterns regardless of language
+        assert intent == "TRIP"
         assert 0.0 <= confidence <= 1.0
 
-    def test_classify_german_as_not_french(self, regex_classifier):
-        """Test classification of German text as NOT_FRENCH."""
+    def test_classify_german_trip(self, regex_classifier):
+        """Test classification of German travel text as TRIP (language is separate)."""
         intent, confidence = regex_classifier.classify("Ich möchte von Paris nach Lyon fahren")
 
-        assert intent == "NOT_FRENCH"
+        # Intent classifier detects travel patterns regardless of language
+        assert intent == "TRIP"
         assert 0.0 <= confidence <= 1.0
 
     def test_classify_greeting_as_not_trip(self, regex_classifier):
@@ -155,20 +157,20 @@ class TestRegexIntentClassifierEdgeCases:
         intent, confidence = regex_classifier.classify(long_sentence)
 
         # Should not crash
-        assert intent in ("TRIP", "NOT_TRIP", "UNKNOWN", "NOT_FRENCH")
+        assert intent in ("TRIP", "NOT_TRIP", "UNKNOWN")
         assert 0.0 <= confidence <= 1.0
 
     def test_special_characters(self, regex_classifier):
         """Test classification with special characters."""
         intent, confidence = regex_classifier.classify("De Paris → Lyon !!!")
 
-        assert intent in ("TRIP", "NOT_TRIP", "UNKNOWN", "NOT_FRENCH")
+        assert intent in ("TRIP", "NOT_TRIP", "UNKNOWN")
         assert 0.0 <= confidence <= 1.0
 
     def test_mixed_languages(self, regex_classifier):
         """Test classification of mixed language text."""
         intent, confidence = regex_classifier.classify("I want aller de Paris to Lyon")
 
-        # Might be detected as NOT_FRENCH or ambiguous
-        assert intent in ("TRIP", "NOT_TRIP", "UNKNOWN", "NOT_FRENCH")
+        # Mixed language with travel patterns should still be TRIP
+        assert intent in ("TRIP", "NOT_TRIP", "UNKNOWN")
         assert 0.0 <= confidence <= 1.0

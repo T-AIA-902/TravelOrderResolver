@@ -89,19 +89,7 @@ class NLPPipeline:
         lang_str, lang_conf = self.language_detector.detect(text)
         language = Language[lang_str] if lang_str in Language.__members__ else Language.UNKNOWN
 
-        # Check for non-French text
-        if language != Language.FRENCH and language != Language.UNKNOWN:
-            return PredictionResult(
-                intent=Intent.NOT_FRENCH,
-                intent_confidence=lang_conf,
-                language=language,
-                language_confidence=lang_conf,
-                raw_text=text,
-                processed_text=processed,
-                model_name=self.get_model_name(),
-            )
-
-        # Classify intent
+        # Classify intent (always run, regardless of language)
         intent_str, intent_conf = self.intent_classifier.classify(text)
         intent = Intent[intent_str] if intent_str in Intent.__members__ else Intent.UNKNOWN
 

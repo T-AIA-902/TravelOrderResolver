@@ -11,7 +11,7 @@ Architecture:
 - PostProcessor: Post-process extracted entities (e.g., fuzzy matching)
 
 Available implementations:
-- Language: RegexLanguageDetector
+- Language: RegexLanguageDetector, LangdetectLanguageDetector
 - Intent: RegexIntentClassifier, CamembertIntentClassifier
 - Entity: RegexEntityExtractor, SpacyEntityExtractor, CamembertEntityExtractor
 - Post: FuzzyPostProcessor
@@ -27,7 +27,7 @@ from .intent import CamembertIntentClassifier, RegexIntentClassifier
 from .interfaces import EntityExtractor, IntentClassifier, LanguageDetector, PostProcessor
 
 # Language detectors
-from .language import RegexLanguageDetector
+from .language import LangdetectLanguageDetector, RegexLanguageDetector
 
 # Pipeline
 from .pipeline import NLPPipeline, PipelineConfig, parse_travel_request
@@ -49,6 +49,7 @@ __all__ = [
     "PostProcessor",
     # Language detectors
     "RegexLanguageDetector",
+    "LangdetectLanguageDetector",
     # Intent classifiers
     "RegexIntentClassifier",
     "CamembertIntentClassifier",
