@@ -24,7 +24,6 @@ Error types based on Whisper research:
 import random
 import re
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass
@@ -533,7 +532,7 @@ class STTAugmenter:
 
         # Optionally truncate the last word
         if random.random() < 0.3 and len(truncated) > 3:
-            truncated = truncated[:-random.randint(1, 3)]
+            truncated = truncated[: -random.randint(1, 3)]
 
         suffix = random.choice(["...", "---", " [coupure]", ""])
         return truncated + suffix
@@ -581,9 +580,7 @@ class STTAugmenter:
 
         chars = list(text)
         # Choose a random position
-        valid_positions = [
-            i for i, c in enumerate(chars) if c.lower() in AZERTY_NEIGHBORS
-        ]
+        valid_positions = [i for i, c in enumerate(chars) if c.lower() in AZERTY_NEIGHBORS]
 
         if not valid_positions:
             return text
@@ -630,9 +627,7 @@ class STTAugmenter:
             return text.lower()
 
         elif option == "random":
-            return "".join(
-                c.upper() if random.random() < 0.15 else c.lower() for c in text
-            )
+            return "".join(c.upper() if random.random() < 0.15 else c.lower() for c in text)
 
         elif option == "first_only":
             return text[0].upper() + text[1:].lower() if text else text
@@ -733,9 +728,7 @@ class STTAugmenter:
         return " ".join(result)
 
 
-def create_augmenter(
-    intensity: str = "moderate", seed: int | None = None
-) -> STTAugmenter:
+def create_augmenter(intensity: str = "moderate", seed: int | None = None) -> STTAugmenter:
     """
     Factory function to create an STTAugmenter with preset intensity.
 
