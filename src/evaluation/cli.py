@@ -84,6 +84,11 @@ def create_language_detectors(models: list[str]) -> list[tuple[str, Any]]:
 
         detectors.append(("Regex", RegexLanguageDetector()))
 
+    if "langdetect" in models or "all" in models:
+        from src.nlp.language import LangdetectLanguageDetector
+
+        detectors.append(("Langdetect", LangdetectLanguageDetector()))
+
     return detectors
 
 
@@ -124,7 +129,7 @@ def main() -> None:
     parser.add_argument(
         "--models",
         nargs="+",
-        choices=["regex", "spacy", "camembert", "all"],
+        choices=["regex", "spacy", "camembert", "langdetect", "all"],
         default=["all"],
         help="Models to evaluate (default: all)",
     )
@@ -211,14 +216,15 @@ def main() -> None:
                 extractors, data, fuzzy_post=fuzzy_post, normalize_fuzzy=True
             )
 
-    if eval_type in ["combined", "all"]:
+    # Combined evaluations are slow - only run when explicitly requested
+    if eval_type == "combined":
         print("\n" + "-" * 80)
         print("EVALUATING COMBINED (Intent x Entity)...")
         print("-" * 80)
         if classifiers and extractors:
             combined_results = evaluate_combined(classifiers, extractors, data)
 
-    if eval_type in ["combined_fuzzy", "all"]:
+    if eval_type == "combined_fuzzy":
         print("\n" + "-" * 80)
         print("EVALUATING COMBINED + FUZZY...")
         print("-" * 80)

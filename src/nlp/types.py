@@ -15,7 +15,6 @@ class Intent(Enum):
 
     TRIP = "TRIP"  # Valid travel request
     NOT_TRIP = "NOT_TRIP"  # Not a travel request
-    NOT_FRENCH = "NOT_FRENCH"  # Non-French text detected
     UNKNOWN = "UNKNOWN"  # Cannot determine intent
 
 

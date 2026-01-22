@@ -8,6 +8,7 @@ import pytest
 
 from src.nlp import (
     Intent,
+    Language,
     NLPPipeline,
     PipelineConfig,
     Preprocessor,
@@ -193,6 +194,51 @@ class TestRegexEntityExtractor:
         assert "Paris" in (result.get("destination") or "")
 
 
+class TestRegexEntityExtractorEnglish:
+    """Tests for English entity extraction."""
+
+    @pytest.fixture
+    def extractor(self) -> RegexEntityExtractor:
+        """Create an entity extractor instance."""
+        return RegexEntityExtractor()
+
+    def test_from_to_pattern(self, extractor: RegexEntityExtractor) -> None:
+        """Test 'from X to Y' pattern."""
+        result = extractor.extract("I want to go from Paris to Lyon")
+        assert "Paris" in (result.get("departure") or "")
+        assert "Lyon" in (result.get("destination") or "")
+
+    def test_simple_x_to_y(self, extractor: RegexEntityExtractor) -> None:
+        """Test simple 'X to Y' pattern."""
+        result = extractor.extract("Paris to Lyon")
+        assert "Paris" in (result.get("departure") or "")
+        assert "Lyon" in (result.get("destination") or "")
+
+    def test_from_to_with_article(self, extractor: RegexEntityExtractor) -> None:
+        """Test 'from X to Y' with articles."""
+        result = extractor.extract("From the Paris station to Lyon")
+        assert "Paris" in (result.get("departure") or "")
+        assert "Lyon" in (result.get("destination") or "")
+
+    def test_english_via(self, extractor: RegexEntityExtractor) -> None:
+        """Test English intermediate pattern."""
+        result = extractor.extract("From Paris to Lyon via Dijon")
+        assert "Paris" in (result.get("departure") or "")
+        assert "Lyon" in (result.get("destination") or "")
+
+    def test_english_through(self, extractor: RegexEntityExtractor) -> None:
+        """Test English 'through' intermediate pattern."""
+        result = extractor.extract("From Paris to Marseille through Lyon")
+        assert "Paris" in (result.get("departure") or "")
+        assert "Marseille" in (result.get("destination") or "")
+
+    def test_english_polite_request(self, extractor: RegexEntityExtractor) -> None:
+        """Test polite English request."""
+        result = extractor.extract("I would like to travel from Nantes to Rennes please")
+        assert "Nantes" in (result.get("departure") or "")
+        assert "Rennes" in (result.get("destination") or "")
+
+
 class TestNLPPipeline:
     """Tests for the NLPPipeline."""
 
@@ -237,11 +283,17 @@ class TestNLPPipeline:
         result = pipeline.process("De Paris a Lyon")
         assert result.intent == Intent.TRIP
 
-    def test_not_french_detection(self) -> None:
-        """Test English detection as NOT_FRENCH."""
+    def test_english_language_detection(self) -> None:
+        """Test English text detection and entity extraction."""
         pipeline = NLPPipeline()
         result = pipeline.process("I want to go from Paris to Lyon")
-        assert result.intent == Intent.NOT_FRENCH
+        # Language detection is separate from intent classification
+        assert result.language == Language.ENGLISH
+        # Intent should be TRIP since entity extractor now supports English
+        assert result.intent == Intent.TRIP
+        # Entities should be extracted from English patterns
+        assert "Paris" in result.departure
+        assert "Lyon" in result.destination
 
     def test_result_to_dict(self) -> None:
         """Test result serialization."""

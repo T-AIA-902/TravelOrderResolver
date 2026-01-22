@@ -232,6 +232,7 @@ python -m src.main --audio recording.wav
 | Modele | Overall | FR | EN | UNK | Latence |
 |--------|---------|----|----|-----|---------|
 | Regex | 68.9% | 68% | 68% | 76% | 0.03ms |
+| Langdetect | 73.8% | 78% | 65% | 58% | 9.69ms |
 
 *Note: ES, DE, IT mappes vers UNKNOWN (langues non supportees). Etude focalisee FR/EN.*
 
@@ -246,8 +247,8 @@ python -m src.main --audio recording.wav
 
 | Modele | Fuzzy | Accuracy | Precision | Recall | F1 | Latence |
 |--------|-------|----------|-----------|--------|-----|---------|
-| Regex | - | 29.2% | 43.3% | 38.4% | 41% | 0.0ms |
-| Regex | ✓ | 51.3% | 73.6% | 65.6% | 69% | 18.4ms |
+| Regex | - | 32.9% | 47.1% | 43.3% | 45.1% | 0.0ms |
+| Regex | ✓ | 56.8% | 76.5% | 70.6% | 73.4% | 16.8ms |
 | SpaCy | - | 25.1% | 57.7% | 35.5% | 43% | 1.9ms |
 | SpaCy | ✓ | 31.4% | 69.9% | 42.8% | 52% | 1.5ms |
 | CamemBERT | - | 15.1% | 45.3% | 29.5% | 35% | 1.2ms |
@@ -257,16 +258,16 @@ python -m src.main --audio recording.wav
 
 | Intent | Entity | Fuzzy | Intent Acc | Entity Acc | Latence |
 |--------|--------|-------|------------|------------|---------|
-| Regex | Regex | ✓ | 65.5% | 51.3% | 0.1ms |
+| Regex | Regex | ✓ | 65.5% | 56.8% | 0.1ms |
 | Regex | SpaCy | ✓ | 65.5% | 31.4% | 6.7ms |
 | Regex | CamemBERT | ✓ | 65.5% | 30.4% | 1.2ms |
-| CamemBERT | Regex | ✓ | 70.0% | 51.3% | 27.4ms |
+| CamemBERT | Regex | ✓ | 70.0% | 56.8% | 27.4ms |
 | CamemBERT | SpaCy | ✓ | 70.0% | 31.4% | 35.6ms |
 | CamemBERT | CamemBERT | ✓ | 70.0% | 30.4% | 28.7ms |
 
 **Best configurations:**
-- **Speed-optimized:** Regex + Regex + Fuzzy (0.1ms, 51.3% entity accuracy)
-- **Quality-optimized:** CamemBERT + Regex + Fuzzy (27.4ms, 70.0% intent, 51.3% entity)
+- **Speed-optimized:** Regex + Regex + Fuzzy (0.1ms, 56.8% entity accuracy)
+- **Quality-optimized:** CamemBERT + Regex + Fuzzy (27.4ms, 70.0% intent, 56.8% entity)
 
 ### Table 5: Ablation Study (Clean vs STT)
 
