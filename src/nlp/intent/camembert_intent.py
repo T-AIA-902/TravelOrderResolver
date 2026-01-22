@@ -5,9 +5,11 @@ Uses the transformers zero-shot-classification pipeline to classify
 travel intent without fine-tuning.
 """
 
-from typing import Callable, List, Tuple
+from typing import Callable, List, Literal, Tuple
 
 from ..interfaces import IntentClassifier
+
+DeviceType = Literal["auto", "cuda", "cpu"]
 
 
 class CamembertIntentClassifier(IntentClassifier):
@@ -17,25 +19,35 @@ class CamembertIntentClassifier(IntentClassifier):
     Uses hypothesis templates to classify text as travel request or not.
     """
 
-    def __init__(self, model_name: str = "almanach/camembert-base") -> None:
+    def __init__(
+        self,
+        model_name: str = "almanach/camembert-base",
+        device: DeviceType = "auto",
+    ) -> None:
         """
         Initialize the CamemBERT intent classifier.
 
         Args:
             model_name: HuggingFace model name (default: almanach/camembert-base)
+            device: Device to use - "auto", "cuda", or "cpu" (default: auto)
         """
         try:
             from transformers import pipeline
         except ImportError:
             raise ImportError("transformers not available. Install with: pip install transformers")
 
+        from src.utils.device import get_torch_device
+
+        self.device = get_torch_device(device)
+
         print(f"Loading CamemBERT for zero-shot classification: {model_name}...")
         self.classifier = pipeline(
             "zero-shot-classification",
             model=model_name,
+            device=self.device,
         )
         self.labels = ["demande de voyage en train", "autre question"]
-        print("CamemBERT intent classifier ready")
+        print(f"CamemBERT intent classifier ready (device: {self.device})")
 
     @property
     def name(self) -> str:

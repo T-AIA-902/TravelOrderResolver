@@ -1,23 +1,48 @@
 version: '3.8'
 
 services:
-  # Main API service
-  api:
+  # Main application service (GPU-enabled)
+  app:
     image: travel-order-resolver
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    ports:
-      - "8000:8000"
     environment:
       - APP_ENV=production
       - LOG_LEVEL=INFO
     volumes:
-      - ../models/production:/app/models/production:ro
       - ../datasets/raw/sncf:/app/datasets/raw/sncf:ro
-    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Interactive mode by default
+    stdin_open: true
+    tty: true
 
-  # Training service (optional, GPU required)
+  # Evaluation service (run evaluations on GPU)
+  evaluate:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ../datasets:/app/datasets:ro
+      - ../src/evaluation/reports:/app/src/evaluation/reports
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["python", "-m", "src.evaluation", "--eval-type", "all", "--device", "auto"]
+    profiles:
+      - evaluate
+
+  # Training service (GPU required)
   training:
     build:
       context: ..
