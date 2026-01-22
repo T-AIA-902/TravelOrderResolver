@@ -31,8 +31,8 @@ class FuzzyPostProcessor(PostProcessor):
         Args:
             threshold: Minimum similarity score (0-100) to accept a match
         """
-        # Import here to avoid circular imports and allow lazy loading
-        from src.nlp.fuzzy_matcher import StationMatcher
+        # Import from local module
+        from .station_matcher import StationMatcher
 
         self.threshold = threshold
         self.matcher = StationMatcher(threshold=threshold)
