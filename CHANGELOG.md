@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] Dataset Architecture Refactoring - 2025-01-22
+
+### Added
+- **Separate Dataset Generation & Augmentation** (academic rigor):
+  - `datasets/scripts/generate_base.py` - Generates clean dataset without STT errors
+  - `datasets/scripts/augment_stt.py` - Applies STT errors to base dataset
+- **Two-Level Dataset Architecture**:
+  - `datasets/base/` - Clean data (no STT errors), IDs prefixed `BASE`
+  - `datasets/augmented/` - With STT errors applied, IDs prefixed `STT`
+- **TRIP-Safe Augmentation**: Disabled `incomplete` error type for TRIP entries to preserve ground truth station names
+
+### Changed
+- **Directory Rename**: `datasets/generated/` → `datasets/base/`
+- **File Naming**: `stt_dataset_100k.csv` → `base_dataset_100k.csv` (in base/)
+- **ID Format**: `STT000001` → `BASE000001` (in base dataset)
+- **Documentation**: Updated `datasets/base/DATASET.md` for new architecture
+
+### Removed
+- **Obsolete Files**:
+  - `datasets/scripts/augment_data.py` (empty file)
+  - `datasets/scripts/generate_sentences.py` (replaced by generate_base.py)
+  - `datasets/scripts/split_dataset.py` (integrated in generate_base.py)
+  - `datasets/scripts/generate_camembert_data.py` (old generator)
+  - `datasets/scripts/preprocess_camembert_data.py` (old preprocessor)
+  - `datasets/processed/` (empty directory)
+
+### Benefits
+- **Ablation Studies**: Compare model performance on clean vs STT-augmented data
+- **Reproducibility**: Same base data can be augmented multiple times with different seeds
+- **Academic Rigor**: Clear separation between data generation and noise injection
+
 ## [0.2.1] 100k STT Dataset with Intermediate Stops - 2025-01-22
 
 ### Added
