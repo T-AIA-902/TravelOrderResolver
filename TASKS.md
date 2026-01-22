@@ -189,8 +189,8 @@
 - [x] Tests et metriques ensemble
 
 ### 3.13 Support Multilingue [P2]
-- [ ] Detection de langue automatique
-- [ ] Support anglais (optionnel)
+- [x] Detection de langue automatique (RegexLanguageDetector + LangdetectLanguageDetector)
+- [x] Support anglais (optionnel) - English patterns in RegexEntityExtractor
 - [ ] Support allemand (optionnel)
 - [ ] Support espagnol (optionnel)
 
@@ -533,4 +533,4 @@
 
 ---
 
-*Derniere mise a jour: 2025-01-22 (v0.3.0 - Modular Evaluation & Repository Cleanup)*
+*Derniere mise a jour: 2025-01-22 (v0.3.2 - Multilingual Support & Langdetect)*
