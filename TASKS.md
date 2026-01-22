@@ -79,7 +79,7 @@
 - [x] Inclure variations avec prenoms-villes (Albert, Paris comme prenom)
 - [x] Split train/val/test (70/15/15)
 - [ ] Creer dataset de cas limites (edge_cases.csv)
-- [ ] Documenter le processus de creation
+- [x] Documenter le processus de creation (DATASET.md)
 - [x] Script de validation du dataset
 - [ ] Export formats compatibles HuggingFace
 
@@ -520,8 +520,8 @@
 
 ### Bonus Implementes
 - [ ] Speech-to-text offline
-- [ ] Arrêts intermediaires
-- [ ] Benchmark multi-modeles
+- [x] Arrêts intermediaires
+- [x] Benchmark multi-modeles
 - [ ] Monitoring ressources
 - [ ] API REST
 - [ ] Interface demo
@@ -533,4 +533,4 @@
 
 ---
 
-*Derniere mise a jour: 2025-01-16 (v0.2.0 - Modular Architecture)*
+*Derniere mise a jour: 2025-01-22 (v0.3.0 - 100k STT Dataset with Intermediate Stops)*
