@@ -5,6 +5,168 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] Multilingual Support & Langdetect - 2025-01-22
+
+### Added
+- **Langdetect Language Detector** (`src/nlp/language/langdetect_language.py`):
+  - `LangdetectLanguageDetector` - Library-based detection using `langdetect`
+  - Maps ISO codes: `fr` → FRENCH, `en` → ENGLISH, others → UNKNOWN
+  - 73.8% accuracy (vs Regex 68.9%), 9.69ms latency
+  - Seed set for reproducibility (`DetectorFactory.seed = 0`)
+- **English Entity Extraction Patterns** (`src/nlp/entity/regex_entity.py`):
+  - `from_to_pattern`: Matches "from X to Y" (+ variants: towards, for)
+  - `x_to_y_pattern`: Matches simple "X to Y"
+  - `en_via_pattern`: Matches "via", "through", "stopping at"
+  - English stopwords added to `_find_potential_stations()`
+  - English articles handled in `_clean_station_name()` (the, a, an)
+- **English Entity Extraction Tests** (`tests/unit/test_nlp.py`):
+  - `TestRegexEntityExtractorEnglish` class with 6 tests
+
+### Changed
+- **Intent Enum** (`src/nlp/types.py`):
+  - Removed `NOT_FRENCH` value (was mixing language detection with intent)
+  - Intent now cleanly separates from language: `TRIP`, `NOT_TRIP`, `UNKNOWN`
+- **Pipeline** (`src/nlp/pipeline.py`):
+  - Removed early return for non-French text
+  - Intent classification now runs regardless of detected language
+- **Evaluation CLI** (`src/evaluation/cli.py`):
+  - Added `langdetect` to `--models` choices
+  - Removed `combined` and `combined_fuzzy` from `--eval-type all` (too slow)
+  - Combined evaluations now only run when explicitly requested
+- **Dependencies** (`pyproject.toml`):
+  - Added `langdetect = "^1.0.9"`
+
+### Performance Improvements
+Entity extraction accuracy improved with English patterns:
+
+| Model | Fuzzy | Before | After | Improvement |
+|-------|-------|--------|-------|-------------|
+| Regex | - | 29.2% | 32.9% | +3.7pp |
+| Regex | ✓ | 51.3% | 56.8% | +5.5pp |
+
+### Architecture
+Consistent multilingual support across all components:
+
+| Component | French | English |
+|-----------|--------|---------|
+| LanguageDetector | ✓ | ✓ |
+| IntentClassifier | ✓ | ✓ |
+| EntityExtractor | ✓ | ✓ (NEW) |
+
+---
+
+## [0.3.1] Legacy Code Removal & Pipeline Refactoring - 2025-01-22
+
+### Added
+- **Types Module** (`src/nlp/types.py`):
+  - `Intent` enum (TRIP, NOT_TRIP, UNKNOWN) - Note: NOT_FRENCH removed in 0.3.2
+  - `Language` enum (FRENCH, ENGLISH, UNKNOWN)
+  - `TravelEntity` dataclass
+  - `PredictionResult` dataclass
+  - Extracted from deleted `base_model.py` for reuse
+
+### Changed
+- **`src/nlp/pipeline.py`** - Refactored to compose modular components:
+  - Now uses `RegexLanguageDetector`, `RegexIntentClassifier`, `RegexEntityExtractor`
+  - Supports dependency injection for custom components
+  - Removed dependency on `BaselineRegexModel`
+- **`src/nlp/__init__.py`** - Removed legacy model exports (`BaseModel`, `BaselineRegexModel`)
+- **`tests/unit/test_nlp.py`** - Migrated tests from `BaselineRegexModel` to modular components
+
+### Removed
+- **Legacy Monolithic Model** (~643 lines):
+  - `src/nlp/models/` - Entire directory deleted
+  - `src/nlp/models/baseline_regex.py` (484 lines) - Combined lang+intent+entity in one class
+  - `src/nlp/models/base_model.py` (159 lines) - ABC and types (moved to `types.py`)
+
+### Architecture
+```
+src/nlp/
+├── entity/           # 3 extractors: Regex, SpaCy, CamemBERT
+├── intent/           # 2 classifiers: Regex, CamemBERT
+├── language/         # 1 detector: Regex
+├── post/             # FuzzyPostProcessor
+├── types.py          # NEW: Intent, Language, PredictionResult, TravelEntity
+├── interfaces.py     # ABCs
+├── pipeline.py       # REFACTORED: composes modular components
+├── fuzzy_matcher.py
+└── preprocessor.py
+```
+
+**Design Rationale:**
+| Task | Regex | SpaCy | CamemBERT | Why |
+|------|-------|-------|-----------|-----|
+| Entity | ✓ | ✓ | ✓ | All valid NER approaches |
+| Intent | ✓ | ✗ | ✓ | SpaCy not suited for classification |
+| Language | ✓ | ✗ | ✗ | Simple patterns, ML overkill |
+
+---
+
+## [0.3.0] Modular Evaluation & Repository Cleanup - 2025-01-22
+
+### Added
+- **Modular Evaluation Framework** (`src/evaluation/`):
+  - `cli.py` - Main CLI entry point (`python -m src.evaluation`)
+  - `data_loader.py` - Dataset loading and normalization
+  - `metrics.py` - Result dataclasses (IntentResults, EntityResults, CombinedResults, etc.)
+  - `reporting.py` - Table printing and JSON export
+  - `progress.py` - Progress callback protocol for batch processing
+  - `evaluators/` - Modular evaluators (intent, entity, language, combined)
+- **Progress Callbacks** for batch processing:
+  - `CamembertIntentClassifier.classify_batch()` - progress_callback parameter
+  - `CamembertEntityExtractor.extract_batch()` - progress_callback parameter
+  - Progress shows after each batch (default 128 samples) instead of percentage
+
+### Changed
+- **src/main.py** - Fixed broken extractor imports:
+  - Updated EXTRACTORS dict to use new modular paths (`src.nlp.entity.*`)
+  - Changed `extract_entities()` to `extract()` (new interface)
+  - Removed deprecated "fuzzy" option (use SpaCy + FuzzyPostProcessor manually)
+- **Makefile** - Updated targets:
+  - `evaluate` / `evaluate-full` now use `python -m src.evaluation`
+  - Removed broken targets: `train-baseline`, `train-camembert`, `train-flan`, `run-api`, `demo-fuzzy`
+- **.gitignore** - Added `trajet_*.html` pattern for generated map files
+
+### Removed
+- **Duplicate Code** (~1,150 lines):
+  - `src/nlp/entity_extractor.py` (721 lines) - replaced by modular `src/nlp/entity/`
+  - `src/nlp/models/{ensemble,flan_t5,spacy,camembert}_model.py` - 4 empty files
+  - `src/nlp/entity/{flant5,mistral}_entity.py` - stub files
+  - `src/nlp/intent/{flant5,mistral}_intent.py` - stub files
+- **Empty Files/Directories**:
+  - `training/*.py` - 5 empty training scripts (kept directory with .gitkeep)
+  - `src/api/` - entire empty API module
+  - `notebooks/*.ipynb` - 5 empty notebooks (kept directory with .gitkeep)
+- **Orphaned Files**:
+  - `wandb.py` - generic W&B template
+  - `trajet_AUTO.html` - generated output file
+- **Old Evaluation Module**:
+  - `evaluation/` directory (replaced by `src/evaluation/`)
+
+### Architecture
+```
+src/evaluation/           # NEW modular evaluation
+├── cli.py               # Main entry point
+├── data_loader.py       # Dataset loading
+├── metrics.py           # Result dataclasses
+├── reporting.py         # Table printing
+├── progress.py          # Progress callbacks
+└── evaluators/          # Modular evaluators
+    ├── intent.py
+    ├── entity.py
+    ├── language.py
+    └── combined.py
+
+src/nlp/entity/          # KEPT (3 extractors)
+├── regex_entity.py
+├── spacy_entity.py
+└── camembert_entity.py
+
+src/nlp/intent/          # KEPT (2 classifiers)
+├── regex_intent.py
+└── camembert_intent.py
+```
+
 ## [0.2.2] Dataset Architecture Refactoring - 2025-01-22
 
 ### Added
