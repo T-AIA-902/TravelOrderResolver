@@ -5,11 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] Multilingual Support & Langdetect - 2025-01-22
+
+### Added
+- **Langdetect Language Detector** (`src/nlp/language/langdetect_language.py`):
+  - `LangdetectLanguageDetector` - Library-based detection using `langdetect`
+  - Maps ISO codes: `fr` → FRENCH, `en` → ENGLISH, others → UNKNOWN
+  - 73.8% accuracy (vs Regex 68.9%), 9.69ms latency
+  - Seed set for reproducibility (`DetectorFactory.seed = 0`)
+- **English Entity Extraction Patterns** (`src/nlp/entity/regex_entity.py`):
+  - `from_to_pattern`: Matches "from X to Y" (+ variants: towards, for)
+  - `x_to_y_pattern`: Matches simple "X to Y"
+  - `en_via_pattern`: Matches "via", "through", "stopping at"
+  - English stopwords added to `_find_potential_stations()`
+  - English articles handled in `_clean_station_name()` (the, a, an)
+- **English Entity Extraction Tests** (`tests/unit/test_nlp.py`):
+  - `TestRegexEntityExtractorEnglish` class with 6 tests
+
+### Changed
+- **Intent Enum** (`src/nlp/types.py`):
+  - Removed `NOT_FRENCH` value (was mixing language detection with intent)
+  - Intent now cleanly separates from language: `TRIP`, `NOT_TRIP`, `UNKNOWN`
+- **Pipeline** (`src/nlp/pipeline.py`):
+  - Removed early return for non-French text
+  - Intent classification now runs regardless of detected language
+- **Evaluation CLI** (`src/evaluation/cli.py`):
+  - Added `langdetect` to `--models` choices
+  - Removed `combined` and `combined_fuzzy` from `--eval-type all` (too slow)
+  - Combined evaluations now only run when explicitly requested
+- **Dependencies** (`pyproject.toml`):
+  - Added `langdetect = "^1.0.9"`
+
+### Performance Improvements
+Entity extraction accuracy improved with English patterns:
+
+| Model | Fuzzy | Before | After | Improvement |
+|-------|-------|--------|-------|-------------|
+| Regex | - | 29.2% | 32.9% | +3.7pp |
+| Regex | ✓ | 51.3% | 56.8% | +5.5pp |
+
+### Architecture
+Consistent multilingual support across all components:
+
+| Component | French | English |
+|-----------|--------|---------|
+| LanguageDetector | ✓ | ✓ |
+| IntentClassifier | ✓ | ✓ |
+| EntityExtractor | ✓ | ✓ (NEW) |
+
+---
+
 ## [0.3.1] Legacy Code Removal & Pipeline Refactoring - 2025-01-22
 
 ### Added
 - **Types Module** (`src/nlp/types.py`):
-  - `Intent` enum (TRIP, NOT_TRIP, NOT_FRENCH, UNKNOWN)
+  - `Intent` enum (TRIP, NOT_TRIP, UNKNOWN) - Note: NOT_FRENCH removed in 0.3.2
   - `Language` enum (FRENCH, ENGLISH, UNKNOWN)
   - `TravelEntity` dataclass
   - `PredictionResult` dataclass
