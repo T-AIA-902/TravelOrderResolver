@@ -127,3 +127,6 @@ trajet_*.html
 # Environment files (keep example)
 .env
 !.env.example
+
+# Reports
+src/evaluation/reports/

@@ -55,6 +55,7 @@ def evaluate_language_detectors(
                     r.correct += 1
 
                 _update_language_stats(r, true_lang, is_correct)
+                _update_lang_class_metrics(r, pred_lang, true_lang)
         else:
             # Sequential detection
             total = len(sentences)
@@ -74,6 +75,7 @@ def evaluate_language_detectors(
                     r.correct += 1
 
                 _update_language_stats(r, true_lang, is_correct)
+                _update_lang_class_metrics(r, pred_lang, true_lang)
 
             callback(total, total)
 
@@ -97,3 +99,22 @@ def _update_language_stats(r: LanguageResults, true_lang: str, is_correct: bool)
         r.unknown_total += 1
         if is_correct:
             r.unknown_correct += 1
+
+
+def _update_lang_class_metrics(r: LanguageResults, pred_lang: str, true_lang: str) -> None:
+    """Update per-class TP/FP/FN metrics for language detection."""
+    classes = {
+        "FRENCH": r.french_metrics,
+        "ENGLISH": r.english_metrics,
+        "UNKNOWN": r.unknown_lang_metrics,
+    }
+
+    for cls, m in classes.items():
+        if pred_lang == cls and true_lang == cls:
+            m.tp += 1
+        elif pred_lang == cls and true_lang != cls:
+            m.fp += 1
+        elif pred_lang != cls and true_lang == cls:
+            m.fn += 1
+        else:
+            m.tn += 1

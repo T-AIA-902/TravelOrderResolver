@@ -8,8 +8,8 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class EntityMetrics:
-    """Metrics for entity extraction (departure or destination)."""
+class ClassMetrics:
+    """Metrics for classification (per-class TP/FP/FN tracking)."""
 
     tp: int = 0  # True positives
     fp: int = 0  # False positives
@@ -34,6 +34,15 @@ class EntityMetrics:
             return 0.0
         return 2 * (self.precision * self.recall) / (self.precision + self.recall)
 
+    @property
+    def support(self) -> int:
+        """Number of actual positives for this class (TP + FN)."""
+        return self.tp + self.fn
+
+
+# Alias for backward compatibility
+EntityMetrics = ClassMetrics
+
 
 @dataclass
 class IntentResults:
@@ -51,6 +60,11 @@ class IntentResults:
     english_total: int = 0
     unknown_correct: int = 0
     unknown_total: int = 0
+
+    # Per-class metrics (TRIP, NOT_TRIP, UNKNOWN)
+    trip_metrics: ClassMetrics = field(default_factory=ClassMetrics)
+    not_trip_metrics: ClassMetrics = field(default_factory=ClassMetrics)
+    unknown_intent_metrics: ClassMetrics = field(default_factory=ClassMetrics)
 
     @property
     def accuracy(self) -> float:
@@ -81,6 +95,15 @@ class IntentResults:
         if not self.latencies:
             return 0.0
         return sum(self.latencies) / len(self.latencies)
+
+    @property
+    def macro_f1(self) -> float:
+        """Macro-averaged F1 across intent classes (TRIP, NOT_TRIP, UNKNOWN)."""
+        return (
+            self.trip_metrics.f1_score
+            + self.not_trip_metrics.f1_score
+            + self.unknown_intent_metrics.f1_score
+        ) / 3
 
 
 @dataclass
@@ -178,6 +201,11 @@ class LanguageResults:
     unknown_total: int = 0
     latencies: list[float] = field(default_factory=list)
 
+    # Per-class metrics (FRENCH, ENGLISH, UNKNOWN)
+    french_metrics: ClassMetrics = field(default_factory=ClassMetrics)
+    english_metrics: ClassMetrics = field(default_factory=ClassMetrics)
+    unknown_lang_metrics: ClassMetrics = field(default_factory=ClassMetrics)
+
     @property
     def accuracy(self) -> float:
         if self.total == 0:
@@ -207,6 +235,15 @@ class LanguageResults:
         if not self.latencies:
             return 0.0
         return sum(self.latencies) / len(self.latencies)
+
+    @property
+    def macro_f1(self) -> float:
+        """Macro-averaged F1 across all language classes."""
+        return (
+            self.french_metrics.f1_score
+            + self.english_metrics.f1_score
+            + self.unknown_lang_metrics.f1_score
+        ) / 3
 
 
 def update_entity_metrics(

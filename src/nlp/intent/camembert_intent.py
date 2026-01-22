@@ -81,54 +81,53 @@ class CamembertIntentClassifier(IntentClassifier):
     def classify_batch(
         self,
         texts: List[str],
-        batch_size: int = 128,
+        batch_size: int = 32,
         progress_callback: Callable[[int, int], None] | None = None,
     ) -> List[Tuple[str, float]]:
         """
-        Classify multiple texts in batches for efficiency.
+        Classify multiple texts efficiently using HuggingFace Dataset.
+
+        Uses Dataset-based batching for optimal GPU throughput.
 
         Args:
             texts: List of input texts to classify
-            batch_size: Number of texts per batch (default: 128)
+            batch_size: Batch size for GPU processing (default: 32)
             progress_callback: Optional callback(current, total) for progress updates
 
         Returns:
             List of (intent_label, confidence) tuples
         """
-        results: List[Tuple[str, float]] = []
+        from src.nlp.utils.hf_batching import run_pipeline_batched
+
         total = len(texts)
 
-        # Process in batches
-        for i in range(0, total, batch_size):
-            batch = texts[i : i + batch_size]
+        # Filter invalid texts, track indices
+        valid_texts = []
+        valid_indices = []
+        for i, text in enumerate(texts):
+            if len(text.strip()) >= 3:
+                valid_texts.append(text)
+                valid_indices.append(i)
 
-            # Filter out empty/short texts and track their indices
-            valid_texts = []
-            valid_indices = []
-            batch_results: List[Tuple[str, float]] = [("UNKNOWN", 0.5)] * len(batch)
+        # Initialize all results as UNKNOWN
+        all_results: List[Tuple[str, float]] = [("UNKNOWN", 0.5)] * total
 
-            for j, text in enumerate(batch):
-                if len(text.strip()) >= 3:
-                    valid_texts.append(text)
-                    valid_indices.append(j)
+        if valid_texts:
+            # Single batched call with Dataset optimization
+            outputs = run_pipeline_batched(
+                self.classifier,
+                valid_texts,
+                batch_size=batch_size,
+                candidate_labels=self.labels,
+            )
 
-            # Run batched classification on valid texts
-            if valid_texts:
-                batch_outputs = self.classifier(valid_texts, self.labels)
+            # Map results back to original indices
+            for idx, output in zip(valid_indices, outputs):
+                is_trip = output["labels"][0] == "demande de voyage en train"
+                confidence = output["scores"][0]
+                all_results[idx] = ("TRIP" if is_trip else "NOT_TRIP", confidence)
 
-                # Handle single result (not a list)
-                if isinstance(batch_outputs, dict):
-                    batch_outputs = [batch_outputs]
+        if progress_callback:
+            progress_callback(total, total)
 
-                for idx, output in zip(valid_indices, batch_outputs):
-                    is_trip = output["labels"][0] == "demande de voyage en train"
-                    confidence = output["scores"][0]
-                    batch_results[idx] = ("TRIP" if is_trip else "NOT_TRIP", confidence)
-
-            results.extend(batch_results)
-
-            # Report progress after each batch
-            if progress_callback:
-                progress_callback(min(i + batch_size, total), total)
-
-        return results
+        return all_results

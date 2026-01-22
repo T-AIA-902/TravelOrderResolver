@@ -706,6 +706,18 @@ NOT_TRIP_TEMPLATES_FR_AMBIGUOUS = [
     "Strasbourg et l'Alsace",
 ]
 
+# YouTube/Whisper hallucinations (understandable off-topic)
+NOT_TRIP_TEMPLATES_HALLUCINATIONS_FR = [
+    "Merci d'avoir regarde cette video",
+    "N'oubliez pas de vous abonner",
+    "Sous-titres par la communaute",
+    "Abonnez-vous a notre chaine",
+    "Rendez-vous sur notre site",
+    "Pour plus d'informations",
+    "Visitez notre site web",
+    "Copyright 2024",
+]
+
 # Questions about the service/system
 NOT_TRIP_TEMPLATES_FR_QUESTIONS = [
     "Comment ca marche",
@@ -738,11 +750,20 @@ NOT_TRIP_TEMPLATES_FR = (
     + NOT_TRIP_TEMPLATES_FR_INCOMPLETE
     + NOT_TRIP_TEMPLATES_FR_AMBIGUOUS
     + NOT_TRIP_TEMPLATES_FR_QUESTIONS
+    + NOT_TRIP_TEMPLATES_HALLUCINATIONS_FR
 )
 
 # =============================================================================
 # NOT_TRIP TEMPLATES - OTHER LANGUAGES
 # =============================================================================
+
+# YouTube/Whisper hallucinations (understandable off-topic) - English
+NOT_TRIP_TEMPLATES_HALLUCINATIONS_EN = [
+    "Like and subscribe",
+    "Thanks for watching",
+    "Don't forget to subscribe",
+    "Check out our website",
+]
 
 NOT_TRIP_TEMPLATES_EN = [
     "Hello",
@@ -760,7 +781,7 @@ NOT_TRIP_TEMPLATES_EN = [
     "I don't understand",
     "Where is the exit",
     "Goodbye",
-]
+] + NOT_TRIP_TEMPLATES_HALLUCINATIONS_EN
 
 NOT_TRIP_TEMPLATES_ES = [
     "Hola",
@@ -832,18 +853,7 @@ UNKNOWN_TEMPLATES = [
     "____",
     "[silence]",
     "[???]",
-    # Whisper hallucinations
-    "Merci d'avoir regarde cette video",
-    "N'oubliez pas de vous abonner",
-    "Like and subscribe",
-    "Sous-titres par la communaute",
-    "Copyright 2024",
-    "Thanks for watching",
-    "Abonnez-vous a notre chaine",
-    "Rendez-vous sur notre site",
-    "Pour plus d'informations",
-    "Visitez notre site web",
-    # Truncated
+    # Truncated (ambiguous - can't determine intent)
     "Je voudrais aller de Par...",
     "Un train de...",
     "De Lyo...",
