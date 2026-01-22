@@ -5,6 +5,95 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] sklearn-Style Reports, 3-Class Intent & Dataset Fix - 2026-01-22
+
+### Changed
+- **sklearn-Style Classification Reports** (`src/evaluation/reporting.py`):
+  - Replaced custom tables with sklearn `classification_report` format
+  - One table per model, classes as rows (not columns)
+  - Columns: Precision, Recall, F1, Support
+  - Summary rows: accuracy, macro avg, latency
+- **3-Class Intent Classification**:
+  - Intent evaluation now reports TRIP, NOT_TRIP, and UNKNOWN classes
+  - Updated `macro_f1` to average across all 3 classes (was 2)
+  - Added `support` property to `ClassMetrics` (TP + FN)
+
+### Fixed
+- **Dataset Labeling** (`datasets/scripts/generate_base.py`):
+  - Moved YouTube/Whisper hallucinations from UNKNOWN to NOT_TRIP
+  - "Thanks for watching", "Like and subscribe", etc. are now correctly labeled NOT_TRIP
+  - UNKNOWN now only contains true gibberish: `???`, `asdfghjkl`, `[inaudible]`, truncated sentences
+  - Rationale: NOT_TRIP = "understandable but not travel", UNKNOWN = "unintelligible"
+- **Regenerated Datasets**: Base (100k) and augmented (15k test) with corrected labels
+
+### Added
+- **SpaCy Intent Classifier** (`src/nlp/intent/spacy_intent.py`):
+  - New text classification model using SpaCy's `fr_dep_news_trf`
+  - Added to CLI choices: `--intent-model spacy`
+  - Exported from `src/nlp/intent/__init__.py`
+
+### Output Format
+```
+========================================================================
+INTENT CLASSIFICATION: Regex
+========================================================================
+                Precision     Recall         F1    Support
+
+TRIP                 0.76       0.81       0.78      10504
+NOT_TRIP             0.34       0.34       0.34       3751
+UNKNOWN              0.58       0.08       0.14        750
+
+accuracy                                   0.65      15005
+macro avg            0.56       0.41       0.42      15005
+latency                                              0.0ms
+========================================================================
+```
+
+---
+
+## [0.3.4] Evaluation Fixes, Granular CLI & HuggingFace Dataset Batching - 2026-01-22
+
+### Fixed
+- **Entity Evaluator Latency** (`src/evaluation/evaluators/entity.py`):
+  - Batched extractors (SpaCy, CamemBERT) now correctly include fuzzy post-processing time
+  - Previously fuzzy time was excluded, making +Fuzzy appear faster than base model
+- **Combined Evaluator Cache** (`src/evaluation/evaluators/combined.py`):
+  - Added `fuzzy_post.matcher.clear_cache()` between pipeline combinations
+  - Ensures fair latency comparison (no cache warming across combinations)
+
+### Added
+- **Granular CLI Options** (`src/evaluation/cli.py`):
+  - `--intent-model`: Cherry-pick intent classifiers (regex, camembert)
+  - `--entity-model`: Cherry-pick entity extractors (regex, spacy, camembert)
+  - `--language-model`: Cherry-pick language detectors (regex, langdetect)
+  - `--fuzzy`: Enable fuzzy post-processing independently
+  - Auto-infers `--eval-type` when granular options provided
+- **HuggingFace Dataset Batching** (`src/nlp/utils/hf_batching.py`):
+  - New utility module for Dataset-based GPU batching
+  - `texts_to_dataset()`: Convert text list to HuggingFace Dataset
+  - `run_pipeline_batched()`: Run HuggingFace pipeline with optimal GPU throughput
+  - Uses DataLoader-based batching with proper GPU memory prefetching
+- **Per-Class Precision/Recall/F1 Metrics**:
+  - `ClassMetrics` dataclass with TP/FP/FN/TN tracking (`src/evaluation/metrics.py`)
+  - `IntentResults`: Added `trip_metrics`, `not_trip_metrics`, `unknown_intent_metrics`
+  - `LanguageResults`: Added `french_metrics`, `english_metrics`, `unknown_lang_metrics`
+  - Updated intent/language evaluators to track per-class metrics
+  - Updated `reporting.py` tables and JSON export with P/R/F1 per class
+
+### Usage Examples
+```bash
+# Specific combination
+poetry run python -m src.evaluation --intent-model regex --entity-model spacy --fuzzy
+
+# Language only
+poetry run python -m src.evaluation --language-model langdetect
+
+# Multiple models per component
+poetry run python -m src.evaluation --intent-model regex camembert --entity-model spacy
+```
+
+---
+
 ## [0.3.3] GPU Support, Docker Updates & Post Module Refactoring - 2025-01-22
 
 ### Added

@@ -224,62 +224,146 @@ python -m src.main --audio recording.wav
 
 ## Benchmarks
 
-> Evalue sur `datasets/augmented/test.csv` (15,000 samples avec erreurs STT simulees)
-> Architecture modulaire: Language detectors + Intent classifiers + Entity extractors + Post-processors
+> Evalue sur `datasets/augmented/test.csv` (15,005 samples avec erreurs STT simulees)
+> Format: sklearn `classification_report` style
 
-### Table 1: Language Detection
+### Language Detection
 
-| Modele | Overall | FR | EN | UNK | Latence |
-|--------|---------|----|----|-----|---------|
-| Regex | 68.9% | 68% | 68% | 76% | 0.03ms |
-| Langdetect | 73.8% | 78% | 65% | 58% | 9.69ms |
+```
+========================================================================
+LANGUAGE DETECTION: Regex                              Accuracy: 67.9%
+========================================================================
+                Precision     Recall         F1    Support
 
-*Note: ES, DE, IT mappes vers UNKNOWN (langues non supportees). Etude focalisee FR/EN.*
+fr                   0.95       0.66       0.78      11400
+en                   0.80       0.64       0.71       1500
+unk                  0.29       0.80       0.42       2105
 
-### Table 2: Intent Classification (per-language)
+macro avg            0.68       0.70       0.64      15005
+latency                                              0.0ms
+========================================================================
 
-| Modele | Overall | FR | EN | UNK | Latence |
-|--------|---------|----|----|-----|---------|
-| Regex | 65.5% | 67% | 73% | 53% | 0.01ms |
-| CamemBERT | 70.0% | 74% | 68% | 51% | 27.52ms |
+========================================================================
+LANGUAGE DETECTION: Langdetect                         Accuracy: 73.9%
+========================================================================
+                Precision     Recall         F1    Support
 
-### Table 3: Entity Extraction
+fr                   0.90       0.77       0.83      11400
+en                   0.57       0.70       0.63       1500
+unk                  0.37       0.61       0.46       2105
 
-| Modele | Fuzzy | Accuracy | Precision | Recall | F1 | Latence |
-|--------|-------|----------|-----------|--------|-----|---------|
-| Regex | - | 32.9% | 47.1% | 43.3% | 45.1% | 0.0ms |
-| Regex | ✓ | 56.8% | 76.5% | 70.6% | 73.4% | 16.8ms |
-| SpaCy | - | 25.1% | 57.7% | 35.5% | 43% | 1.9ms |
-| SpaCy | ✓ | 31.4% | 69.9% | 42.8% | 52% | 1.5ms |
-| CamemBERT | - | 15.1% | 45.3% | 29.5% | 35% | 1.2ms |
-| CamemBERT | ✓ | 30.4% | 67.8% | 44.0% | 52% | 1.2ms |
+macro avg            0.61       0.69       0.64      15005
+latency                                              5.5ms
+========================================================================
+```
 
-### Table 4: Combined Pipeline
+### Intent Classification
 
-| Intent | Entity | Fuzzy | Intent Acc | Entity Acc | Latence |
-|--------|--------|-------|------------|------------|---------|
-| Regex | Regex | ✓ | 65.5% | 56.8% | 0.1ms |
-| Regex | SpaCy | ✓ | 65.5% | 31.4% | 6.7ms |
-| Regex | CamemBERT | ✓ | 65.5% | 30.4% | 1.2ms |
-| CamemBERT | Regex | ✓ | 70.0% | 56.8% | 27.4ms |
-| CamemBERT | SpaCy | ✓ | 70.0% | 31.4% | 35.6ms |
-| CamemBERT | CamemBERT | ✓ | 70.0% | 30.4% | 28.7ms |
+```
+========================================================================
+INTENT CLASSIFICATION: Regex                           Accuracy: 65.3%
+========================================================================
+                Precision     Recall         F1    Support
 
-**Best configurations:**
-- **Speed-optimized:** Regex + Regex + Fuzzy (0.1ms, 56.8% entity accuracy)
-- **Quality-optimized:** CamemBERT + Regex + Fuzzy (27.4ms, 70.0% intent, 56.8% entity)
+TRIP                 0.76       0.81       0.78      10504
+NOT_TRIP             0.34       0.34       0.34       3751
+UNKNOWN              0.58       0.08       0.14        750
 
-### Table 5: Ablation Study (Clean vs STT)
+macro avg            0.56       0.41       0.42      15005
+latency                                              0.0ms
+========================================================================
 
-| Dataset | Intent Acc | Entity Acc | Language Acc |
-|---------|------------|------------|--------------|
-| Clean (base/) | TBD | TBD | TBD |
-| STT-augmented (augmented/) | TBD | TBD | TBD |
-| Delta | TBD | TBD | TBD |
+========================================================================
+INTENT CLASSIFICATION: SpaCy                           Accuracy: 75.6%
+========================================================================
+                Precision     Recall         F1    Support
 
-*Pipeline de reference pour comparaison*
+TRIP                 0.94       0.77       0.85      10504
+NOT_TRIP             0.51       0.87       0.64       3751
+UNKNOWN              0.00       0.00       0.00        750
 
-*Script: `poetry run python -m src.evaluation --eval-type all --dataset datasets/augmented/test.csv`*
+macro avg            0.48       0.55       0.50      15005
+latency                                              0.9ms
+========================================================================
+
+========================================================================
+INTENT CLASSIFICATION: CamemBERT                       Accuracy: 35.8%
+========================================================================
+                Precision     Recall         F1    Support
+
+TRIP                 0.85       0.18       0.30      10504
+NOT_TRIP             0.27       0.91       0.42       3751
+UNKNOWN              0.58       0.08       0.14        750
+
+macro avg            0.57       0.39       0.28      15005
+latency                                              4.1ms
+========================================================================
+```
+
+*Note: CamemBERT uses `almanach/camembert-base` (not fine-tuned for intent classification).*
+*SpaCy achieves best accuracy (75.6%) but cannot detect UNKNOWN class.*
+
+### Entity Extraction
+
+```
+========================================================================
+ENTITY EXTRACTION: Regex                               Accuracy: 33.1%
+========================================================================
+                Precision     Recall         F1    Support
+
+departure            0.45       0.44       0.45       9552
+destination          0.49       0.43       0.46      10504
+
+macro avg            0.47       0.44       0.45      20056
+latency                                              0.0ms
+========================================================================
+
+========================================================================
+ENTITY EXTRACTION: Regex + Fuzzy                       Accuracy: 56.1%
+========================================================================
+                Precision     Recall         F1    Support
+
+departure            0.77       0.74       0.76       9552
+destination          0.76       0.67       0.71      10504
+
+macro avg            0.76       0.70       0.73      20056
+latency                                              9.9ms
+========================================================================
+
+========================================================================
+ENTITY EXTRACTION: SpaCy                               Accuracy: 25.0%
+========================================================================
+                Precision     Recall         F1    Support
+
+departure            0.63       0.30       0.41       9552
+destination          0.54       0.41       0.47      10504
+
+macro avg            0.58       0.36       0.44      20056
+latency                                              1.2ms
+========================================================================
+
+========================================================================
+ENTITY EXTRACTION: SpaCy + Fuzzy                       Accuracy: 31.0%
+========================================================================
+                Precision     Recall         F1    Support
+
+departure            0.75       0.36       0.49       9552
+destination          0.64       0.49       0.55      10504
+
+macro avg            0.70       0.43       0.52      20056
+latency                                              2.2ms
+========================================================================
+```
+
+### Recommended Configuration
+
+| Use Case | Intent | Entity | Fuzzy | Intent Acc | Entity Acc | Latency |
+|----------|--------|--------|-------|------------|------------|---------|
+| **Best Accuracy** | SpaCy | Regex | ✓ | 75.6% | 56.1% | ~11ms |
+| **Best Balance** | Regex | Regex | ✓ | 65.3% | 56.1% | ~10ms |
+| **Lowest Latency** | Regex | Regex | - | 65.3% | 33.1% | <1ms |
+
+*Run: `poetry run python -m src.evaluation --eval-type all`*
 
 ---
 

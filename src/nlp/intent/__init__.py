@@ -9,8 +9,10 @@ Note: Language detection is handled separately by the language module.
 
 from .camembert_intent import CamembertIntentClassifier
 from .regex_intent import RegexIntentClassifier
+from .spacy_intent import SpacyIntentClassifier
 
 __all__ = [
     "RegexIntentClassifier",
     "CamembertIntentClassifier",
+    "SpacyIntentClassifier",
 ]
