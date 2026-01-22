@@ -13,7 +13,7 @@ import pytest
 
 from src.nlp.entity.regex_entity import RegexEntityExtractor
 from src.nlp.entity.spacy_entity import SpacyEntityExtractor
-from src.nlp.post.fuzzy_matcher import FuzzyPostProcessor
+from src.nlp.post import FuzzyPostProcessor
 
 
 @pytest.fixture(scope="module")

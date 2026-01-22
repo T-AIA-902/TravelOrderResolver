@@ -12,8 +12,7 @@ that applies fuzzy matching as a post-processing step.
 
 import pytest
 
-from src.nlp.fuzzy_matcher import StationMatcher
-from src.nlp.post.fuzzy_matcher import FuzzyPostProcessor
+from src.nlp.post import FuzzyPostProcessor, StationMatcher
 
 
 @pytest.fixture

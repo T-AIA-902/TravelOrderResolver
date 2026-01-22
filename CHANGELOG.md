@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.3] GPU Support & Docker Updates - 2025-01-22
+## [0.3.3] GPU Support, Docker Updates & Post Module Refactoring - 2025-01-22
 
 ### Added
 - **Device Utility Module** (`src/utils/device.py`):
@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `docker/Dockerfile`: GPU base image (`pytorch:2.1.0-cuda12.1`), `fr_dep_news_trf` model, CLI entry point
   - `docker/Dockerfile.training`: Updated poetry install command
   - `docker/docker-compose.yml`: Removed dead API service, added `evaluate` service, GPU reservations
+- **Post Module Refactored** (`src/nlp/post/`):
+  - Moved `src/nlp/fuzzy_matcher.py` → `src/nlp/post/station_matcher.py`
+  - Renamed `src/nlp/post/fuzzy_matcher.py` → `src/nlp/post/fuzzy_post_processor.py`
+  - Clear separation: `station_matcher.py` (core logic) vs `fuzzy_post_processor.py` (pipeline adapter)
+  - Updated `post/__init__.py` to export both `FuzzyPostProcessor` and `StationMatcher`
 
 ### Architecture
 Per-model device selection with `device="auto"`:
