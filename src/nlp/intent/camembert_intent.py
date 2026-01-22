@@ -5,7 +5,7 @@ Uses the transformers zero-shot-classification pipeline to classify
 travel intent without fine-tuning.
 """
 
-from typing import List, Tuple
+from typing import Callable, List, Tuple
 
 from ..interfaces import IntentClassifier
 
@@ -66,21 +66,28 @@ class CamembertIntentClassifier(IntentClassifier):
 
         return ("TRIP" if is_trip else "NOT_TRIP", confidence)
 
-    def classify_batch(self, texts: List[str], batch_size: int = 128) -> List[Tuple[str, float]]:
+    def classify_batch(
+        self,
+        texts: List[str],
+        batch_size: int = 128,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> List[Tuple[str, float]]:
         """
         Classify multiple texts in batches for efficiency.
 
         Args:
             texts: List of input texts to classify
             batch_size: Number of texts per batch (default: 128)
+            progress_callback: Optional callback(current, total) for progress updates
 
         Returns:
             List of (intent_label, confidence) tuples
         """
         results: List[Tuple[str, float]] = []
+        total = len(texts)
 
         # Process in batches
-        for i in range(0, len(texts), batch_size):
+        for i in range(0, total, batch_size):
             batch = texts[i : i + batch_size]
 
             # Filter out empty/short texts and track their indices
@@ -107,5 +114,9 @@ class CamembertIntentClassifier(IntentClassifier):
                     batch_results[idx] = ("TRIP" if is_trip else "NOT_TRIP", confidence)
 
             results.extend(batch_results)
+
+            # Report progress after each batch
+            if progress_callback:
+                progress_callback(min(i + batch_size, total), total)
 
         return results

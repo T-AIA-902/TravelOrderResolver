@@ -23,8 +23,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from data import StationDatabase, normalize_name  # noqa: E402
 
-# Valid intents
-VALID_INTENTS = {"TRIP", "NOT_TRIP", "NOT_FRENCH", "UNKNOWN"}
+# Valid intents (language is now a separate column, not an intent)
+VALID_INTENTS = {"TRIP", "NOT_TRIP", "UNKNOWN"}
 
 
 def load_csv(filepath: Path) -> list[dict]:
@@ -266,7 +266,7 @@ def main() -> None:
     if args.input:
         input_dir = Path(args.input)
     else:
-        input_dir = Path(__file__).parent.parent / "generated"
+        input_dir = Path(__file__).parent.parent / "augmented"
 
     filepath = input_dir / args.file
 
