@@ -5,7 +5,7 @@ Uses exact string matching against station database.
 This is the zero-shot baseline (no fine-tuning on SNCF data).
 """
 
-from typing import Any, Dict, List, Set
+from typing import Any, Callable, Dict, List, Set
 
 from ..interfaces import EntityExtractor
 
@@ -202,3 +202,36 @@ class CamembertEntityExtractor(EntityExtractor):
                 result["intermediate"] = [m["matched_city"] for m in matches[1:-1]]
 
         return result
+
+    def extract_batch(
+        self,
+        texts: List[str],
+        batch_size: int = 128,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Extract entities from multiple texts.
+
+        Args:
+            texts: List of input texts to process
+            batch_size: Batch size for progress reporting
+            progress_callback: Optional callback(current, total) for progress updates
+
+        Returns:
+            List of entity dictionaries
+        """
+        results: List[Dict[str, Any]] = []
+        total = len(texts)
+
+        for i, text in enumerate(texts):
+            results.append(self.extract(text))
+
+            # Report progress at batch boundaries
+            if progress_callback and (i + 1) % batch_size == 0:
+                progress_callback(i + 1, total)
+
+        # Final progress update
+        if progress_callback:
+            progress_callback(total, total)
+
+        return results

@@ -1,10 +1,10 @@
 """
-Base model interface for NLP models.
+Type definitions for NLP module.
 
-This module defines the abstract interface that all NLP models must implement.
+This module defines the core types used across the NLP pipeline.
+Moved from models/base_model.py during modularization.
 """
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -15,8 +15,16 @@ class Intent(Enum):
 
     TRIP = "TRIP"  # Valid travel request
     NOT_TRIP = "NOT_TRIP"  # Not a travel request
-    NOT_FRENCH = "NOT_FRENCH"  # Not in French
+    NOT_FRENCH = "NOT_FRENCH"  # Non-French text detected
     UNKNOWN = "UNKNOWN"  # Cannot determine intent
+
+
+class Language(Enum):
+    """Classification of text language."""
+
+    FRENCH = "FRENCH"  # French text (primary language for SNCF)
+    ENGLISH = "ENGLISH"  # English text (for back-translation experiments)
+    UNKNOWN = "UNKNOWN"  # Other languages or unclear
 
 
 @dataclass
@@ -44,23 +52,27 @@ class TravelEntity:
 @dataclass
 class PredictionResult:
     """
-    Result of NLP model prediction.
+    Result of NLP pipeline prediction.
 
     Attributes:
         intent: Classified intent.
         intent_confidence: Confidence in intent classification.
+        language: Detected language.
+        language_confidence: Confidence in language detection.
         departure: Extracted departure station.
         destination: Extracted destination station.
         intermediates: List of intermediate stops.
         entities: All extracted entities with metadata.
         raw_text: Original input text.
         processed_text: Preprocessed text.
-        model_name: Name of the model that made the prediction.
+        model_name: Name of the model/pipeline that made the prediction.
         metadata: Additional model-specific metadata.
     """
 
     intent: Intent
     intent_confidence: float = 1.0
+    language: Language = Language.UNKNOWN
+    language_confidence: float = 0.5
     departure: str = ""
     destination: str = ""
     intermediates: list[str] = field(default_factory=list)
@@ -75,6 +87,8 @@ class PredictionResult:
         return {
             "intent": self.intent.value,
             "intent_confidence": self.intent_confidence,
+            "language": self.language.value,
+            "language_confidence": self.language_confidence,
             "departure": self.departure,
             "destination": self.destination,
             "intermediates": self.intermediates,
@@ -93,53 +107,4 @@ class PredictionResult:
     @property
     def is_valid_trip(self) -> bool:
         """Check if this is a valid trip with departure and destination."""
-        return (
-            self.intent == Intent.TRIP
-            and bool(self.departure)
-            and bool(self.destination)
-        )
-
-
-class BaseModel(ABC):
-    """
-    Abstract base class for NLP models.
-
-    All models must implement the predict method and provide a name.
-    """
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Return the model name."""
-        pass
-
-    @abstractmethod
-    def predict(self, text: str) -> PredictionResult:
-        """
-        Make a prediction on the input text.
-
-        Args:
-            text: Input text to analyze.
-
-        Returns:
-            PredictionResult with intent and extracted entities.
-        """
-        pass
-
-    def batch_predict(self, texts: list[str]) -> list[PredictionResult]:
-        """
-        Make predictions on multiple texts.
-
-        Default implementation calls predict() for each text.
-        Override for batch-optimized models.
-
-        Args:
-            texts: List of input texts.
-
-        Returns:
-            List of PredictionResults.
-        """
-        return [self.predict(text) for text in texts]
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(name={self.name!r})"
+        return self.intent == Intent.TRIP and bool(self.departure) and bool(self.destination)

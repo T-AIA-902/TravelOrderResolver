@@ -87,21 +87,24 @@ Output: 1,NOT_TRIP
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                     NLP PIPELINE (src/nlp/)                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  interfaces.py: IntentClassifier | EntityExtractor | PostProcessor (ABCs)   │
+│  interfaces.py: LanguageDetector | IntentClassifier | EntityExtractor |     │
+│                 PostProcessor (ABCs)                                         │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌─────────────────────┐    ┌─────────────────────┐    ┌────────────────┐   │
-│  │  INTENT CLASSIFIER  │    │  ENTITY EXTRACTOR   │    │ POST-PROCESSOR │   │
-│  │     (intent/)       │    │     (entity/)       │    │    (post/)     │   │
-│  ├─────────────────────┤    ├─────────────────────┤    ├────────────────┤   │
-│  │ • RegexIntent       │    │ • RegexEntity       │    │ • FuzzyPost    │   │
-│  │ • CamembertIntent   │───▶│ • SpacyEntity       │───▶│   Processor    │   │
-│  │   (zero-shot)       │    │ • CamembertEntity   │    │   (RapidFuzz)  │   │
-│  └─────────────────────┘    └─────────────────────┘    └───────┬────────┘   │
-│                                                                │            │
-│  Best: Regex (71.9%) ──────▶ CamemBERT (12.7%) ──────▶ +Fuzzy (28.6%)      │
-│                                                                │            │
-└────────────────────────────────────────────────────────────────┼────────────┘
+│  ┌──────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐    │
+│  │ LANGUAGE DETECTOR│  │  INTENT CLASSIFIER  │  │  ENTITY EXTRACTOR   │    │
+│  │   (language/)    │  │     (intent/)       │  │     (entity/)       │    │
+│  └────────┬─────────┘  └──────────┬──────────┘  └──────────┬──────────┘    │
+│           │                       │                        │               │
+│           └───────────────────────┼────────────────────────┘               │
+│                                   │                                        │
+│                                   ▼                                        │
+│                        ┌────────────────┐                                  │
+│                        │ POST-PROCESSOR │                                  │
+│                        │    (post/)     │                                  │
+│                        └───────┬────────┘                                  │
+│                                │                                           │
+└────────────────────────────────┼───────────────────────────────────────────┘
                                           │
                                           ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -210,73 +213,72 @@ python -m src.speech.transcriber --audio recording.wav
 python -m src.main --audio recording.wav
 ```
 
-### API REST
+### API REST (Not Yet Implemented)
 
 ```bash
-# Demarrer le serveur
-python -m src.api.app
-
-# Requete
-curl -X POST http://localhost:8000/parse \
-  -H "Content-Type: application/json" \
-  -d '{"sentence": "Je veux aller de Paris a Lyon"}'
+# API REST not yet available
+# See TASKS.md section 6.2 for planned endpoints
 ```
 
 ---
 
 ## Benchmarks
 
-> Evalue sur `datasets/splits/short-splits/test.csv` (1,500 samples)
-> Architecture modulaire: Intent classifiers + Entity extractors + Post-processors (Fuzzy)
+> Evalue sur `datasets/augmented/test.csv` (15,000 samples avec erreurs STT simulees)
+> Architecture modulaire: Language detectors + Intent classifiers + Entity extractors + Post-processors
 
-### Table 1: Intent Classification
+### Table 1: Language Detection
 
-| Modele | Accuracy | Latence |
-|--------|----------|---------|
-| Regex | 71.9% | 0.07ms |
-| CamemBERT | 34.9% | 26.6ms |
+| Modele | Overall | FR | EN | UNK | Latence |
+|--------|---------|----|----|-----|---------|
+| Regex | 68.9% | 68% | 68% | 76% | 0.03ms |
 
-### Table 2: Entity Extraction (sans fuzzy)
+*Note: ES, DE, IT mappes vers UNKNOWN (langues non supportees). Etude focalisee FR/EN.*
 
-| Modele | Accuracy | Precision | Recall | F1-Score | Latence |
-|--------|----------|-----------|--------|----------|---------|
-| Regex | 6.0% | 10.6% | 9.7% | 10.1% | 0.03ms |
-| SpaCy | 11.0% | 19.7% | 11.8% | 14.5% | 2.7ms |
-| CamemBERT | 12.7% | 30.8% | 22.0% | 25.3% | 1.3ms |
+### Table 2: Intent Classification (per-language)
 
-### Table 3: Entity Extraction + Fuzzy Post-Processing
+| Modele | Overall | FR | EN | UNK | Latence |
+|--------|---------|----|----|-----|---------|
+| Regex | 65.5% | 67% | 73% | 53% | 0.01ms |
+| CamemBERT | 70.0% | 74% | 68% | 51% | 27.52ms |
 
-| Modele | Accuracy | Precision | Recall | F1-Score | Latence |
-|--------|----------|-----------|--------|----------|---------|
-| Regex + Fuzzy | 22.3% | 41.5% | 37.7% | 39.4% | 32.4ms |
-| SpaCy + Fuzzy | 20.4% | 36.5% | 22.4% | 27.3% | 1.5ms |
-| CamemBERT + Fuzzy | 28.6% | 49.7% | 35.2% | 40.6% | 3.7ms |
+### Table 3: Entity Extraction
 
-### Table 4: Combined Pipeline (Intent + Entity)
+| Modele | Fuzzy | Accuracy | Precision | Recall | F1 | Latence |
+|--------|-------|----------|-----------|--------|-----|---------|
+| Regex | - | 29.2% | 43.3% | 38.4% | 41% | 0.0ms |
+| Regex | ✓ | 51.3% | 73.6% | 65.6% | 69% | 18.4ms |
+| SpaCy | - | 25.1% | 57.7% | 35.5% | 43% | 1.9ms |
+| SpaCy | ✓ | 31.4% | 69.9% | 42.8% | 52% | 1.5ms |
+| CamemBERT | - | 15.1% | 45.3% | 29.5% | 35% | 1.2ms |
+| CamemBERT | ✓ | 30.4% | 67.8% | 44.0% | 52% | 1.2ms |
 
-| Intent | Entity | Intent Acc | Entity Acc | Latence |
-|--------|--------|------------|------------|---------|
-| Regex | Regex | 71.9% | 6.0% | 0.1ms |
-| Regex | SpaCy | 71.9% | 11.0% | 6.7ms |
-| Regex | CamemBERT | 71.9% | 12.7% | 1.3ms |
-| CamemBERT | Regex | 34.9% | 6.0% | 26.9ms |
-| CamemBERT | SpaCy | 34.9% | 11.0% | 35.1ms |
-| CamemBERT | CamemBERT | 34.9% | 12.7% | 27.8ms |
+### Table 4: Combined Pipeline
 
-### Table 5: Combined Pipeline + Fuzzy
+| Intent | Entity | Fuzzy | Intent Acc | Entity Acc | Latence |
+|--------|--------|-------|------------|------------|---------|
+| Regex | Regex | ✓ | 65.5% | 51.3% | 0.1ms |
+| Regex | SpaCy | ✓ | 65.5% | 31.4% | 6.7ms |
+| Regex | CamemBERT | ✓ | 65.5% | 30.4% | 1.2ms |
+| CamemBERT | Regex | ✓ | 70.0% | 51.3% | 27.4ms |
+| CamemBERT | SpaCy | ✓ | 70.0% | 31.4% | 35.6ms |
+| CamemBERT | CamemBERT | ✓ | 70.0% | 30.4% | 28.7ms |
 
-| Intent | Entity | Intent Acc | Entity Acc | Latence |
-|--------|--------|------------|------------|---------|
-| **Regex** | **Regex + Fuzzy** | **71.9%** | **22.3%** | **1.4ms** |
-| Regex | SpaCy + Fuzzy | 71.9% | 20.4% | 7.1ms |
-| **Regex** | **CamemBERT + Fuzzy** | **71.9%** | **28.6%** | **1.4ms** |
-| CamemBERT | Regex + Fuzzy | 34.9% | 22.3% | 26.4ms |
-| CamemBERT | SpaCy + Fuzzy | 34.9% | 20.4% | 34.6ms |
-| CamemBERT | CamemBERT + Fuzzy | 34.9% | 28.6% | 28.0ms |
+**Best configurations:**
+- **Speed-optimized:** Regex + Regex + Fuzzy (0.1ms, 51.3% entity accuracy)
+- **Quality-optimized:** CamemBERT + Regex + Fuzzy (27.4ms, 70.0% intent, 51.3% entity)
 
-**Best Pipeline**: Regex (intent) + CamemBERT (entity) + Fuzzy (post-processing)
+### Table 5: Ablation Study (Clean vs STT)
 
-*Script: `poetry run python evaluation/evaluate_all.py --eval-type all --dataset datasets/splits/short-splits/test.csv --output-json evaluation_results.json`*
+| Dataset | Intent Acc | Entity Acc | Language Acc |
+|---------|------------|------------|--------------|
+| Clean (base/) | TBD | TBD | TBD |
+| STT-augmented (augmented/) | TBD | TBD | TBD |
+| Delta | TBD | TBD | TBD |
+
+*Pipeline de reference pour comparaison*
+
+*Script: `poetry run python -m src.evaluation --eval-type all --dataset datasets/augmented/test.csv`*
 
 ---
 
@@ -312,12 +314,12 @@ pre-commit install
 
 ## Equipe
 
-| Nom | Github | Contact Epitech |
-|-----|------|---------|
-| Romain Bernier | [@Romain-Ber](https://github.com/Romain-Ber) | romain.bernier@epitech.eu |
-| Victor Vattier | [@VictorVattierEpitech](https://github.com/VictorVattierEpitech) | email@epitech.eu |
-| Marine Gayet | [@Marinegyt](https://github.com/Marinegyt) | marine.gayet@epitech.eu |
-| Camille Kerserho | [@Camserho](https://github.com/Camserho) | camille.kerserho@epitech.eu |
+| Nom | Role | Github | Contact Epitech |
+|-----|------|--------|-----------------|
+| Romain Bernier | Architecte | [@Romain-Ber](https://github.com/Romain-Ber) | romain.bernier@epitech.eu |
+| Victor Vattier | Référent ML & Dev | [@VictorVattierEpitech](https://github.com/VictorVattierEpitech) | victor.vattier@epitech.eu |
+| Marine Gayet | Référente Frontend & Dev | [@Marinegyt](https://github.com/Marinegyt) | marine.gayet@epitech.eu |
+| Camille Kerserho | Dev | [@Camserho](https://github.com/Camserho) | camille.kerserho@epitech.eu |
 
 ---
 

@@ -4,7 +4,7 @@ SpaCy-based entity extractor.
 Uses spaCy NER to identify location entities in travel text.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from ..interfaces import EntityExtractor
 
@@ -113,7 +113,12 @@ class SpacyEntityExtractor(EntityExtractor):
 
         return result
 
-    def extract_batch(self, texts: List[str], batch_size: int = 128) -> List[Dict[str, Any]]:
+    def extract_batch(
+        self,
+        texts: List[str],
+        batch_size: int = 128,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Extract entities from multiple texts using batched processing.
 
@@ -122,14 +127,19 @@ class SpacyEntityExtractor(EntityExtractor):
         Args:
             texts: List of input texts to process
             batch_size: Number of texts per batch (default: 128)
+            progress_callback: Optional callback(processed, total) for progress updates
 
         Returns:
             List of entity dictionaries
         """
         results: List[Dict[str, Any]] = []
+        total = len(texts)
 
         # Process with nlp.pipe for efficiency
-        for doc in self.nlp.pipe(texts, batch_size=batch_size):
+        for i, doc in enumerate(self.nlp.pipe(texts, batch_size=batch_size)):
+            # Report progress every batch_size items
+            if progress_callback and i % batch_size == 0:
+                progress_callback(i, total)
             # Extract location entities
             location_entities: List[Dict[str, Any]] = [
                 {"text": ent.text, "start": ent.start_char, "end": ent.end_char}
@@ -177,5 +187,9 @@ class SpacyEntityExtractor(EntityExtractor):
                     result["intermediate"] = locations[1:-1]
 
             results.append(result)
+
+        # Final progress callback
+        if progress_callback:
+            progress_callback(total, total)
 
         return results
