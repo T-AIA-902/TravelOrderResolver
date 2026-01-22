@@ -4,12 +4,13 @@ Command-line interface for evaluation.
 Usage:
     python -m src.evaluation.cli --eval-type all
     python -m src.evaluation.cli --eval-type intent --models regex
+    python -m src.evaluation.cli --device cuda  # Force GPU
 """
 
 import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from .data_loader import load_dataset
 from .evaluators import (
@@ -28,8 +29,12 @@ from .reporting import (
     print_table_language,
 )
 
+DeviceType = Literal["auto", "cuda", "cpu"]
 
-def create_intent_classifiers(models: list[str]) -> list[tuple[str, Any]]:
+
+def create_intent_classifiers(
+    models: list[str], device: DeviceType = "auto"
+) -> list[tuple[str, Any]]:
     """Create intent classifiers based on model list."""
     classifiers: list[tuple[str, Any]] = []
 
@@ -41,12 +46,14 @@ def create_intent_classifiers(models: list[str]) -> list[tuple[str, Any]]:
     if "camembert" in models or "all" in models:
         from src.nlp.intent import CamembertIntentClassifier
 
-        classifiers.append(("CamemBERT", CamembertIntentClassifier()))
+        classifiers.append(("CamemBERT", CamembertIntentClassifier(device=device)))
 
     return classifiers
 
 
-def create_entity_extractors(models: list[str]) -> list[tuple[str, Any]]:
+def create_entity_extractors(
+    models: list[str], device: DeviceType = "auto"
+) -> list[tuple[str, Any]]:
     """Create entity extractors based on model list."""
     extractors: list[tuple[str, Any]] = []
 
@@ -58,12 +65,12 @@ def create_entity_extractors(models: list[str]) -> list[tuple[str, Any]]:
     if "spacy" in models or "all" in models:
         from src.nlp.entity import SpacyEntityExtractor
 
-        extractors.append(("SpaCy", SpacyEntityExtractor()))
+        extractors.append(("SpaCy", SpacyEntityExtractor(device=device)))
 
     if "camembert" in models or "all" in models:
         from src.nlp.entity import CamembertEntityExtractor
 
-        extractors.append(("CamemBERT", CamembertEntityExtractor()))
+        extractors.append(("CamemBERT", CamembertEntityExtractor(device=device)))
 
     return extractors
 
@@ -133,6 +140,12 @@ def main() -> None:
         default=["all"],
         help="Models to evaluate (default: all)",
     )
+    parser.add_argument(
+        "--device",
+        choices=["auto", "cuda", "cpu"],
+        default="auto",
+        help="Device for ML models: auto (detect), cuda (GPU), cpu (default: auto)",
+    )
 
     args = parser.parse_args()
 
@@ -174,19 +187,30 @@ def main() -> None:
 
     eval_type = args.eval_type
     models = args.models
+    device: DeviceType = args.device
 
     # Load models
     print("\n" + "-" * 80)
     print("LOADING MODELS...")
+    print(f"Device preference: {device}")
     print("-" * 80)
+
+    # Display device info
+    from src.utils.device import get_device_info
+
+    device_info = get_device_info()
+    if device_info["cuda_available"]:
+        print(f"GPU detected: {device_info['cuda_device_name']}")
+    else:
+        print("No GPU detected, using CPU")
 
     need_intent = eval_type in ["intent", "combined", "combined_fuzzy", "all"]
     need_entity = eval_type in ["entity", "entity_fuzzy", "combined", "combined_fuzzy", "all"]
     need_fuzzy = eval_type in ["entity_fuzzy", "combined_fuzzy", "all"]
     need_language = eval_type in ["language", "all"]
 
-    classifiers = create_intent_classifiers(models) if need_intent else []
-    extractors = create_entity_extractors(models) if need_entity else []
+    classifiers = create_intent_classifiers(models, device=device) if need_intent else []
+    extractors = create_entity_extractors(models, device=device) if need_entity else []
     fuzzy_post = create_fuzzy_post_processor() if need_fuzzy else None
     language_detectors = create_language_detectors(models) if need_language else []
 

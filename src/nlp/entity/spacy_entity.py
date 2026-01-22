@@ -4,9 +4,11 @@ SpaCy-based entity extractor.
 Uses spaCy NER to identify location entities in travel text.
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional
 
 from ..interfaces import EntityExtractor
+
+DeviceType = Literal["auto", "cuda", "cpu"]
 
 
 class SpacyEntityExtractor(EntityExtractor):
@@ -18,12 +20,18 @@ class SpacyEntityExtractor(EntityExtractor):
     or intermediate stops.
     """
 
-    def __init__(self, model_name: str = "fr_core_news_lg") -> None:
+    def __init__(
+        self,
+        model_name: str = "fr_core_news_lg",
+        device: DeviceType = "auto",
+    ) -> None:
         """
         Initialize the entity extractor with a spaCy model.
 
         Args:
             model_name: Name of the spaCy model to load (default: fr_core_news_lg)
+            device: Device to use - "auto", "cuda", or "cpu" (default: auto)
+                   Note: Requires spacy[cuda] for GPU support
         """
         try:
             import spacy
@@ -33,9 +41,15 @@ class SpacyEntityExtractor(EntityExtractor):
                 "python -m spacy download fr_core_news_lg"
             )
 
+        from src.utils.device import setup_spacy_device
+
+        # Setup GPU before loading model (must be called before spacy.load)
+        self.use_gpu = setup_spacy_device(device)
+
         print(f"Loading spaCy model: {model_name}...")
         self.nlp = spacy.load(model_name)
-        print("Model loaded successfully!")
+        device_str = "GPU" if self.use_gpu else "CPU"
+        print(f"SpaCy model loaded successfully (device: {device_str})")
 
     @property
     def name(self) -> str:
