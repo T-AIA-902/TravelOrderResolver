@@ -31,8 +31,8 @@ COPY pyproject.toml poetry.lock* ./
 # Install dependencies (main + ml for GPU inference)
 RUN poetry install --only main --with ml --no-interaction --no-ansi
 
-# Download spaCy transformer model (benefits from GPU)
-RUN python -m spacy download fr_dep_news_trf
+# Download spaCy model
+RUN python -m spacy download fr_core_news_lg
 
 # Copy application code
 COPY src/ ./src/
