@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] 100k STT Dataset with Intermediate Stops - 2025-01-22
+
+### Added
+- **STT Augmentation Module** (`src/data/stt_augmentation.py`):
+  - `STTErrorConfig` - Configurable error rates for 14 STT error types
+  - `STTAugmenter` - Apply realistic Whisper transcription errors to text
+  - `create_augmenter(intensity)` - Factory with preset profiles (clean, light, moderate, heavy)
+  - 14 error types: filler words, false starts, repetitions, phonetic confusion, station misspelling, punctuation/capitalization errors, code-switching, hallucinations, noise artifacts, homophones
+- **100k STT Dataset Generator** (`datasets/scripts/generate_stt_dataset.py`):
+  - 200+ templates per category (TRIP, NOT_TRIP, UNKNOWN)
+  - Multi-language support: FRENCH (76%), ENGLISH (10%), SPANISH (3.2%), GERMAN (3.2%), ITALIAN (1.5%), UNKNOWN (6%)
+  - Intent and language as separate columns (cleaner design)
+  - **Intermediate stops support**: 15% of TRIP entries include "via" routes
+  - Stratified train/val/test split (70/15/15)
+  - Reproducible generation with seed parameter
+- **Intermediate Stop Templates**:
+  - French: 30 templates ("en passant par", "via", "puis...puis")
+  - English: 10 templates ("via", "through", "stopping at")
+  - Spanish: 5 templates ("pasando por", "con parada en")
+  - German: 5 templates ("über", "mit Halt in")
+  - Italian: 5 templates ("passando per", "con fermata a")
+- **Generated Dataset** (`datasets/generated/`):
+  - `stt_dataset_100k.csv` / `.json` - Full 100k dataset
+  - `train.csv` / `.json` - 70k training samples
+  - `val.csv` / `.json` - 15k validation samples
+  - `test.csv` / `.json` - 15k test samples
+- **Dataset Documentation** (`datasets/generated/DATASET.md`):
+  - French documentation explaining dataset structure and distribution
+  - Examples for all intent/language combinations
+  - STT error types reference table
+
+### Changed
+- **DatasetEntry schema**: Added `intermediate` field for via stations
+- **Export functions**: CSV/JSON now include 7 columns (added `intermediate`)
+- **Statistics output**: Now shows intermediate stops distribution
+
+### Dataset Statistics
+| Metric | Value |
+|--------|-------|
+| Total entries | 100,000 |
+| TRIP intent | 70,000 (70%) |
+| NOT_TRIP intent | 25,000 (25%) |
+| UNKNOWN intent | 5,000 (5%) |
+| TRIP with intermediate | 10,348 (14.8% of TRIP) |
+| Languages | 6 (FR, EN, ES, DE, IT, UNKNOWN) |
+
 ## [0.2.0] Modular NLP Architecture & Performance - 2025-01-16
 
 ### Added
