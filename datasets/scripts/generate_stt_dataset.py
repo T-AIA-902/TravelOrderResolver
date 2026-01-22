@@ -34,7 +34,12 @@ from typing import Literal
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from data import StationDatabase  # noqa: E402
-from data.stt_augmentation import STTAugmenter, create_augmenter  # noqa: E402
+from data.stt_augmentation import (  # noqa: E402
+    ERROR_PROFILES,
+    STTAugmenter,
+    STTErrorConfig,
+    create_augmenter,
+)
 
 # =============================================================================
 # DATASET SCHEMA
@@ -873,9 +878,7 @@ class STTDatasetGenerator:
         """Initialize the generator."""
         self.station_db = station_db
         self.stations = [s.name for s in station_db.get_all_stations(passenger_only=True)]
-        self.major_stations = [
-            s.name for s in station_db.get_all_stations() if s.short_code
-        ]
+        self.major_stations = [s.name for s in station_db.get_all_stations() if s.short_code]
 
         # Create augmenters for different intensities
         self.augmenters = {
@@ -884,6 +887,28 @@ class STTDatasetGenerator:
             "moderate": create_augmenter("moderate", seed),
             "heavy": create_augmenter("heavy", seed),
         }
+
+        # Create TRIP-safe augmenters (no truncation to preserve ground truth)
+        self.trip_augmenters: dict[str, STTAugmenter] = {}
+        for intensity in ["clean", "light", "moderate", "heavy"]:
+            config = ERROR_PROFILES[intensity]
+            trip_config = STTErrorConfig(
+                filler_words=config.filler_words,
+                false_starts=config.false_starts,
+                repetitions=config.repetitions,
+                incomplete=0.0,  # DISABLED for TRIP entries
+                phonetic_confusion=config.phonetic_confusion,
+                station_misspelling=config.station_misspelling,
+                punctuation_errors=config.punctuation_errors,
+                capitalization_errors=config.capitalization_errors,
+                number_format=config.number_format,
+                code_switching=config.code_switching,
+                hallucinations=config.hallucinations,
+                noise_artifacts=config.noise_artifacts,
+                accent_variations=config.accent_variations,
+                homophones=config.homophones,
+            )
+            self.trip_augmenters[intensity] = STTAugmenter(config=trip_config, seed=seed)
 
         if seed is not None:
             random.seed(seed)
@@ -929,9 +954,9 @@ class STTDatasetGenerator:
             sentence = template.format(dep=dep, dest=dest)
             departure = dep
 
-        # Apply STT augmentation
+        # Apply STT augmentation (using TRIP-safe augmenters without truncation)
         intensity = self._pick_intensity()
-        augmenter = self.augmenters[intensity]
+        augmenter = self.trip_augmenters[intensity]
 
         # Optionally corrupt station names in sentence
         station_to_corrupt = dep if departure else dest
@@ -1047,9 +1072,9 @@ class STTDatasetGenerator:
         template = random.choice(TRIP_INTERMEDIATE_TEMPLATES_FR)
         sentence = template.format(dep=dep, dest=dest, via=via)
 
-        # Apply STT augmentation
+        # Apply STT augmentation (using TRIP-safe augmenters without truncation)
         intensity = self._pick_intensity()
-        augmenter = self.augmenters[intensity]
+        augmenter = self.trip_augmenters[intensity]
 
         # Optionally corrupt station names in sentence
         station_to_corrupt = random.choice([dep, via, dest])
@@ -1447,26 +1472,28 @@ def print_stats(entries: list[DatasetEntry], name: str = "Dataset") -> None:
     print(f"{'=' * 60}")
     print(f"Total entries: {len(entries)}")
 
-    print(f"\nIntent Distribution:")
+    print("\nIntent Distribution:")
     for intent, count in sorted(intent_counts.items()):
         pct = 100 * count / len(entries)
         print(f"  {intent}: {count} ({pct:.1f}%)")
 
-    print(f"\nLanguage Distribution:")
+    print("\nLanguage Distribution:")
     for lang, count in sorted(language_counts.items()):
         pct = 100 * count / len(entries)
         print(f"  {lang}: {count} ({pct:.1f}%)")
 
-    print(f"\nIntent x Language:")
+    print("\nIntent x Language:")
     for (intent, lang), count in sorted(intent_language_counts.items()):
         pct = 100 * count / len(entries)
         print(f"  {intent} / {lang}: {count} ({pct:.1f}%)")
 
     if trip_count > 0:
-        print(f"\nIntermediate Stops (TRIP only):")
+        print("\nIntermediate Stops (TRIP only):")
         pct = 100 * intermediate_count / trip_count
         print(f"  With intermediate: {intermediate_count} ({pct:.1f}% of TRIP)")
-        print(f"  Without intermediate: {trip_count - intermediate_count} ({100 - pct:.1f}% of TRIP)")
+        print(
+            f"  Without intermediate: {trip_count - intermediate_count} ({100 - pct:.1f}% of TRIP)"
+        )
 
 
 # =============================================================================
