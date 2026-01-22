@@ -300,8 +300,10 @@
 ### 7.2 Monitoring Ressources [P2]
 - [ ] Tracking CPU par requete
 - [ ] Tracking RAM par requete
+- [ ] Tracking GPU utilization par requete
 - [x] Tracking temps d'execution
-- [ ] Tracking GPU utilization (si applicable)
+- [ ] Tracking empreinte carbone par requete
+
 
 ### 7.3 Empreinte Carbone [P2]
 - [ ] Estimation CO2 par requete
@@ -533,4 +535,4 @@
 
 ---
 
-*Derniere mise a jour: 2025-01-22 (v0.3.2 - Multilingual Support & Langdetect)*
+*Derniere mise a jour: 2025-01-22 (v0.3.3 - GPU Support & Docker Updates)*
