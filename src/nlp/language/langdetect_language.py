@@ -27,9 +27,7 @@ class LangdetectLanguageDetector(LanguageDetector):
             # Set seed for reproducibility
             langdetect.DetectorFactory.seed = 0
         except ImportError:
-            raise ImportError(
-                "langdetect not available. Install with: pip install langdetect"
-            )
+            raise ImportError("langdetect not available. Install with: pip install langdetect")
 
     @property
     def name(self) -> str:
