@@ -2,11 +2,38 @@
 Language detector evaluation.
 """
 
+from __future__ import annotations
+
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Literal, overload
 
 from ..metrics import LanguageResults
 from ..progress import print_progress
+
+# Type alias for predictions dict
+PredictionsDict = dict[str, tuple[list[str], list[str]]]
+
+
+@overload
+def evaluate_language_detectors(
+    detectors: list[tuple[str, Any]],
+    data: list[dict[str, Any]],
+    batch_size: int = ...,
+    progress_callback: Callable[[int, int], None] | None = ...,
+    return_predictions: Literal[False] = ...,
+) -> dict[str, LanguageResults]:
+    ...
+
+
+@overload
+def evaluate_language_detectors(
+    detectors: list[tuple[str, Any]],
+    data: list[dict[str, Any]],
+    batch_size: int = ...,
+    progress_callback: Callable[[int, int], None] | None = ...,
+    return_predictions: Literal[True] = ...,
+) -> tuple[dict[str, LanguageResults], PredictionsDict]:
+    ...
 
 
 def evaluate_language_detectors(
@@ -14,7 +41,8 @@ def evaluate_language_detectors(
     data: list[dict[str, Any]],
     batch_size: int = 128,
     progress_callback: Callable[[int, int], None] | None = None,
-) -> dict[str, LanguageResults]:
+    return_predictions: bool = False,
+) -> dict[str, LanguageResults] | tuple[dict[str, LanguageResults], PredictionsDict]:
     """
     Evaluate all language detectors.
 
@@ -23,11 +51,15 @@ def evaluate_language_detectors(
         data: List of samples with 'sentence', 'language' keys
         batch_size: Batch size for progress reporting
         progress_callback: Optional callback for progress updates
+        return_predictions: If True, also return y_true/y_pred for confusion matrices
 
     Returns:
-        Dictionary mapping detector names to LanguageResults
+        If return_predictions=False: Dictionary mapping detector names to LanguageResults
+        If return_predictions=True: Tuple of (results_dict, predictions_dict)
+            where predictions_dict[name] = (y_true, y_pred)
     """
     results: dict[str, LanguageResults] = {}
+    all_predictions: PredictionsDict = {}
     callback = progress_callback or print_progress
 
     sentences = [sample["sentence"] for sample in data]
@@ -36,6 +68,8 @@ def evaluate_language_detectors(
     for name, detector in detectors:
         print(f"  Evaluating language: {name}...")
         r = LanguageResults(name=name)
+        y_true: list[str] = []
+        y_pred: list[str] = []
 
         if hasattr(detector, "detect_batch"):
             start = time.perf_counter()
@@ -49,6 +83,10 @@ def evaluate_language_detectors(
                 pred_lang, _ = pred
                 r.latencies.append(avg_latency)
                 r.total += 1
+
+                # Store predictions for confusion matrix
+                y_true.append(true_lang)
+                y_pred.append(pred_lang)
 
                 is_correct = pred_lang == true_lang
                 if is_correct:
@@ -70,6 +108,10 @@ def evaluate_language_detectors(
                 r.latencies.append((end - start) * 1000)
                 r.total += 1
 
+                # Store predictions for confusion matrix
+                y_true.append(true_lang)
+                y_pred.append(pred_lang)
+
                 is_correct = pred_lang == true_lang
                 if is_correct:
                     r.correct += 1
@@ -80,8 +122,11 @@ def evaluate_language_detectors(
             callback(total, total)
 
         results[name] = r
+        all_predictions[name] = (y_true, y_pred)
         print(f"    Done. Accuracy: {r.accuracy*100:.1f}%")
 
+    if return_predictions:
+        return results, all_predictions
     return results
 
 

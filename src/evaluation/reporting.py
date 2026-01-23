@@ -2,113 +2,41 @@
 Reporting utilities for evaluation results.
 
 Provides functions to print sklearn-style classification reports and export results to JSON.
+
+This module uses shared formatting functions from formatting.py (DRY principle).
+Both CLI and notebooks use the same core formatting logic.
 """
 
 import json
 from typing import Any
 
-from .metrics import ClassMetrics, CombinedResults, EntityResults, IntentResults, LanguageResults
-
-
-def _print_classification_report(
-    title: str,
-    model_name: str,
-    class_metrics: list[tuple[str, ClassMetrics, int]],
-    accuracy: float,
-    total_support: int,
-    latency_ms: float,
-) -> None:
-    """
-    Print sklearn-style classification report.
-
-    Args:
-        title: Report title (e.g., "LANGUAGE DETECTION")
-        model_name: Name of the model
-        class_metrics: List of (class_name, metrics, support) tuples
-        accuracy: Overall accuracy
-        total_support: Total number of samples
-        latency_ms: Average latency in milliseconds
-    """
-    print("\n" + "=" * 72)
-    print(f"{title}: {model_name}")
-    print("=" * 72)
-    print(f"{'':14} {'Precision':>10} {'Recall':>10} {'F1':>10} {'Support':>10}")
-    print()
-
-    precisions, recalls, f1s = [], [], []
-    for name, m, support in class_metrics:
-        print(
-            f"{name:<14} {m.precision:>10.2f} {m.recall:>10.2f} "
-            f"{m.f1_score:>10.2f} {support:>10}"
-        )
-        precisions.append(m.precision)
-        recalls.append(m.recall)
-        f1s.append(m.f1_score)
-
-    print()
-    print(f"{'accuracy':<14} {'':>10} {'':>10} {accuracy:>10.2f} {total_support:>10}")
-
-    if precisions:
-        macro_p = sum(precisions) / len(precisions)
-        macro_r = sum(recalls) / len(recalls)
-        macro_f1 = sum(f1s) / len(f1s)
-        print(
-            f"{'macro avg':<14} {macro_p:>10.2f} {macro_r:>10.2f} "
-            f"{macro_f1:>10.2f} {total_support:>10}"
-        )
-
-    print(f"{'latency':<14} {'':>10} {'':>10} {'':>10} {latency_ms:>8.1f}ms")
-    print("=" * 72)
+from .formatting import (
+    format_entity_report_ascii,
+    format_intent_report_ascii,
+    format_language_report_ascii,
+)
+from .metrics import CombinedResults, EntityResults, IntentResults, LanguageResults
 
 
 def print_table_language(results: dict[str, LanguageResults]) -> None:
     """Print sklearn-style classification reports for language detection."""
     for name, r in results.items():
-        _print_classification_report(
-            title="LANGUAGE DETECTION",
-            model_name=name,
-            class_metrics=[
-                ("fr", r.french_metrics, r.french_total),
-                ("en", r.english_metrics, r.english_total),
-                ("unk", r.unknown_lang_metrics, r.unknown_total),
-            ],
-            accuracy=r.accuracy,
-            total_support=r.total,
-            latency_ms=r.avg_latency_ms,
-        )
+        report = format_language_report_ascii(name, r)
+        print(report)
 
 
 def print_table_intent(results: dict[str, IntentResults]) -> None:
     """Print sklearn-style classification reports for intent classification."""
     for name, r in results.items():
-        _print_classification_report(
-            title="INTENT CLASSIFICATION",
-            model_name=name,
-            class_metrics=[
-                ("TRIP", r.trip_metrics, r.trip_metrics.support),
-                ("NOT_TRIP", r.not_trip_metrics, r.not_trip_metrics.support),
-                ("UNKNOWN", r.unknown_intent_metrics, r.unknown_intent_metrics.support),
-            ],
-            accuracy=r.accuracy,
-            total_support=r.total,
-            latency_ms=r.avg_latency_ms,
-        )
+        report = format_intent_report_ascii(name, r)
+        print(report)
 
 
 def print_table_entity(results: dict[str, EntityResults], title: str, table_num: int) -> None:
     """Print sklearn-style classification reports for entity extraction."""
     for name, r in results.items():
-        _print_classification_report(
-            title=title,
-            model_name=name,
-            class_metrics=[
-                ("departure", r.departure_metrics, r.departure_metrics.support),
-                ("destination", r.destination_metrics, r.destination_metrics.support),
-            ],
-            accuracy=r.accuracy,
-            total_support=r.total,
-            latency_ms=r.avg_latency_ms,
-        )
+        report = format_entity_report_ascii(name, r)
+        print(report)
 
 
 def print_table_entity_combined(
@@ -119,41 +47,15 @@ def print_table_entity_combined(
     for name in results_no_fuzzy.keys():
         # Without fuzzy
         r = results_no_fuzzy[name]
-        _print_classification_report(
-            title="ENTITY EXTRACTION",
-            model_name=name,
-            class_metrics=[
-                ("departure", r.departure_metrics, r.departure_metrics.support),
-                ("destination", r.destination_metrics, r.destination_metrics.support),
-            ],
-            accuracy=r.accuracy,
-            total_support=r.total,
-            latency_ms=r.avg_latency_ms,
-        )
+        report = format_entity_report_ascii(name, r)
+        print(report)
 
         # With fuzzy
         fuzzy_name = f"{name} + Fuzzy"
         if fuzzy_name in results_fuzzy:
             r_fuzzy = results_fuzzy[fuzzy_name]
-            _print_classification_report(
-                title="ENTITY EXTRACTION",
-                model_name=fuzzy_name,
-                class_metrics=[
-                    (
-                        "departure",
-                        r_fuzzy.departure_metrics,
-                        r_fuzzy.departure_metrics.support,
-                    ),
-                    (
-                        "destination",
-                        r_fuzzy.destination_metrics,
-                        r_fuzzy.destination_metrics.support,
-                    ),
-                ],
-                accuracy=r_fuzzy.accuracy,
-                total_support=r_fuzzy.total,
-                latency_ms=r_fuzzy.avg_latency_ms,
-            )
+            report_fuzzy = format_entity_report_ascii(fuzzy_name, r_fuzzy)
+            print(report_fuzzy)
 
 
 def print_table_combined(results: list[CombinedResults], title: str, table_num: int) -> None:
