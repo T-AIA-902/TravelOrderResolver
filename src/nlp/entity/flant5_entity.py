@@ -133,7 +133,10 @@ class FlanT5EntityExtractor(EntityExtractor):
         return self._parse_output(output)
 
     def extract_batch(
-        self, texts: List[str], batch_size: int = 8
+        self,
+        texts: List[str],
+        batch_size: int = 8,
+        progress_callback: Any = None,
     ) -> List[Dict[str, Any]]:
         """
         Extract entities from multiple texts.
@@ -141,8 +144,14 @@ class FlanT5EntityExtractor(EntityExtractor):
         Args:
             texts: List of input texts
             batch_size: Batch size (for future optimization)
+            progress_callback: Optional callback for progress reporting
 
         Returns:
             List of entity dictionaries
         """
-        return [self.extract(text) for text in texts]
+        results = []
+        for i, text in enumerate(texts):
+            results.append(self.extract(text))
+            if progress_callback and (i + 1) % batch_size == 0:
+                progress_callback(i + 1, len(texts))
+        return results
