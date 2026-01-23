@@ -115,7 +115,7 @@ Thumbs.db
 # Project Specific
 # -----------------------------------------------------------------------------
 # Personal files
-.claude/settings.json
+.claude/
 
 # Generated HTML maps
 trajet_*.html
