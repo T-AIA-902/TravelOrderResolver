@@ -81,10 +81,7 @@ TRIP_TEMPLATES_FR_BASIC = [
     "Je vais de {dep} a {dest}",
     "Aller de {dep} a {dest}",
     "De {dep} a {dest}",
-    "{dep} {dest}",
-    "{dep} - {dest}",
-    "{dep} vers {dest}",
-    "{dep} direction {dest}",
+    # Ultra-minimal moved to TRIP_TEMPLATES_FR_MINIMAL (sampled at reduced frequency)
     "Je voudrais prendre un train de {dep} a {dest}",
     "Je veux prendre le train de {dep} a {dest}",
     "Prendre le train de {dep} a {dest}",
@@ -113,7 +110,7 @@ TRIP_TEMPLATES_FR_BASIC = [
     "Y a-t-il un train de {dep} a {dest} ?",
     "Est-ce qu'il y a un train de {dep} a {dest}",
     "Je vais a {dest} depuis {dep}",
-    "{dep} puis {dest}",
+    # Ultra-minimal "{dep} puis {dest}" moved to TRIP_TEMPLATES_FR_MINIMAL
     "De {dep} jusqu'a {dest}",
     "Depuis {dep} jusqu'a {dest}",
     "Direction {dest} au depart de {dep}",
@@ -291,34 +288,27 @@ TRIP_TEMPLATES_FR_QUESTIONS = [
     "Par ou passer de {dep} a {dest}",
 ]
 
-# Destination only (30+)
+# Destination only (reduced - removed ultra-short patterns)
 TRIP_TEMPLATES_FR_DEST_ONLY = [
     "Je vais a {dest}",
     "Je voudrais aller a {dest}",
-    "Direction {dest}",
-    "Destination {dest}",
     "Faut que j'aille a {dest}",
     "Je dois me rendre a {dest}",
     "Un train pour {dest}",
     "Un billet pour {dest}",
     "Pour {dest} s'il vous plait",
-    "Vers {dest}",
-    "{dest} s'il vous plait",
+    # Ultra-short moved to TRIP_TEMPLATES_FR_MINIMAL: "Vers {dest}", "{dest}", "Direct {dest}"
     "Aller a {dest}",
     "Je pars a {dest}",
     "Je file a {dest}",
     "Je vais jusqu'a {dest}",
-    "Jusqu'a {dest}",
     "En direction de {dest}",
     "A destination de {dest}",
-    "Cap sur {dest}",
+    # "Cap sur {dest}" kept as it has French signal
     "On va a {dest}",
     "Moi je vais a {dest}",
-    "Direct {dest}",
-    "TGV pour {dest}",
-    "TER pour {dest}",
-    "Intercites pour {dest}",
-    "Le prochain pour {dest}",
+    # Ultra-short service-specific moved to TRIP_TEMPLATES_FR_MINIMAL
+    "Le prochain train pour {dest}",
     "N'importe quel train pour {dest}",
     "Peu importe je veux aller a {dest}",
     "Emmene moi a {dest}",
@@ -349,7 +339,33 @@ TRIP_TEMPLATES_FR_POLITE = [
     "Dans la mesure du possible {dep} {dest}",
 ]
 
-# Combine all French TRIP templates
+# Truncated French trip templates (recognizable pattern but incomplete)
+# Only includes sentences where BOTH intent (TRIP) and language (FRENCH) are unambiguous
+# These are labeled TRIP/FRENCH with empty entities
+TRIP_TEMPLATES_FR_TRUNCATED = [
+    "Je voudrais aller de Par...",  # "Je voudrais aller de" = clear French trip
+    "Un train de...",  # "Un train de" = clear French trip request
+    "Je veux all...",  # "Je veux aller" = clear French trip
+    "Billet pour...",  # "Billet pour" = clear French ticket request
+]
+
+# Ultra-minimal patterns (realistic but ambiguous for language detection)
+# Sampled at reduced frequency (~10% of French TRIP entries)
+# These are common user utterances but lack French language signals
+TRIP_TEMPLATES_FR_MINIMAL = [
+    "{dep} {dest}",  # "Paris Lyon"
+    "{dep} - {dest}",  # "Paris - Lyon"
+    "{dep} vers {dest}",  # "Paris vers Lyon"
+    "{dep} direction {dest}",  # "Paris direction Lyon"
+    "{dep} puis {dest}",  # "Paris puis Lyon"
+    "Vers {dest}",  # "Vers Lyon"
+    "{dest}",  # "Lyon"
+    "Direct {dest}",  # "Direct Lyon"
+    "TGV {dest}",  # "TGV Lyon"
+    "TER {dest}",  # "TER Lyon"
+]
+
+# Combine all French TRIP templates (excludes MINIMAL - sampled separately)
 TRIP_TEMPLATES_FR = (
     TRIP_TEMPLATES_FR_BASIC
     + TRIP_TEMPLATES_FR_INFORMAL
@@ -624,7 +640,7 @@ NOT_TRIP_TEMPLATES_FR_CHITCHAT = [
     "Desole",
 ]
 
-# General statements
+# General statements (reduced - removed single-word entries for realistic distribution)
 NOT_TRIP_TEMPLATES_FR_GENERAL = [
     "J'aime les trains",
     "Les trains sont souvent en retard",
@@ -641,45 +657,29 @@ NOT_TRIP_TEMPLATES_FR_GENERAL = [
     "A bas les retards",
     "Pourquoi c'est si cher",
     "C'est scandaleux",
-    "C'est nul",
-    "C'est super",
-    "Genial",
-    "Ok",
-    "D'accord",
-    "Oui",
-    "Non",
-    "Peut-etre",
+    "C'est pas terrible",
+    "C'est tres bien",
+    # Removed single-word: "Genial", "Ok", "D'accord", "Oui", "Non", "Peut-etre"
     "Je ne sais pas",
     "Aucune idee",
+    "Je ne comprends pas",
+    "Je suis perdu",
 ]
 
-# Incomplete travel (could be confused)
+# Incomplete travel (reduced - kept only multi-word phrases for realistic distribution)
 NOT_TRIP_TEMPLATES_FR_INCOMPLETE = [
     "Je voudrais",
     "Je veux aller",
-    "Un train",
-    "Voyage",
-    "Partir",
-    "Arriver",
-    "Demain",
-    "Aujourd'hui",
-    "Un billet",
-    "Je pars",
-    "Je voyage",
-    "Aller",
-    "Direction",
-    "Destination",
-    "Gare",
-    "Station",
-    "Quai",
-    "Voie",
-    "Trajet",
-    "Itineraire",
-    "TGV",
-    "TER",
-    "Intercites",
-    "Train",
-    "Reservation",
+    "Un train pour",
+    "Un billet pour",
+    "Je pars demain",
+    "Je voyage bientot",
+    "Quel train",
+    "Le prochain train",
+    "A quelle heure",
+    # Removed single-word: "Voyage", "Partir", "Arriver", "Demain", "Aujourd'hui",
+    # "Aller", "Direction", "Destination", "Gare", "Station", "Quai", "Voie",
+    # "Trajet", "Itineraire", "TGV", "TER", "Intercites", "Train", "Reservation"
 ]
 
 # Ambiguous with station names (trap sentences)
@@ -723,7 +723,6 @@ NOT_TRIP_TEMPLATES_FR_QUESTIONS = [
     "Comment ca marche",
     "Qu'est-ce que tu peux faire",
     "Aide moi",
-    "Help",
     "C'est quoi ce service",
     "Tu fais quoi",
     "Tu es qui",
@@ -768,6 +767,7 @@ NOT_TRIP_TEMPLATES_HALLUCINATIONS_EN = [
 NOT_TRIP_TEMPLATES_EN = [
     "Hello",
     "Hi",
+    "Help",
     "Good morning",
     "Good evening",
     "Thank you",
@@ -853,17 +853,13 @@ UNKNOWN_TEMPLATES = [
     "____",
     "[silence]",
     "[???]",
-    # Truncated (ambiguous - can't determine intent)
-    "Je voudrais aller de Par...",
-    "Un train de...",
-    "De Lyo...",
-    "Je veux all...",
-    "Billet pour...",
-    "Vers Ma...",
+    # Truncated (truly ambiguous - can't determine language or intent)
     "[coupure] de Paris a",
     "... Lyon",
     "... et voila",
     "puis... [coupure]",
+    "De Lyo...",  # Ambiguous: "De Lyon" could be "from Lyon" or just "of Lyon"
+    "Vers Ma...",  # Ambiguous: too incomplete to determine intent
 ]
 
 # =============================================================================
@@ -923,6 +919,46 @@ class BaseDatasetGenerator:
             language="FRENCH",
             departure=departure,
             destination=dest,
+        )
+
+    def _generate_trip_fr_minimal(self) -> DatasetEntry:
+        """Generate an ultra-minimal French TRIP entry.
+
+        These are realistic user utterances (e.g., "Paris Lyon") that lack
+        clear French language signals. Sampled at reduced frequency (~10%).
+        """
+        dep = self._random_station()
+        dest = self._random_station(exclude=[dep])
+
+        template = random.choice(TRIP_TEMPLATES_FR_MINIMAL)
+
+        # Check if it's destination-only template
+        if "{dep}" not in template:
+            sentence = template.format(dest=dest)
+            departure = ""
+        else:
+            sentence = template.format(dep=dep, dest=dest)
+            departure = dep
+
+        return DatasetEntry(
+            sentence_id=self._get_id(),
+            sentence=sentence,
+            intent="TRIP",
+            language="FRENCH",
+            departure=departure,
+            destination=dest,
+        )
+
+    def _generate_trip_fr_truncated(self) -> DatasetEntry:
+        """Generate a truncated French TRIP entry (no entities extractable)."""
+        sentence = random.choice(TRIP_TEMPLATES_FR_TRUNCATED)
+        return DatasetEntry(
+            sentence_id=self._get_id(),
+            sentence=sentence,
+            intent="TRIP",
+            language="FRENCH",
+            departure="",
+            destination="",
         )
 
     def _generate_trip_en(self) -> DatasetEntry:
@@ -1184,11 +1220,12 @@ class BaseDatasetGenerator:
         """
         Generate complete dataset with specified distribution.
 
-        Distribution:
-        - TRIP: 70% (FR: 56k, EN: 7k, ES: 2.5k, DE: 2.5k, IT: 1k, Mixed: 1k)
+        Distribution (realistic for French railway system):
+        - TRIP: 74% (FR: ~90%, EN: ~6%, other: ~2%, mixed: ~2%)
           - Of which ~15% have intermediate stops
-        - NOT_TRIP: 25% (FR: 20k, EN: 3k, ES: 0.75k, DE: 0.75k, IT: 0.5k)
-        - UNKNOWN: 5% (all UNKNOWN language)
+          - Of which ~10% are ultra-minimal (e.g., "Paris Lyon")
+        - NOT_TRIP: 25% (FR: ~90%, EN: ~8%, other: ~2%)
+        - UNKNOWN: 1% (noise, gibberish)
 
         Args:
             total: Total number of entries to generate
@@ -1196,22 +1233,24 @@ class BaseDatasetGenerator:
         """
         entries: list[DatasetEntry] = []
 
-        # Calculate counts
-        trip_count = int(total * 0.70)
-        not_trip_count = int(total * 0.25)
-        unknown_count = total - trip_count - not_trip_count
+        # Calculate counts - realistic distribution
+        trip_count = int(total * 0.74)  # 74% TRIP
+        not_trip_count = int(total * 0.25)  # 25% NOT_TRIP
+        unknown_count = total - trip_count - not_trip_count  # ~1% UNKNOWN
 
-        # TRIP distribution by language
-        trip_fr = int(trip_count * 0.80)  # 80% French
-        trip_en = int(trip_count * 0.10)  # 10% English
-        trip_es = int(trip_count * 0.0357)  # ~3.57% Spanish
-        trip_de = int(trip_count * 0.0357)  # ~3.57% German
-        trip_it = int(trip_count * 0.0143)  # ~1.43% Italian
-        trip_mixed = trip_count - trip_fr - trip_en - trip_es - trip_de - trip_it
+        # TRIP distribution by language (realistic: mostly French)
+        trip_fr = int(trip_count * 0.90)  # 90% French
+        trip_en = int(trip_count * 0.06)  # 6% English
+        trip_es = int(trip_count * 0.01)  # 1% Spanish
+        trip_de = int(trip_count * 0.01)  # 1% German
+        trip_it = int(trip_count * 0.005)  # 0.5% Italian
+        trip_mixed = trip_count - trip_fr - trip_en - trip_es - trip_de - trip_it  # ~1.5% Mixed
 
-        # Split each language into regular and intermediate
+        # Split French TRIP into regular, minimal, intermediate, and truncated
+        trip_fr_truncated = int(trip_fr * 0.01)  # 1% truncated French
+        trip_fr_minimal = int(trip_fr * 0.10)  # 10% ultra-minimal (e.g., "Paris Lyon")
         trip_fr_intermediate = int(trip_fr * intermediate_ratio)
-        trip_fr_regular = trip_fr - trip_fr_intermediate
+        trip_fr_regular = trip_fr - trip_fr_intermediate - trip_fr_truncated - trip_fr_minimal
 
         trip_en_intermediate = int(trip_en * intermediate_ratio)
         trip_en_regular = trip_en - trip_en_intermediate
@@ -1225,21 +1264,31 @@ class BaseDatasetGenerator:
         trip_it_intermediate = int(trip_it * intermediate_ratio)
         trip_it_regular = trip_it - trip_it_intermediate
 
-        # NOT_TRIP distribution by language
-        not_trip_fr = int(not_trip_count * 0.80)
-        not_trip_en = int(not_trip_count * 0.12)
-        not_trip_es = int(not_trip_count * 0.03)
-        not_trip_de = int(not_trip_count * 0.03)
-        not_trip_it = not_trip_count - not_trip_fr - not_trip_en - not_trip_es - not_trip_de
+        # NOT_TRIP distribution by language (realistic: mostly French)
+        not_trip_fr = int(not_trip_count * 0.90)  # 90% French
+        not_trip_en = int(not_trip_count * 0.08)  # 8% English
+        not_trip_es = int(not_trip_count * 0.005)  # 0.5% Spanish
+        not_trip_de = int(not_trip_count * 0.005)  # 0.5% German
+        not_trip_it = (
+            not_trip_count - not_trip_fr - not_trip_en - not_trip_es - not_trip_de
+        )  # ~1% Italian
 
-        # Generate French TRIP entries (regular + intermediate)
+        # Generate French TRIP entries (regular + minimal + intermediate + truncated)
         print(f"Generating {trip_fr_regular} French TRIP entries (regular)...")
         for _ in range(trip_fr_regular):
             entries.append(self._generate_trip_fr())
 
+        print(f"Generating {trip_fr_minimal} French TRIP entries (minimal)...")
+        for _ in range(trip_fr_minimal):
+            entries.append(self._generate_trip_fr_minimal())
+
         print(f"Generating {trip_fr_intermediate} French TRIP entries (intermediate)...")
         for _ in range(trip_fr_intermediate):
             entries.append(self._generate_trip_fr_intermediate())
+
+        print(f"Generating {trip_fr_truncated} French TRIP entries (truncated)...")
+        for _ in range(trip_fr_truncated):
+            entries.append(self._generate_trip_fr_truncated())
 
         # Generate English TRIP entries (regular + intermediate)
         print(f"Generating {trip_en_regular} English TRIP entries (regular)...")

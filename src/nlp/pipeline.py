@@ -18,7 +18,7 @@ from .entity import RegexEntityExtractor
 from .intent import RegexIntentClassifier
 from .interfaces import EntityExtractor, IntentClassifier, LanguageDetector
 from .language import RegexLanguageDetector
-from .preprocessor import Preprocessor, PreprocessorConfig
+from .pre import Preprocessor, PreprocessorConfig
 from .types import Intent, Language, PredictionResult
 
 

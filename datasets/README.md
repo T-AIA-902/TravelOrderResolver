@@ -2,9 +2,10 @@
 
 > Datasets synthetiques de demandes de voyage ferroviaire en langage naturel.
 
-**Date de generation:** Janvier 2025
+**Date de generation:** Janvier 2026
 **Nombre total d'entrees:** 100 000 par dataset
 **Seed de reproductibilite:** 42
+**Distribution:** Realiste (optimisee pour systeme ferroviaire francais)
 
 ---
 
@@ -166,39 +167,50 @@ Le module `src/data/stt_augmentation.py` simule **14 types d'erreurs** basees su
 
 ## Distribution des donnees
 
+> **Note:** Distribution optimisee pour un systeme ferroviaire francais realiste (v0.3.8).
+
 ### Distribution par intention
 
 | Intention | Nombre | Pourcentage | Description |
 |-----------|--------|-------------|-------------|
-| **TRIP** | 70 000 | 70% | Demandes de voyage (toutes langues) |
+| **TRIP** | 74 000 | 74% | Demandes de voyage (toutes langues) |
 | **NOT_TRIP** | 25 000 | 25% | Phrases non liees au voyage |
-| **UNKNOWN** | 5 000 | 5% | Bruit, hallucinations, incomprehensible |
+| **UNKNOWN** | 1 000 | 1% | Bruit, gibberish, incomprehensible |
 
 ### Distribution des arrets intermediaires (TRIP)
 
 | Type | Nombre | Pourcentage |
 |------|--------|-------------|
-| **Sans intermediaire** | ~59 500 | 85% |
-| **Avec intermediaire** | ~10 500 | 15% |
+| **Sans intermediaire** | ~63 000 | 85% |
+| **Avec intermediaire** | ~11 000 | 15% |
 
 ### Distribution par langue
 
-| Langue | Nombre | Pourcentage |
-|--------|--------|-------------|
-| **FRENCH** | 76 000 | 76% |
-| **ENGLISH** | 10 000 | 10% |
-| **SPANISH** | 3 249 | 3.2% |
-| **GERMAN** | 3 249 | 3.2% |
-| **ITALIAN** | 1 501 | 1.5% |
-| **UNKNOWN** | 6 001 | 6% |
+| Langue | Nombre | Pourcentage | Rationale |
+|--------|--------|-------------|-----------|
+| **FRENCH** | 89 100 | 89.1% | Langue principale du service SNCF |
+| **ENGLISH** | 6 440 | 6.4% | Touristes, lingua franca |
+| **SPANISH** | 865 | 0.9% | Usage minoritaire |
+| **GERMAN** | 865 | 0.9% | Usage minoritaire |
+| **ITALIAN** | 620 | 0.6% | Usage minoritaire |
+| **UNKNOWN** | 2 110 | 2.1% | Mixed language + noise |
 
 ### Distribution croisee (Intention x Langue)
 
 | Intention | FRENCH | ENGLISH | SPANISH | GERMAN | ITALIAN | UNKNOWN |
 |-----------|--------|---------|---------|--------|---------|---------|
-| TRIP | 56 000 | 7 000 | 2 499 | 2 499 | 1 001 | 1 001 |
-| NOT_TRIP | 20 000 | 3 000 | 750 | 750 | 500 | - |
-| UNKNOWN | - | - | - | - | - | 5 000 |
+| TRIP | 66 600 | 4 440 | 740 | 740 | 370 | 1 110 |
+| NOT_TRIP | 22 500 | 2 000 | 125 | 125 | 250 | - |
+| UNKNOWN | - | - | - | - | - | 1 000 |
+
+### Caracteristiques des phrases
+
+| Metrique | Valeur | Description |
+|----------|--------|-------------|
+| **TRIP < 5 mots** | ~14% | Phrases courtes (ultra-minimal, destination-only) |
+| **TRIP ultra-minimal** | ~10% | Patterns "Paris Lyon", "Vers Lyon" (TRIP_TEMPLATES_FR_MINIMAL) |
+| **NOT_TRIP < 5 mots** | ~82% | Salutations, questions courtes (realiste) |
+| **Avec fillers** | ~12% | "euh", "ben", "voila", etc. (naturel STT) |
 
 ---
 
