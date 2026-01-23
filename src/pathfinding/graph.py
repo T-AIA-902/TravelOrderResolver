@@ -227,14 +227,19 @@ class TrainGraph:
         return geodesic(pos1, pos2).km
 
     def get_path(
-        self, dep_name: str, dest_name: str, algorithm: str = "astar"
+        self,
+        dep_name: str,
+        dest_name: str,
+        intermediates: Optional[List[str]] = None,
+        algorithm: str = "astar",
     ) -> Tuple[Optional[List[str]], Optional[str], Optional[List[str]]]:
         """
-        Find shortest path between two stations.
+        Find shortest path between two stations, optionally via intermediates.
 
         Args:
             dep_name: Departure station name
             dest_name: Destination station name
+            intermediates: Optional list of intermediate station names to pass through
             algorithm: Pathfinding algorithm to use ("dijkstra" or "astar")
 
         Returns:
@@ -243,39 +248,61 @@ class TrainGraph:
             - error_message: Error string if path not found, None otherwise
             - full_uic_path: Complete list of station UICs for visualization
         """
-        start_uic = self._find_uic_by_name(dep_name)
-        end_uic = self._find_uic_by_name(dest_name)
+        # Build waypoints: departure -> intermediates -> destination
+        waypoints = [dep_name]
+        if intermediates:
+            waypoints.extend(intermediates)
+        waypoints.append(dest_name)
 
-        if not start_uic:
-            return None, f"Departure not found: {dep_name}", None
-        if not end_uic:
-            return None, f"Destination not found: {dest_name}", None
+        # Find UICs for all waypoints
+        waypoint_uics = []
+        for wp in waypoints:
+            uic = self._find_uic_by_name(wp)
+            if not uic:
+                return None, f"Station not found: {wp}", None
+            waypoint_uics.append(uic)
 
+        # Chain A* paths between consecutive waypoints
+        full_path_uics: List[str] = []
         try:
-            if algorithm == "astar":
-                full_path_uics = nx.astar_path(
-                    self.graph,
-                    start_uic,
-                    end_uic,
-                    heuristic=lambda u, v: self._heuristic(u, end_uic),
-                    weight="weight",
-                )
-            else:
-                full_path_uics = nx.shortest_path(
-                    self.graph, start_uic, end_uic, weight="weight"
-                )
-            simplified_names = self._simplify_path(full_path_uics)
+            for i in range(len(waypoint_uics) - 1):
+                start_uic = waypoint_uics[i]
+                end_uic = waypoint_uics[i + 1]
+
+                if algorithm == "astar":
+                    segment = nx.astar_path(
+                        self.graph,
+                        start_uic,
+                        end_uic,
+                        heuristic=lambda u, v: self._heuristic(u, end_uic),
+                        weight="weight",
+                    )
+                else:
+                    segment = nx.shortest_path(
+                        self.graph, start_uic, end_uic, weight="weight"
+                    )
+
+                # Avoid duplicating junction points
+                if full_path_uics and segment:
+                    full_path_uics.extend(segment[1:])
+                else:
+                    full_path_uics.extend(segment)
+
+            simplified_names = self._simplify_path(full_path_uics, waypoint_uics)
             return simplified_names, None, full_path_uics
 
         except nx.NetworkXNoPath:
             return None, "No path found", None
 
-    def _simplify_path(self, path_uics: List[str]) -> List[str]:
+    def _simplify_path(
+        self, path_uics: List[str], waypoint_uics: Optional[List[str]] = None
+    ) -> List[str]:
         """
-        Simplify path to show only key stops (hubs and line changes).
+        Simplify path to show only key stops (hubs, line changes, and waypoints).
 
         Args:
             path_uics: Full list of station UICs
+            waypoint_uics: Optional list of waypoint UICs that must be included
 
         Returns:
             Simplified list of station names
@@ -283,6 +310,7 @@ class TrainGraph:
         if not path_uics:
             return []
 
+        waypoints_set = set(waypoint_uics) if waypoint_uics else set()
         full_names = [self.graph.nodes[u]["name"] for u in path_uics]
         final_stops = [full_names[0]]
         prev_line: Optional[str] = None
@@ -294,9 +322,10 @@ class TrainGraph:
             u_name = self.graph.nodes[u]["name"]
 
             is_hub = any(x in u_name for x in ["Paris", "Lyon", "Lille", "Bordeaux", "Marseille"])
+            is_waypoint = u in waypoints_set
 
-            # Add stop if line changes or at major hub
-            if (prev_line and curr_line != prev_line) or (is_hub and "TGV" in u_name):
+            # Add stop if line changes, at major hub, or explicitly requested waypoint
+            if (prev_line and curr_line != prev_line) or (is_hub and "TGV" in u_name) or is_waypoint:
                 if final_stops[-1] != u_name:
                     final_stops.append(u_name)
             prev_line = curr_line
@@ -307,7 +336,12 @@ class TrainGraph:
 
     def _find_uic_by_name(self, search_name: str) -> Optional[str]:
         """
-        Find station UIC by name (exact match first, then partial).
+        Find station UIC by name (exact match, then prefix, then contains).
+
+        Priority:
+        1. Exact match: "Paris" == "Paris"
+        2. Prefix match: "Paris" matches "Paris Gare de Lyon"
+        3. Contains match: "Paris" matches "Cormeilles-en-Parisis" (fallback)
 
         Args:
             search_name: Station name to search
@@ -324,7 +358,13 @@ class TrainGraph:
             if data["name"].lower() == s:
                 return str(uic)
 
-        # Fall back to partial match
+        # Try prefix match (station name starts with search term)
+        for uic, data in self.graph.nodes(data=True):
+            name_lower = data["name"].lower()
+            if name_lower.startswith(s) or name_lower.startswith(s + " "):
+                return str(uic)
+
+        # Fall back to contains match
         for uic, data in self.graph.nodes(data=True):
             if s in data["name"].lower():
                 return str(uic)

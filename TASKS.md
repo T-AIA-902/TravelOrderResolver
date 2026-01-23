@@ -269,8 +269,8 @@
 
 ### 5.4 Gestion Intermediaires [P2]
 
-- [ ] Route avec contrainte de passage
-- [ ] Optimisation multi-etapes
+- [x] Route avec contrainte de passage (chainage A* entre waypoints)
+- [x] Optimisation multi-etapes (segments A→B→C)
 - [ ] Tests unitaires intermediaires
 
 ### 5.5 Temps d'Attente [P2]
@@ -604,4 +604,4 @@
 
 ---
 
-_Derniere mise a jour: 2025-01-23 (v0.3.6 - FlanT5 + A_ pathfinding)\*
+_Derniere mise a jour: 2025-01-23 (v0.3.7 - Support escales avec chainage A*)_
