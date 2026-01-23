@@ -201,6 +201,38 @@ def main() -> None:
     data = load_dataset(dataset_path)
     print(f"Loaded {len(data)} samples")
 
+    # Pre-process: Apply full NLP pre-processing pipeline
+    from src.nlp.pre import Preprocessor, PreprocessorConfig, STTArtifactFilter
+
+    stt_filter = STTArtifactFilter()
+    # Use config without lowercasing - preserves case for language detection
+    preprocessor = Preprocessor(
+        PreprocessorConfig(
+            lowercase=False,  # Preserve case for language detection
+            remove_accents=False,  # Keep accents for French
+            normalize_whitespace=True,
+            remove_punctuation=False,
+            normalize_apostrophes=True,
+            normalize_hyphens=True,
+            strip_extra_spaces=True,
+        )
+    )
+
+    print("Pre-processing: Applying STT filter + text normalization...")
+    noise_count = 0
+    for sample in data:
+        # Step 1: Clean STT artifacts
+        cleaned, is_noise = stt_filter.filter(sample["sentence"])
+        if is_noise:
+            noise_count += 1
+
+        # Step 2: Normalize text (unicode, apostrophes, hyphens, whitespace)
+        normalized = preprocessor.preprocess(cleaned)
+
+        sample["sentence"] = normalized
+
+    print(f"Pre-processing complete. {len(data)} samples processed, {noise_count} pure noise.")
+
     # Count by intent
     intent_counts: dict[str, int] = {}
     for sample in data:

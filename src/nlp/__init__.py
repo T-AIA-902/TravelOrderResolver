@@ -35,8 +35,8 @@ from .pipeline import NLPPipeline, PipelineConfig, parse_travel_request
 # Post-processors
 from .post import FuzzyPostProcessor
 
-# Preprocessor
-from .preprocessor import Preprocessor, PreprocessorConfig, preprocess, tokenize
+# Pre-processors
+from .pre import Preprocessor, PreprocessorConfig, STTArtifactFilter, preprocess, tokenize
 
 # Types
 from .types import Intent, Language, PredictionResult, TravelEntity
@@ -68,7 +68,8 @@ __all__ = [
     "NLPPipeline",
     "PipelineConfig",
     "parse_travel_request",
-    # Preprocessor
+    # Pre-processors
+    "STTArtifactFilter",
     "Preprocessor",
     "PreprocessorConfig",
     "preprocess",

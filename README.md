@@ -85,12 +85,19 @@ Output: 1,NOT_TRIP
        └─────────────────────────┼────────────────────────────────┘
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                     NLP PIPELINE (src/nlp/)                                  │
+│                          NLP PIPELINE (src/nlp/)                            │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  interfaces.py: LanguageDetector | IntentClassifier | EntityExtractor |     │
 │                 PostProcessor (ABCs)                                         │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                    PRE-PROCESSING (src/nlp/pre/)                     │  │
+│  │     STTArtifactFilter: [noise], [music], [inaudible], etc.           │  │
+│  │     Preprocessor: unicode, tokenization, accents, hyphens            │  │
+│  └──────────────────────────────────┬───────────────────────────────────┘  │
+│                                     │                                       │
+│                                     ▼                                       │
 │  ┌──────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐    │
 │  │ LANGUAGE DETECTOR│  │  INTENT CLASSIFIER  │  │  ENTITY EXTRACTOR   │    │
 │  │   (language/)    │  │     (intent/)       │  │     (entity/)       │    │
@@ -231,29 +238,29 @@ python -m src.main --audio recording.wav
 
 ```
 ========================================================================
-LANGUAGE DETECTION: Regex                              Accuracy: 67.9%
+LANGUAGE DETECTION: Regex                              Accuracy: 67.5%
 ========================================================================
                 Precision     Recall         F1    Support
 
-fr                   0.95       0.66       0.78      11400
-en                   0.80       0.64       0.71       1500
-unk                  0.29       0.80       0.42       2105
+fr                   0.98       0.68       0.80      13366
+en                   0.70       0.66       0.68        966
+unk                  0.09       0.68       0.16        673
 
-macro avg            0.68       0.70       0.64      15005
+macro avg            0.59       0.67       0.55      15005
 latency                                              0.0ms
 ========================================================================
 
 ========================================================================
-LANGUAGE DETECTION: Langdetect                         Accuracy: 73.9%
+LANGUAGE DETECTION: Langdetect                         Accuracy: 77.9%
 ========================================================================
                 Precision     Recall         F1    Support
 
-fr                   0.90       0.77       0.83      11400
-en                   0.57       0.70       0.63       1500
-unk                  0.37       0.61       0.46       2105
+fr                   0.96       0.80       0.87      13366
+en                   0.48       0.66       0.55        966
+unk                  0.14       0.55       0.23        673
 
-macro avg            0.61       0.69       0.64      15005
-latency                                              5.5ms
+macro avg            0.53       0.67       0.55      15005
+latency                                              5.4ms
 ========================================================================
 ```
 
@@ -261,97 +268,97 @@ latency                                              5.5ms
 
 ```
 ========================================================================
-INTENT CLASSIFICATION: Regex                           Accuracy: 65.3%
+INTENT CLASSIFICATION: Regex                           Accuracy: 65.8%
 ========================================================================
                 Precision     Recall         F1    Support
 
-TRIP                 0.76       0.81       0.78      10504
-NOT_TRIP             0.34       0.34       0.34       3751
-UNKNOWN              0.58       0.08       0.14        750
+TRIP                 0.76       0.80       0.78      11101
+NOT_TRIP             0.29       0.25       0.27       3754
+UNKNOWN              0.75       0.42       0.54        150
 
-macro avg            0.56       0.41       0.42      15005
+macro avg            0.60       0.49       0.53      15005
 latency                                              0.0ms
 ========================================================================
 
 ========================================================================
-INTENT CLASSIFICATION: SpaCy                           Accuracy: 75.6%
+INTENT CLASSIFICATION: SpaCy                           Accuracy: 79.1%
 ========================================================================
                 Precision     Recall         F1    Support
 
-TRIP                 0.94       0.77       0.85      10504
-NOT_TRIP             0.51       0.87       0.64       3751
-UNKNOWN              0.00       0.00       0.00        750
+TRIP                 0.94       0.78       0.85      11101
+NOT_TRIP             0.56       0.85       0.67       3754
+UNKNOWN              0.00       0.00       0.00        150
 
-macro avg            0.48       0.55       0.50      15005
-latency                                              0.9ms
+macro avg            0.50       0.54       0.51      15005
+latency                                              1.0ms
 ========================================================================
 
 ========================================================================
-INTENT CLASSIFICATION: CamemBERT                       Accuracy: 35.8%
+INTENT CLASSIFICATION: CamemBERT                       Accuracy: 64.2%
 ========================================================================
                 Precision     Recall         F1    Support
 
-TRIP                 0.85       0.18       0.30      10504
-NOT_TRIP             0.27       0.91       0.42       3751
-UNKNOWN              0.58       0.08       0.14        750
+TRIP                 0.72       0.85       0.78      11101
+NOT_TRIP             0.06       0.03       0.04       3754
+UNKNOWN              0.75       0.42       0.54        150
 
-macro avg            0.57       0.39       0.28      15005
-latency                                              4.1ms
+macro avg            0.51       0.43       0.45      15005
+latency                                              4.0ms
 ========================================================================
 ```
 
 *Note: CamemBERT uses `almanach/camembert-base` (not fine-tuned for intent classification).*
-*SpaCy achieves best accuracy (75.6%) but cannot detect UNKNOWN class.*
+*SpaCy achieves best accuracy (79.1%) but cannot detect UNKNOWN class.*
 
 ### Entity Extraction
 
 ```
 ========================================================================
-ENTITY EXTRACTION: Regex                               Accuracy: 33.1%
+ENTITY EXTRACTION: Regex                               Accuracy: 33.3%
 ========================================================================
                 Precision     Recall         F1    Support
 
-departure            0.45       0.44       0.45       9552
-destination          0.49       0.43       0.46      10504
+departure            0.45       0.44       0.45       9834
+destination          0.49       0.43       0.46      11000
 
-macro avg            0.47       0.44       0.45      20056
+macro avg            0.47       0.44       0.45      20834
 latency                                              0.0ms
 ========================================================================
 
 ========================================================================
-ENTITY EXTRACTION: Regex + Fuzzy                       Accuracy: 56.1%
+ENTITY EXTRACTION: Regex + Fuzzy                       Accuracy: 57.1%
 ========================================================================
                 Precision     Recall         F1    Support
 
-departure            0.77       0.74       0.76       9552
-destination          0.76       0.67       0.71      10504
+departure            0.77       0.75       0.76       9834
+destination          0.76       0.67       0.71      11000
 
-macro avg            0.76       0.70       0.73      20056
-latency                                              9.9ms
+macro avg            0.76       0.71       0.73      20834
+latency                                              9.2ms
 ========================================================================
 
 ========================================================================
-ENTITY EXTRACTION: SpaCy                               Accuracy: 25.0%
-========================================================================
-                Precision     Recall         F1    Support
-
-departure            0.63       0.30       0.41       9552
-destination          0.54       0.41       0.47      10504
-
-macro avg            0.58       0.36       0.44      20056
-latency                                              1.2ms
-========================================================================
-
-========================================================================
-ENTITY EXTRACTION: SpaCy + Fuzzy                       Accuracy: 31.0%
+ENTITY EXTRACTION: SpaCy                               Accuracy: 27.8%
 ========================================================================
                 Precision     Recall         F1    Support
 
-departure            0.75       0.36       0.49       9552
-destination          0.64       0.49       0.55      10504
+departure            0.64       0.32       0.43       9834
+destination          0.53       0.42       0.47      11000
 
-macro avg            0.70       0.43       0.52      20056
-latency                                              2.2ms
+macro avg            0.58       0.37       0.45      20834
+latency                                              1.1ms
+========================================================================
+
+========================================================================
+ENTITY EXTRACTION: SpaCy + Fuzzy                       Accuracy: 34.2%
+========================================================================
+                Precision     Recall         F1    Support
+
+departure            0.76       0.39       0.51       9834
+destination          0.64       0.50       0.56      11000
+
+macro avg            0.70       0.44       0.54      20834
+latency                                              2.0ms
 ========================================================================
 ```
 
@@ -359,9 +366,9 @@ latency                                              2.2ms
 
 | Use Case | Intent | Entity | Fuzzy | Intent Acc | Entity Acc | Latency |
 |----------|--------|--------|-------|------------|------------|---------|
-| **Best Accuracy** | SpaCy | Regex | ✓ | 75.6% | 56.1% | ~11ms |
-| **Best Balance** | Regex | Regex | ✓ | 65.3% | 56.1% | ~10ms |
-| **Lowest Latency** | Regex | Regex | - | 65.3% | 33.1% | <1ms |
+| **Best Accuracy** | SpaCy | Regex | ✓ | 79.1% | 57.1% | ~10ms |
+| **Best Balance** | Regex | Regex | ✓ | 65.8% | 57.1% | ~9ms |
+| **Lowest Latency** | Regex | Regex | - | 65.8% | 33.3% | <1ms |
 
 *Run: `poetry run python -m src.evaluation --eval-type all`*
 
@@ -402,9 +409,9 @@ pre-commit install
 | Nom | Role | Github | Contact Epitech |
 |-----|------|--------|-----------------|
 | Romain Bernier | Architecte | [@Romain-Ber](https://github.com/Romain-Ber) | romain.bernier@epitech.eu |
-| Victor Vattier | Référent ML & Dev | [@VictorVattierEpitech](https://github.com/VictorVattierEpitech) | victor.vattier@epitech.eu |
-| Marine Gayet | Référente Frontend & Dev | [@Marinegyt](https://github.com/Marinegyt) | marine.gayet@epitech.eu |
-| Camille Kerserho | Dev | [@Camserho](https://github.com/Camserho) | camille.kerserho@epitech.eu |
+| Victor Vattier | Référent ML | [@VictorVattierEpitech](https://github.com/VictorVattierEpitech) | victor.vattier@epitech.eu |
+| Marine Gayet | Dev Backend & ML | [@Marinegyt](https://github.com/Marinegyt) | marine.gayet@epitech.eu |
+| Camille Kerserho | Dev Backend & ML | [@Camserho](https://github.com/Camserho) | camille.kerserho@epitech.eu |
 
 ---
 
