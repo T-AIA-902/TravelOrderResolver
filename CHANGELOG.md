@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] Evaluation Module Refactor & Notebook Split - 2026-01-23
+
+### Added
+- **Confusion Matrix Module** (`src/evaluation/confusion.py`):
+  - `compute_confusion_matrix()` - Compute matrix from y_true/y_pred
+  - `format_confusion_matrix_ascii()` - ASCII table output for CLI
+  - `plot_confusion_matrix()` - Matplotlib heatmap visualization for notebooks
+- **sklearn-Style Report Formatting** (`src/evaluation/formatting.py`):
+  - `format_classification_report_md()` - Markdown tables matching sklearn format
+  - `format_classification_report_ascii()` - ASCII tables for CLI output
+  - Convenience wrappers: `format_language_report_md()`, `format_intent_report_md()`, `format_entity_report_md()`
+- **Shared Evaluation Functions** (`src/evaluation/`):
+  - `preprocessing.py` - Reusable `apply_preprocessing()` function
+  - `model_factory.py` - Factory functions for creating models
+  - DRY principle: CLI and notebooks use the same core functions
+- **Return Predictions Support** (`src/evaluation/evaluators/*.py`):
+  - All evaluators now support `return_predictions=True` parameter
+  - Returns y_true/y_pred lists for confusion matrix generation
+  - Type-safe with `Literal[True]`/`Literal[False]` overloads
+
+### Changed
+- **Notebook Split**:
+  - Renamed `evaluation.ipynb` → `full_evaluation.ipynb` (comprehensive benchmark)
+  - Created `single_evaluation.ipynb` (quick benchmark for individual models)
+- **BENCHMARK.md** (`docs/BENCHMARK.md`):
+  - Updated with full evaluation results from notebook
+  - 6 detailed sections with tables and analysis
+  - Added methodology and pipeline impact summary
+- **README.md**:
+  - Updated benchmark latencies from notebook results
+  - Added links to both notebooks
+
+### Architecture
+```
+notebooks/
+├── full_evaluation.ipynb    # Comprehensive benchmark of ALL models
+└── single_evaluation.ipynb  # Quick benchmark for YOUR model
+
+src/evaluation/
+├── confusion.py             # NEW: Confusion matrix utilities
+├── formatting.py            # UPDATED: sklearn-style formatters
+├── preprocessing.py         # NEW: Shared preprocessing
+├── model_factory.py         # NEW: Model creation factories
+└── evaluators/              # UPDATED: return_predictions support
+```
+
+---
+
 ## [0.3.8] Realistic Dataset Distribution - 2026-01-23
 
 ### Changed
