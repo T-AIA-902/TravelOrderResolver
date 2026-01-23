@@ -58,6 +58,11 @@ def create_intent_classifiers(
 
         classifiers.append(("SpaCy", SpacyIntentClassifier(device=device)))
 
+    if "flant5" in models or "all" in models:
+        from src.nlp.intent import FlanT5IntentClassifier
+
+        classifiers.append(("Flan-T5", FlanT5IntentClassifier()))
+
     return classifiers
 
 
@@ -81,6 +86,11 @@ def create_entity_extractors(
         from src.nlp.entity import CamembertEntityExtractor
 
         extractors.append(("CamemBERT", CamembertEntityExtractor(device=device)))
+
+    if "flant5" in models or "all" in models:
+        from src.nlp.entity import FlanT5EntityExtractor
+
+        extractors.append(("Flan-T5", FlanT5EntityExtractor()))
 
     return extractors
 
@@ -146,7 +156,7 @@ def main() -> None:
     parser.add_argument(
         "--models",
         nargs="+",
-        choices=["regex", "spacy", "camembert", "langdetect", "all"],
+        choices=["regex", "spacy", "camembert", "flant5", "langdetect", "all"],
         default=["all"],
         help="Models to evaluate (default: all)",
     )
@@ -161,14 +171,14 @@ def main() -> None:
     parser.add_argument(
         "--intent-model",
         nargs="+",
-        choices=["regex", "camembert", "spacy"],
+        choices=["regex", "camembert", "spacy", "flant5"],
         default=None,
         help="Intent classifier(s) to use. Overrides --models for intent.",
     )
     parser.add_argument(
         "--entity-model",
         nargs="+",
-        choices=["regex", "spacy", "camembert"],
+        choices=["regex", "spacy", "camembert", "flant5"],
         default=None,
         help="Entity extractor(s) to use. Overrides --models for entity.",
     )
