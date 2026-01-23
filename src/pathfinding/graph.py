@@ -34,11 +34,19 @@ DEFAULT_LIGNES_JSON = os.path.join(
 
 class TrainGraph:
     """
-    Railway network graph with Dijkstra pathfinding.
+    Railway network graph with Dijkstra and A* pathfinding.
 
     Builds a MultiGraph from SNCF station and line data, with optimized
     weights for high-speed lines (LGV). Provides shortest path computation
-    and path simplification to show only key stops.
+    using either Dijkstra or A* algorithm, and path simplification to show
+    only key stops.
+
+    A* uses geodesic distance as heuristic, which is admissible since the
+    straight-line distance is always <= actual path distance.
+
+    Complexity:
+        - Dijkstra: O((V + E) log V)
+        - A*: O((V + E) log V) but explores fewer nodes due to heuristic
     """
 
     def __init__(
@@ -200,8 +208,26 @@ class TrainGraph:
         # Could add logic to connect orphan nodes
         pass
 
+    def _heuristic(self, node_uic: str, goal_uic: str) -> float:
+        """
+        A* heuristic: geodesic distance to goal.
+
+        This heuristic is admissible because the straight-line distance
+        is always less than or equal to the actual path distance.
+
+        Args:
+            node_uic: Current node UIC
+            goal_uic: Goal node UIC
+
+        Returns:
+            Estimated distance to goal in km
+        """
+        pos1 = self.graph.nodes[node_uic]["pos"]
+        pos2 = self.graph.nodes[goal_uic]["pos"]
+        return geodesic(pos1, pos2).km
+
     def get_path(
-        self, dep_name: str, dest_name: str
+        self, dep_name: str, dest_name: str, algorithm: str = "astar"
     ) -> Tuple[Optional[List[str]], Optional[str], Optional[List[str]]]:
         """
         Find shortest path between two stations.
@@ -209,6 +235,7 @@ class TrainGraph:
         Args:
             dep_name: Departure station name
             dest_name: Destination station name
+            algorithm: Pathfinding algorithm to use ("dijkstra" or "astar")
 
         Returns:
             Tuple of (simplified_path, error_message, full_uic_path)
@@ -225,7 +252,18 @@ class TrainGraph:
             return None, f"Destination not found: {dest_name}", None
 
         try:
-            full_path_uics = nx.shortest_path(self.graph, start_uic, end_uic, weight="weight")
+            if algorithm == "astar":
+                full_path_uics = nx.astar_path(
+                    self.graph,
+                    start_uic,
+                    end_uic,
+                    heuristic=lambda u, v: self._heuristic(u, end_uic),
+                    weight="weight",
+                )
+            else:
+                full_path_uics = nx.shortest_path(
+                    self.graph, start_uic, end_uic, weight="weight"
+                )
             simplified_names = self._simplify_path(full_path_uics)
             return simplified_names, None, full_path_uics
 

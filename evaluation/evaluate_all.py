@@ -666,6 +666,11 @@ def create_intent_classifiers(models: List[str]) -> List[Tuple[str, Any]]:
 
         classifiers.append(("CamemBERT", CamembertIntentClassifier()))
 
+    if "flant5" in models or "all" in models:
+        from src.nlp.intent import FlanT5IntentClassifier
+
+        classifiers.append(("Flan-T5", FlanT5IntentClassifier()))
+
     return classifiers
 
 
@@ -687,6 +692,11 @@ def create_entity_extractors(models: List[str]) -> List[Tuple[str, Any]]:
         from src.nlp.entity import CamembertEntityExtractor
 
         extractors.append(("CamemBERT", CamembertEntityExtractor()))
+
+    if "flant5" in models or "all" in models:
+        from src.nlp.entity import FlanT5EntityExtractor
+
+        extractors.append(("Flan-T5", FlanT5EntityExtractor()))
 
     return extractors
 
@@ -726,7 +736,7 @@ def main():
     parser.add_argument(
         "--models",
         nargs="+",
-        choices=["regex", "spacy", "camembert", "all"],
+        choices=["regex", "spacy", "camembert", "flant5", "all"],
         default=["all"],
         help="Models to evaluate (default: all)",
     )

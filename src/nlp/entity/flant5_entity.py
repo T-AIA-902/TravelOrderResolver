@@ -1,38 +1,148 @@
 """
-Flan-T5 entity extractor stub.
+Flan-T5 entity extractor.
 
-TODO: Implement seq2seq-based entity extraction.
+Uses prompted seq2seq generation for extracting travel entities
+(departure, destination, intermediate stops) from French text.
 """
 
-from typing import Any, Dict
+import re
+from typing import Any, Dict, List
 
 from ..interfaces import EntityExtractor
 
 
 class FlanT5EntityExtractor(EntityExtractor):
     """
-    Flan-T5 entity extractor (not yet implemented).
+    Flan-T5 entity extractor using prompt engineering.
 
-    Will use prompted seq2seq generation for entity extraction.
+    Uses structured prompts to extract departure, destination,
+    and intermediate stations from travel requests.
     """
 
-    def __init__(self, model_name: str = "google/flan-t5-base") -> None:
+    # Prompt used during fine-tuning
+    PROMPT_TEMPLATE = "Extrais les villes: {text}"
+
+    def __init__(self, model_name: str | None = None) -> None:
         """
         Initialize the Flan-T5 entity extractor.
 
         Args:
-            model_name: HuggingFace model name
+            model_name: Model path or HuggingFace model name.
+                       Defaults to local fine-tuned model.
         """
-        raise NotImplementedError(
-            "FlanT5EntityExtractor is not yet implemented. "
-            "Please use RegexEntityExtractor, SpacyEntityExtractor, "
-            "or CamembertEntityExtractor."
-        )
+        from ..models.flan_t5_model import FlanT5ModelLoader
+
+        self.model_loader = FlanT5ModelLoader(model_name)
+        self._model_name = self.model_loader._model_name
+        self.model_loader.load()
+        print("Flan-T5 entity extractor ready")
 
     @property
     def name(self) -> str:
+        """Return the model name."""
         return "Flan-T5"
 
+    def _parse_output(self, output: str) -> Dict[str, Any]:
+        """
+        Parse model output to entity dictionary.
+
+        Expected format: "DEPART: Paris | ARRIVEE: Lyon | VIA: aucun"
+
+        Args:
+            output: Raw model output
+
+        Returns:
+            Dictionary with departure, destination, intermediate
+        """
+        result: Dict[str, Any] = {
+            "departure": None,
+            "destination": None,
+            "intermediate": [],
+        }
+
+        output_clean = output.strip()
+
+        # Parse DEPART
+        depart_match = re.search(
+            r"DEPART\s*:\s*([^|]+?)(?:\s*\||$)",
+            output_clean,
+            re.IGNORECASE,
+        )
+        if depart_match:
+            value = depart_match.group(1).strip()
+            if value.lower() not in ["aucun", "none", "n/a", ""]:
+                result["departure"] = value
+
+        # Parse ARRIVEE
+        arrivee_match = re.search(
+            r"ARRIVEE\s*:\s*([^|]+?)(?:\s*\||$)",
+            output_clean,
+            re.IGNORECASE,
+        )
+        if arrivee_match:
+            value = arrivee_match.group(1).strip()
+            if value.lower() not in ["aucun", "none", "n/a", ""]:
+                result["destination"] = value
+
+        # Parse VIA (intermediate stops)
+        via_match = re.search(
+            r"VIA\s*:\s*([^|]+?)(?:\s*\||$)",
+            output_clean,
+            re.IGNORECASE,
+        )
+        if via_match:
+            value = via_match.group(1).strip()
+            if value.lower() not in ["aucun", "none", "n/a", ""]:
+                intermediates = [
+                    v.strip()
+                    for v in value.split(",")
+                    if v.strip() and v.strip().lower() != "aucun"
+                ]
+                result["intermediate"] = intermediates
+
+        return result
+
     def extract(self, text: str) -> Dict[str, Any]:
-        """Extract entities using Flan-T5."""
-        raise NotImplementedError("FlanT5EntityExtractor.extract() not implemented")
+        """
+        Extract travel entities from the input text.
+
+        Args:
+            text: Input text to process
+
+        Returns:
+            Dictionary with keys:
+            - departure: Optional[str] - Starting location
+            - destination: Optional[str] - Ending location
+            - intermediate: List[str] - Intermediate stops
+        """
+        if not text or len(text.strip()) < 3:
+            return {
+                "departure": None,
+                "destination": None,
+                "intermediate": [],
+            }
+
+        prompt = self.PROMPT_TEMPLATE.format(text=text)
+
+        output = self.model_loader.generate(
+            prompt,
+            max_new_tokens=128,
+            temperature=0.1,
+        )
+
+        return self._parse_output(output)
+
+    def extract_batch(
+        self, texts: List[str], batch_size: int = 8
+    ) -> List[Dict[str, Any]]:
+        """
+        Extract entities from multiple texts.
+
+        Args:
+            texts: List of input texts
+            batch_size: Batch size (for future optimization)
+
+        Returns:
+            List of entity dictionaries
+        """
+        return [self.extract(text) for text in texts]

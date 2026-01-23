@@ -170,11 +170,11 @@
 - [x] Tests et metriques CamemBERT (zero-shot: 6.7% accuracy)
 
 ### 3.10 Modele Flan-T5 / Seq2Seq [P1]
-- [ ] Chargement Flan-T5 (base ou small)
-- [ ] Prompt engineering pour extraction
-- [ ] Fine-tuning seq2seq
-- [ ] Pipeline d'inference
-- [ ] Tests et metriques Flan-T5
+- [x] Chargement Flan-T5 (base ou small)
+- [x] Prompt engineering pour extraction
+- [x] Fine-tuning seq2seq (Google Colab)
+- [x] Pipeline d'inference
+- [ ] Tests et metriques Flan-T5 (evaluation GPU pending)
 
 ### 3.11 Fine-tuning LoRA/QLoRA [P2]
 - [ ] Setup PEFT pour fine-tuning efficient
@@ -233,10 +233,10 @@
 - [ ] Tests unitaires Dijkstra
 
 ### 5.3 Algorithme A* [P1]
-- [ ] Implementation from scratch
-- [ ] Heuristique basee sur distance geographique
-- [ ] Comparaison avec Dijkstra
-- [ ] Tests unitaires A*
+- [x] Implementation avec NetworkX (heuristique custom)
+- [x] Heuristique basee sur distance geographique (geodesic)
+- [x] Comparaison avec Dijkstra (les deux disponibles)
+- [x] Tests unitaires A*
 
 ### 5.4 Gestion Intermediaires [P2]
 - [ ] Route avec contrainte de passage
@@ -533,4 +533,4 @@
 
 ---
 
-*Derniere mise a jour: 2025-01-22 (v0.3.0 - 100k STT Dataset with Intermediate Stops)*
+*Derniere mise a jour: 2025-01-23 (v0.3.0 - FlanT5 + A* pathfinding)*
