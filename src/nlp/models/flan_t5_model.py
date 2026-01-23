@@ -68,8 +68,13 @@ class FlanT5ModelLoader:
             )
             self.__class__._model.eval()
 
-            # Determine device
-            self.__class__._device = "cuda" if torch.cuda.is_available() else "cpu"
+            # Determine device (CUDA > MPS > CPU)
+            if torch.cuda.is_available():
+                self.__class__._device = "cuda"
+            elif torch.backends.mps.is_available():
+                self.__class__._device = "mps"
+            else:
+                self.__class__._device = "cpu"
             self.__class__._model.to(self._device)
 
             print(f"Flan-T5 loaded on {self._device}")
