@@ -116,7 +116,9 @@ Thumbs.db
 # -----------------------------------------------------------------------------
 # Personal files
 .claude/
-wandb.py
+
+# Generated HTML maps
+trajet_*.html
 
 # Keep directory structure but ignore contents
 !models/.gitkeep
@@ -125,3 +127,6 @@ wandb.py
 # Environment files (keep example)
 .env
 !.env.example
+
+# Reports
+src/evaluation/reports/

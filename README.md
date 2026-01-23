@@ -87,21 +87,24 @@ Output: 1,NOT_TRIP
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                     NLP PIPELINE (src/nlp/)                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  interfaces.py: IntentClassifier | EntityExtractor | PostProcessor (ABCs)   │
+│  interfaces.py: LanguageDetector | IntentClassifier | EntityExtractor |     │
+│                 PostProcessor (ABCs)                                         │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌─────────────────────┐    ┌─────────────────────┐    ┌────────────────┐   │
-│  │  INTENT CLASSIFIER  │    │  ENTITY EXTRACTOR   │    │ POST-PROCESSOR │   │
-│  │     (intent/)       │    │     (entity/)       │    │    (post/)     │   │
-│  ├─────────────────────┤    ├─────────────────────┤    ├────────────────┤   │
-│  │ • RegexIntent       │    │ • RegexEntity       │    │ • FuzzyPost    │   │
-│  │ • CamembertIntent   │───▶│ • SpacyEntity       │───▶│   Processor    │   │
-│  │   (zero-shot)       │    │ • CamembertEntity   │    │   (RapidFuzz)  │   │
-│  └─────────────────────┘    └─────────────────────┘    └───────┬────────┘   │
-│                                                                │            │
-│  Best: Regex (71.9%) ──────▶ CamemBERT (12.7%) ──────▶ +Fuzzy (28.6%)      │
-│                                                                │            │
-└────────────────────────────────────────────────────────────────┼────────────┘
+│  ┌──────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐    │
+│  │ LANGUAGE DETECTOR│  │  INTENT CLASSIFIER  │  │  ENTITY EXTRACTOR   │    │
+│  │   (language/)    │  │     (intent/)       │  │     (entity/)       │    │
+│  └────────┬─────────┘  └──────────┬──────────┘  └──────────┬──────────┘    │
+│           │                       │                        │               │
+│           └───────────────────────┼────────────────────────┘               │
+│                                   │                                        │
+│                                   ▼                                        │
+│                        ┌────────────────┐                                  │
+│                        │ POST-PROCESSOR │                                  │
+│                        │    (post/)     │                                  │
+│                        └───────┬────────┘                                  │
+│                                │                                           │
+└────────────────────────────────┼───────────────────────────────────────────┘
                                           │
                                           ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -210,73 +213,157 @@ python -m src.speech.transcriber --audio recording.wav
 python -m src.main --audio recording.wav
 ```
 
-### API REST
+### API REST (Not Yet Implemented)
 
 ```bash
-# Demarrer le serveur
-python -m src.api.app
-
-# Requete
-curl -X POST http://localhost:8000/parse \
-  -H "Content-Type: application/json" \
-  -d '{"sentence": "Je veux aller de Paris a Lyon"}'
+# API REST not yet available
+# See TASKS.md section 6.2 for planned endpoints
 ```
 
 ---
 
 ## Benchmarks
 
-> Evalue sur `datasets/splits/short-splits/test.csv` (1,500 samples)
-> Architecture modulaire: Intent classifiers + Entity extractors + Post-processors (Fuzzy)
+> Evalue sur `datasets/augmented/test.csv` (15,005 samples avec erreurs STT simulees)
+> Format: sklearn `classification_report` style
 
-### Table 1: Intent Classification
+### Language Detection
 
-| Modele | Accuracy | Latence |
-|--------|----------|---------|
-| Regex | 71.9% | 0.07ms |
-| CamemBERT | 34.9% | 26.6ms |
+```
+========================================================================
+LANGUAGE DETECTION: Regex                              Accuracy: 67.9%
+========================================================================
+                Precision     Recall         F1    Support
 
-### Table 2: Entity Extraction (sans fuzzy)
+fr                   0.95       0.66       0.78      11400
+en                   0.80       0.64       0.71       1500
+unk                  0.29       0.80       0.42       2105
 
-| Modele | Accuracy | Precision | Recall | F1-Score | Latence |
-|--------|----------|-----------|--------|----------|---------|
-| Regex | 6.0% | 10.6% | 9.7% | 10.1% | 0.03ms |
-| SpaCy | 11.0% | 19.7% | 11.8% | 14.5% | 2.7ms |
-| CamemBERT | 12.7% | 30.8% | 22.0% | 25.3% | 1.3ms |
+macro avg            0.68       0.70       0.64      15005
+latency                                              0.0ms
+========================================================================
 
-### Table 3: Entity Extraction + Fuzzy Post-Processing
+========================================================================
+LANGUAGE DETECTION: Langdetect                         Accuracy: 73.9%
+========================================================================
+                Precision     Recall         F1    Support
 
-| Modele | Accuracy | Precision | Recall | F1-Score | Latence |
-|--------|----------|-----------|--------|----------|---------|
-| Regex + Fuzzy | 22.3% | 41.5% | 37.7% | 39.4% | 32.4ms |
-| SpaCy + Fuzzy | 20.4% | 36.5% | 22.4% | 27.3% | 1.5ms |
-| CamemBERT + Fuzzy | 28.6% | 49.7% | 35.2% | 40.6% | 3.7ms |
+fr                   0.90       0.77       0.83      11400
+en                   0.57       0.70       0.63       1500
+unk                  0.37       0.61       0.46       2105
 
-### Table 4: Combined Pipeline (Intent + Entity)
+macro avg            0.61       0.69       0.64      15005
+latency                                              5.5ms
+========================================================================
+```
 
-| Intent | Entity | Intent Acc | Entity Acc | Latence |
-|--------|--------|------------|------------|---------|
-| Regex | Regex | 71.9% | 6.0% | 0.1ms |
-| Regex | SpaCy | 71.9% | 11.0% | 6.7ms |
-| Regex | CamemBERT | 71.9% | 12.7% | 1.3ms |
-| CamemBERT | Regex | 34.9% | 6.0% | 26.9ms |
-| CamemBERT | SpaCy | 34.9% | 11.0% | 35.1ms |
-| CamemBERT | CamemBERT | 34.9% | 12.7% | 27.8ms |
+### Intent Classification
 
-### Table 5: Combined Pipeline + Fuzzy
+```
+========================================================================
+INTENT CLASSIFICATION: Regex                           Accuracy: 65.3%
+========================================================================
+                Precision     Recall         F1    Support
 
-| Intent | Entity | Intent Acc | Entity Acc | Latence |
-|--------|--------|------------|------------|---------|
-| **Regex** | **Regex + Fuzzy** | **71.9%** | **22.3%** | **1.4ms** |
-| Regex | SpaCy + Fuzzy | 71.9% | 20.4% | 7.1ms |
-| **Regex** | **CamemBERT + Fuzzy** | **71.9%** | **28.6%** | **1.4ms** |
-| CamemBERT | Regex + Fuzzy | 34.9% | 22.3% | 26.4ms |
-| CamemBERT | SpaCy + Fuzzy | 34.9% | 20.4% | 34.6ms |
-| CamemBERT | CamemBERT + Fuzzy | 34.9% | 28.6% | 28.0ms |
+TRIP                 0.76       0.81       0.78      10504
+NOT_TRIP             0.34       0.34       0.34       3751
+UNKNOWN              0.58       0.08       0.14        750
 
-**Best Pipeline**: Regex (intent) + CamemBERT (entity) + Fuzzy (post-processing)
+macro avg            0.56       0.41       0.42      15005
+latency                                              0.0ms
+========================================================================
 
-*Script: `poetry run python evaluation/evaluate_all.py --eval-type all --dataset datasets/splits/short-splits/test.csv --output-json evaluation_results.json`*
+========================================================================
+INTENT CLASSIFICATION: SpaCy                           Accuracy: 75.6%
+========================================================================
+                Precision     Recall         F1    Support
+
+TRIP                 0.94       0.77       0.85      10504
+NOT_TRIP             0.51       0.87       0.64       3751
+UNKNOWN              0.00       0.00       0.00        750
+
+macro avg            0.48       0.55       0.50      15005
+latency                                              0.9ms
+========================================================================
+
+========================================================================
+INTENT CLASSIFICATION: CamemBERT                       Accuracy: 35.8%
+========================================================================
+                Precision     Recall         F1    Support
+
+TRIP                 0.85       0.18       0.30      10504
+NOT_TRIP             0.27       0.91       0.42       3751
+UNKNOWN              0.58       0.08       0.14        750
+
+macro avg            0.57       0.39       0.28      15005
+latency                                              4.1ms
+========================================================================
+```
+
+*Note: CamemBERT uses `almanach/camembert-base` (not fine-tuned for intent classification).*
+*SpaCy achieves best accuracy (75.6%) but cannot detect UNKNOWN class.*
+
+### Entity Extraction
+
+```
+========================================================================
+ENTITY EXTRACTION: Regex                               Accuracy: 33.1%
+========================================================================
+                Precision     Recall         F1    Support
+
+departure            0.45       0.44       0.45       9552
+destination          0.49       0.43       0.46      10504
+
+macro avg            0.47       0.44       0.45      20056
+latency                                              0.0ms
+========================================================================
+
+========================================================================
+ENTITY EXTRACTION: Regex + Fuzzy                       Accuracy: 56.1%
+========================================================================
+                Precision     Recall         F1    Support
+
+departure            0.77       0.74       0.76       9552
+destination          0.76       0.67       0.71      10504
+
+macro avg            0.76       0.70       0.73      20056
+latency                                              9.9ms
+========================================================================
+
+========================================================================
+ENTITY EXTRACTION: SpaCy                               Accuracy: 25.0%
+========================================================================
+                Precision     Recall         F1    Support
+
+departure            0.63       0.30       0.41       9552
+destination          0.54       0.41       0.47      10504
+
+macro avg            0.58       0.36       0.44      20056
+latency                                              1.2ms
+========================================================================
+
+========================================================================
+ENTITY EXTRACTION: SpaCy + Fuzzy                       Accuracy: 31.0%
+========================================================================
+                Precision     Recall         F1    Support
+
+departure            0.75       0.36       0.49       9552
+destination          0.64       0.49       0.55      10504
+
+macro avg            0.70       0.43       0.52      20056
+latency                                              2.2ms
+========================================================================
+```
+
+### Recommended Configuration
+
+| Use Case | Intent | Entity | Fuzzy | Intent Acc | Entity Acc | Latency |
+|----------|--------|--------|-------|------------|------------|---------|
+| **Best Accuracy** | SpaCy | Regex | ✓ | 75.6% | 56.1% | ~11ms |
+| **Best Balance** | Regex | Regex | ✓ | 65.3% | 56.1% | ~10ms |
+| **Lowest Latency** | Regex | Regex | - | 65.3% | 33.1% | <1ms |
+
+*Run: `poetry run python -m src.evaluation --eval-type all`*
 
 ---
 
@@ -312,12 +399,12 @@ pre-commit install
 
 ## Equipe
 
-| Nom | Github | Contact Epitech |
-|-----|------|---------|
-| Romain Bernier | [@Romain-Ber](https://github.com/Romain-Ber) | romain.bernier@epitech.eu |
-| Victor Vattier | [@VictorVattierEpitech](https://github.com/VictorVattierEpitech) | email@epitech.eu |
-| Marine Gayet | [@Marinegyt](https://github.com/Marinegyt) | marine.gayet@epitech.eu |
-| Camille Kerserho | [@Camserho](https://github.com/Camserho) | camille.kerserho@epitech.eu |
+| Nom | Role | Github | Contact Epitech |
+|-----|------|--------|-----------------|
+| Romain Bernier | Architecte | [@Romain-Ber](https://github.com/Romain-Ber) | romain.bernier@epitech.eu |
+| Victor Vattier | Référent ML & Dev | [@VictorVattierEpitech](https://github.com/VictorVattierEpitech) | victor.vattier@epitech.eu |
+| Marine Gayet | Référente Frontend & Dev | [@Marinegyt](https://github.com/Marinegyt) | marine.gayet@epitech.eu |
+| Camille Kerserho | Dev | [@Camserho](https://github.com/Camserho) | camille.kerserho@epitech.eu |
 
 ---
 

@@ -29,11 +29,11 @@ WORKDIR /app
 # Copy dependency files
 COPY pyproject.toml poetry.lock* ./
 
-# Install all dependencies including ML
-RUN poetry install --with ml --no-interaction --no-ansi
+# Install all dependencies including ML and dev
+RUN poetry install --with ml,dev --no-interaction --no-ansi
 
 # Download spaCy model
-RUN python -m spacy download fr_dep_news_trf
+RUN python -m spacy download fr_core_news_lg
 
 # Copy all source code
 COPY . .

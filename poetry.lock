@@ -3286,6 +3286,21 @@ data = ["language-data (>=1.2)"]
 test = ["pytest", "pytest-cov"]
 
 [[package]]
+name = "langdetect"
+version = "1.0.9"
+description = "Language detection library ported from Google's language-detection."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "langdetect-1.0.9-py2-none-any.whl", hash = "sha256:7cbc0746252f19e76f77c0b1690aadf01963be835ef0cd4b56dddf2a8f1dfc2a"},
+    {file = "langdetect-1.0.9.tar.gz", hash = "sha256:cbc1fef89f8d062739774bd51eda3da3274006b3661d199c2655f6b3f6d605a0"},
+]
+
+[package.dependencies]
+six = "*"
+
+[[package]]
 name = "lark"
 version = "1.3.1"
 description = "a modern parsing library"
@@ -9639,4 +9654,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "5f23f936987de5951a5e9616a8bac397c3758e459c957e28073b9aadbc361428"
+content-hash = "f3e545edccb7367ba0a15e02876eaa77345bc7c346ec5ebd6ef84a30cbf4ae8c"

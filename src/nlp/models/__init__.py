@@ -1,17 +1,11 @@
 """
-NLP models for travel order resolution.
+Model loaders module.
 
-This module provides various models for extracting travel information
-from natural language text.
+This module provides model loaders for large language models.
 """
 
-from .base_model import BaseModel, Intent, PredictionResult, TravelEntity
-from .baseline_regex import BaselineRegexModel
+from .flan_t5_model import FlanT5ModelLoader
 
 __all__ = [
-    "BaseModel",
-    "BaselineRegexModel",
-    "Intent",
-    "PredictionResult",
-    "TravelEntity",
+    "FlanT5ModelLoader",
 ]

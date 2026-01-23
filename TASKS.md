@@ -189,8 +189,8 @@
 - [x] Tests et metriques ensemble
 
 ### 3.13 Support Multilingue [P2]
-- [ ] Detection de langue automatique
-- [ ] Support anglais (optionnel)
+- [x] Detection de langue automatique (RegexLanguageDetector + LangdetectLanguageDetector)
+- [x] Support anglais (optionnel) - English patterns in RegexEntityExtractor
 - [ ] Support allemand (optionnel)
 - [ ] Support espagnol (optionnel)
 
@@ -300,8 +300,10 @@
 ### 7.2 Monitoring Ressources [P2]
 - [ ] Tracking CPU par requete
 - [ ] Tracking RAM par requete
+- [ ] Tracking GPU utilization par requete
 - [x] Tracking temps d'execution
-- [ ] Tracking GPU utilization (si applicable)
+- [ ] Tracking empreinte carbone par requete
+
 
 ### 7.3 Empreinte Carbone [P2]
 - [ ] Estimation CO2 par requete
@@ -533,4 +535,4 @@
 
 ---
 
-*Derniere mise a jour: 2025-01-23 (v0.3.0 - FlanT5 + A* pathfinding)*
+*Derniere mise a jour: 2025-01-23 (v0.3.6 - FlanT5 + A* pathfinding)*

@@ -1,7 +1,7 @@
 # =============================================================================
-# Travel Order Resolver - Production Dockerfile
+# Travel Order Resolver - Production Dockerfile (GPU)
 # =============================================================================
-FROM python:3.10-slim
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -28,19 +28,15 @@ WORKDIR /app
 # Copy dependency files
 COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies (without dev dependencies)
-RUN poetry install --only main --no-interaction --no-ansi
+# Install dependencies (main + ml for GPU inference)
+RUN poetry install --only main --with ml --no-interaction --no-ansi
 
 # Download spaCy model
-RUN python -m spacy download fr_core_news_sm
+RUN python -m spacy download fr_core_news_lg
 
 # Copy application code
 COPY src/ ./src/
-COPY models/production/ ./models/production/
 COPY datasets/raw/sncf/ ./datasets/raw/sncf/
 
-# Expose API port
-EXPOSE 8000
-
-# Default command: run API
-CMD ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command: run CLI in interactive mode
+CMD ["python", "-m", "src.main", "--interactive"]

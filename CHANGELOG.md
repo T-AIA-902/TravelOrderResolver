@@ -5,6 +5,300 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] sklearn-Style Reports, 3-Class Intent & Dataset Fix - 2026-01-22
+
+### Changed
+- **sklearn-Style Classification Reports** (`src/evaluation/reporting.py`):
+  - Replaced custom tables with sklearn `classification_report` format
+  - One table per model, classes as rows (not columns)
+  - Columns: Precision, Recall, F1, Support
+  - Summary rows: accuracy, macro avg, latency
+- **3-Class Intent Classification**:
+  - Intent evaluation now reports TRIP, NOT_TRIP, and UNKNOWN classes
+  - Updated `macro_f1` to average across all 3 classes (was 2)
+  - Added `support` property to `ClassMetrics` (TP + FN)
+
+### Fixed
+- **Dataset Labeling** (`datasets/scripts/generate_base.py`):
+  - Moved YouTube/Whisper hallucinations from UNKNOWN to NOT_TRIP
+  - "Thanks for watching", "Like and subscribe", etc. are now correctly labeled NOT_TRIP
+  - UNKNOWN now only contains true gibberish: `???`, `asdfghjkl`, `[inaudible]`, truncated sentences
+  - Rationale: NOT_TRIP = "understandable but not travel", UNKNOWN = "unintelligible"
+- **Regenerated Datasets**: Base (100k) and augmented (15k test) with corrected labels
+
+### Added
+- **SpaCy Intent Classifier** (`src/nlp/intent/spacy_intent.py`):
+  - New text classification model using SpaCy's `fr_dep_news_trf`
+  - Added to CLI choices: `--intent-model spacy`
+  - Exported from `src/nlp/intent/__init__.py`
+
+### Output Format
+```
+========================================================================
+INTENT CLASSIFICATION: Regex
+========================================================================
+                Precision     Recall         F1    Support
+
+TRIP                 0.76       0.81       0.78      10504
+NOT_TRIP             0.34       0.34       0.34       3751
+UNKNOWN              0.58       0.08       0.14        750
+
+accuracy                                   0.65      15005
+macro avg            0.56       0.41       0.42      15005
+latency                                              0.0ms
+========================================================================
+```
+
+---
+
+## [0.3.4] Evaluation Fixes, Granular CLI & HuggingFace Dataset Batching - 2026-01-22
+
+### Fixed
+- **Entity Evaluator Latency** (`src/evaluation/evaluators/entity.py`):
+  - Batched extractors (SpaCy, CamemBERT) now correctly include fuzzy post-processing time
+  - Previously fuzzy time was excluded, making +Fuzzy appear faster than base model
+- **Combined Evaluator Cache** (`src/evaluation/evaluators/combined.py`):
+  - Added `fuzzy_post.matcher.clear_cache()` between pipeline combinations
+  - Ensures fair latency comparison (no cache warming across combinations)
+
+### Added
+- **Granular CLI Options** (`src/evaluation/cli.py`):
+  - `--intent-model`: Cherry-pick intent classifiers (regex, camembert)
+  - `--entity-model`: Cherry-pick entity extractors (regex, spacy, camembert)
+  - `--language-model`: Cherry-pick language detectors (regex, langdetect)
+  - `--fuzzy`: Enable fuzzy post-processing independently
+  - Auto-infers `--eval-type` when granular options provided
+- **HuggingFace Dataset Batching** (`src/nlp/utils/hf_batching.py`):
+  - New utility module for Dataset-based GPU batching
+  - `texts_to_dataset()`: Convert text list to HuggingFace Dataset
+  - `run_pipeline_batched()`: Run HuggingFace pipeline with optimal GPU throughput
+  - Uses DataLoader-based batching with proper GPU memory prefetching
+- **Per-Class Precision/Recall/F1 Metrics**:
+  - `ClassMetrics` dataclass with TP/FP/FN/TN tracking (`src/evaluation/metrics.py`)
+  - `IntentResults`: Added `trip_metrics`, `not_trip_metrics`, `unknown_intent_metrics`
+  - `LanguageResults`: Added `french_metrics`, `english_metrics`, `unknown_lang_metrics`
+  - Updated intent/language evaluators to track per-class metrics
+  - Updated `reporting.py` tables and JSON export with P/R/F1 per class
+
+### Usage Examples
+```bash
+# Specific combination
+poetry run python -m src.evaluation --intent-model regex --entity-model spacy --fuzzy
+
+# Language only
+poetry run python -m src.evaluation --language-model langdetect
+
+# Multiple models per component
+poetry run python -m src.evaluation --intent-model regex camembert --entity-model spacy
+```
+
+---
+
+## [0.3.3] GPU Support, Docker Updates & Post Module Refactoring - 2025-01-22
+
+### Added
+- **Device Utility Module** (`src/utils/device.py`):
+  - `get_torch_device(preferred)` - Auto-detect PyTorch device (cuda/cpu)
+  - `setup_spacy_device(preferred)` - Configure SpaCy GPU via `prefer_gpu()`
+  - `get_device_info()` - Get device diagnostics (GPU name, CUDA availability)
+- **GPU Support for CamemBERT Models**:
+  - `CamembertIntentClassifier`: Added `device` parameter, passes to HuggingFace pipeline
+  - `CamembertEntityExtractor`: Added `device` parameter, moves model and tensors to GPU
+- **GPU Support for SpaCy**:
+  - `SpacyEntityExtractor`: Added `device` parameter, calls `spacy.prefer_gpu()` before loading
+- **Evaluation CLI `--device` Flag**:
+  - New argument: `--device {auto,cuda,cpu}` (default: auto)
+  - Displays GPU info at startup when available
+
+### Changed
+- **Docker Files Updated**:
+  - `docker/Dockerfile`: GPU base image (`pytorch:2.1.0-cuda12.1`), `fr_dep_news_trf` model, CLI entry point
+  - `docker/Dockerfile.training`: Updated poetry install command
+  - `docker/docker-compose.yml`: Removed dead API service, added `evaluate` service, GPU reservations
+- **Post Module Refactored** (`src/nlp/post/`):
+  - Moved `src/nlp/fuzzy_matcher.py` → `src/nlp/post/station_matcher.py`
+  - Renamed `src/nlp/post/fuzzy_matcher.py` → `src/nlp/post/fuzzy_post_processor.py`
+  - Clear separation: `station_matcher.py` (core logic) vs `fuzzy_post_processor.py` (pipeline adapter)
+  - Updated `post/__init__.py` to export both `FuzzyPostProcessor` and `StationMatcher`
+
+### Architecture
+Per-model device selection with `device="auto"`:
+
+| Model Type | GPU Support | Auto-Detection |
+|------------|-------------|----------------|
+| Regex (intent/entity) | N/A | Pure Python, always CPU |
+| Langdetect | N/A | Pure Python, always CPU |
+| CamemBERT (intent/entity) | Yes | `torch.cuda.is_available()` |
+| SpaCy | Yes | `spacy.prefer_gpu()` |
+
+### Dependencies
+- PyTorch 2.5.1+cu121 (CUDA 12.1 support)
+- SpaCy GPU requires: `pip install spacy[cuda12x]`
+
+---
+
+## [0.3.2] Multilingual Support & Langdetect - 2025-01-22
+
+### Added
+- **Langdetect Language Detector** (`src/nlp/language/langdetect_language.py`):
+  - `LangdetectLanguageDetector` - Library-based detection using `langdetect`
+  - Maps ISO codes: `fr` → FRENCH, `en` → ENGLISH, others → UNKNOWN
+  - 73.8% accuracy (vs Regex 68.9%), 9.69ms latency
+  - Seed set for reproducibility (`DetectorFactory.seed = 0`)
+- **English Entity Extraction Patterns** (`src/nlp/entity/regex_entity.py`):
+  - `from_to_pattern`: Matches "from X to Y" (+ variants: towards, for)
+  - `x_to_y_pattern`: Matches simple "X to Y"
+  - `en_via_pattern`: Matches "via", "through", "stopping at"
+  - English stopwords added to `_find_potential_stations()`
+  - English articles handled in `_clean_station_name()` (the, a, an)
+- **English Entity Extraction Tests** (`tests/unit/test_nlp.py`):
+  - `TestRegexEntityExtractorEnglish` class with 6 tests
+
+### Changed
+- **Intent Enum** (`src/nlp/types.py`):
+  - Removed `NOT_FRENCH` value (was mixing language detection with intent)
+  - Intent now cleanly separates from language: `TRIP`, `NOT_TRIP`, `UNKNOWN`
+- **Pipeline** (`src/nlp/pipeline.py`):
+  - Removed early return for non-French text
+  - Intent classification now runs regardless of detected language
+- **Evaluation CLI** (`src/evaluation/cli.py`):
+  - Added `langdetect` to `--models` choices
+  - Removed `combined` and `combined_fuzzy` from `--eval-type all` (too slow)
+  - Combined evaluations now only run when explicitly requested
+- **Dependencies** (`pyproject.toml`):
+  - Added `langdetect = "^1.0.9"`
+
+### Performance Improvements
+Entity extraction accuracy improved with English patterns:
+
+| Model | Fuzzy | Before | After | Improvement |
+|-------|-------|--------|-------|-------------|
+| Regex | - | 29.2% | 32.9% | +3.7pp |
+| Regex | ✓ | 51.3% | 56.8% | +5.5pp |
+
+### Architecture
+Consistent multilingual support across all components:
+
+| Component | French | English |
+|-----------|--------|---------|
+| LanguageDetector | ✓ | ✓ |
+| IntentClassifier | ✓ | ✓ |
+| EntityExtractor | ✓ | ✓ (NEW) |
+
+---
+
+## [0.3.1] Legacy Code Removal & Pipeline Refactoring - 2025-01-22
+
+### Added
+- **Types Module** (`src/nlp/types.py`):
+  - `Intent` enum (TRIP, NOT_TRIP, UNKNOWN) - Note: NOT_FRENCH removed in 0.3.2
+  - `Language` enum (FRENCH, ENGLISH, UNKNOWN)
+  - `TravelEntity` dataclass
+  - `PredictionResult` dataclass
+  - Extracted from deleted `base_model.py` for reuse
+
+### Changed
+- **`src/nlp/pipeline.py`** - Refactored to compose modular components:
+  - Now uses `RegexLanguageDetector`, `RegexIntentClassifier`, `RegexEntityExtractor`
+  - Supports dependency injection for custom components
+  - Removed dependency on `BaselineRegexModel`
+- **`src/nlp/__init__.py`** - Removed legacy model exports (`BaseModel`, `BaselineRegexModel`)
+- **`tests/unit/test_nlp.py`** - Migrated tests from `BaselineRegexModel` to modular components
+
+### Removed
+- **Legacy Monolithic Model** (~643 lines):
+  - `src/nlp/models/` - Entire directory deleted
+  - `src/nlp/models/baseline_regex.py` (484 lines) - Combined lang+intent+entity in one class
+  - `src/nlp/models/base_model.py` (159 lines) - ABC and types (moved to `types.py`)
+
+### Architecture
+```
+src/nlp/
+├── entity/           # 3 extractors: Regex, SpaCy, CamemBERT
+├── intent/           # 2 classifiers: Regex, CamemBERT
+├── language/         # 1 detector: Regex
+├── post/             # FuzzyPostProcessor
+├── types.py          # NEW: Intent, Language, PredictionResult, TravelEntity
+├── interfaces.py     # ABCs
+├── pipeline.py       # REFACTORED: composes modular components
+├── fuzzy_matcher.py
+└── preprocessor.py
+```
+
+**Design Rationale:**
+| Task | Regex | SpaCy | CamemBERT | Why |
+|------|-------|-------|-----------|-----|
+| Entity | ✓ | ✓ | ✓ | All valid NER approaches |
+| Intent | ✓ | ✗ | ✓ | SpaCy not suited for classification |
+| Language | ✓ | ✗ | ✗ | Simple patterns, ML overkill |
+
+---
+
+## [0.3.0] Modular Evaluation & Repository Cleanup - 2025-01-22
+
+### Added
+- **Modular Evaluation Framework** (`src/evaluation/`):
+  - `cli.py` - Main CLI entry point (`python -m src.evaluation`)
+  - `data_loader.py` - Dataset loading and normalization
+  - `metrics.py` - Result dataclasses (IntentResults, EntityResults, CombinedResults, etc.)
+  - `reporting.py` - Table printing and JSON export
+  - `progress.py` - Progress callback protocol for batch processing
+  - `evaluators/` - Modular evaluators (intent, entity, language, combined)
+- **Progress Callbacks** for batch processing:
+  - `CamembertIntentClassifier.classify_batch()` - progress_callback parameter
+  - `CamembertEntityExtractor.extract_batch()` - progress_callback parameter
+  - Progress shows after each batch (default 128 samples) instead of percentage
+
+### Changed
+- **src/main.py** - Fixed broken extractor imports:
+  - Updated EXTRACTORS dict to use new modular paths (`src.nlp.entity.*`)
+  - Changed `extract_entities()` to `extract()` (new interface)
+  - Removed deprecated "fuzzy" option (use SpaCy + FuzzyPostProcessor manually)
+- **Makefile** - Updated targets:
+  - `evaluate` / `evaluate-full` now use `python -m src.evaluation`
+  - Removed broken targets: `train-baseline`, `train-camembert`, `train-flan`, `run-api`, `demo-fuzzy`
+- **.gitignore** - Added `trajet_*.html` pattern for generated map files
+
+### Removed
+- **Duplicate Code** (~1,150 lines):
+  - `src/nlp/entity_extractor.py` (721 lines) - replaced by modular `src/nlp/entity/`
+  - `src/nlp/models/{ensemble,flan_t5,spacy,camembert}_model.py` - 4 empty files
+  - `src/nlp/entity/{flant5,mistral}_entity.py` - stub files
+  - `src/nlp/intent/{flant5,mistral}_intent.py` - stub files
+- **Empty Files/Directories**:
+  - `training/*.py` - 5 empty training scripts (kept directory with .gitkeep)
+  - `src/api/` - entire empty API module
+  - `notebooks/*.ipynb` - 5 empty notebooks (kept directory with .gitkeep)
+- **Orphaned Files**:
+  - `wandb.py` - generic W&B template
+  - `trajet_AUTO.html` - generated output file
+- **Old Evaluation Module**:
+  - `evaluation/` directory (replaced by `src/evaluation/`)
+
+### Architecture
+```
+src/evaluation/           # NEW modular evaluation
+├── cli.py               # Main entry point
+├── data_loader.py       # Dataset loading
+├── metrics.py           # Result dataclasses
+├── reporting.py         # Table printing
+├── progress.py          # Progress callbacks
+└── evaluators/          # Modular evaluators
+    ├── intent.py
+    ├── entity.py
+    ├── language.py
+    └── combined.py
+
+src/nlp/entity/          # KEPT (3 extractors)
+├── regex_entity.py
+├── spacy_entity.py
+└── camembert_entity.py
+
+src/nlp/intent/          # KEPT (2 classifiers)
+├── regex_intent.py
+└── camembert_intent.py
+```
+
 ## [0.2.2] Dataset Architecture Refactoring - 2025-01-22
 
 ### Added

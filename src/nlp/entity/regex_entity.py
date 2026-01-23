@@ -58,6 +58,28 @@ class RegexEntityExtractor(EntityExtractor):
             r"^(.+?)\s+puis\s+(.+?)\s+puis\s+(.+?)$", re.IGNORECASE | re.UNICODE
         )
 
+        # ENGLISH PATTERNS
+
+        # Format: "from X to Y"
+        from_to_regex = (
+            r"(?:from)\s+(.+?)\s+"
+            r"(?:to|towards|for)\s+(.+?)"
+            r"(?:\s*[,.]|\s+(?:via|through|stopping|tomorrow|tonight|please)|$)"
+        )
+        self.from_to_pattern = re.compile(from_to_regex, re.IGNORECASE | re.UNICODE)
+
+        # Format: "X to Y" (simple)
+        self.x_to_y_pattern = re.compile(
+            r"^(.+?)\s+(?:to)\s+(.+?)(?:\s*[,.]|$)",
+            re.IGNORECASE | re.UNICODE,
+        )
+
+        # English intermediate patterns
+        en_via_regex = (
+            r"(?:via|through|stopping at|with a stop at)" r"\s+(.+?)(?:\s+(?:and|then)|$)"
+        )
+        self.en_via_pattern = re.compile(en_via_regex, re.IGNORECASE | re.UNICODE)
+
     def _find_potential_stations(self, text: str) -> List[str]:
         """
         Find potential station names in text.
@@ -68,8 +90,9 @@ class RegexEntityExtractor(EntityExtractor):
         Returns:
             List of potential station names.
         """
-        # Words to filter out
+        # Words to filter out (French + English)
         stopwords = {
+            # French pronouns
             "je",
             "tu",
             "il",
@@ -78,6 +101,7 @@ class RegexEntityExtractor(EntityExtractor):
             "vous",
             "ils",
             "elles",
+            # French articles/prepositions
             "le",
             "la",
             "les",
@@ -105,6 +129,7 @@ class RegexEntityExtractor(EntityExtractor):
             "sans",
             "dans",
             "en",
+            # French verbs/travel words
             "aller",
             "prendre",
             "partir",
@@ -139,6 +164,49 @@ class RegexEntityExtractor(EntityExtractor):
             "merci",
             "s'il",
             "plait",
+            # English pronouns
+            "i",
+            "you",
+            "he",
+            "she",
+            "we",
+            "they",
+            "it",
+            # English articles/prepositions
+            "the",
+            "a",
+            "an",
+            "to",
+            "from",
+            "for",
+            "of",
+            "in",
+            "on",
+            "at",
+            "by",
+            # English verbs/travel words
+            "want",
+            "would",
+            "like",
+            "need",
+            "going",
+            "travel",
+            "go",
+            "get",
+            "take",
+            "ticket",
+            "station",
+            "trip",
+            "journey",
+            "tomorrow",
+            "today",
+            "tonight",
+            "please",
+            "how",
+            "what",
+            "which",
+            "where",
+            "when",
         }
 
         # Split on common delimiters
@@ -183,17 +251,18 @@ class RegexEntityExtractor(EntityExtractor):
         # Remove trailing punctuation
         name = re.sub(r"[,.:;!?]+$", "", name)
 
-        # Remove leading articles and prepositions
+        # Remove leading articles and prepositions (French + English)
         name = re.sub(
-            r"^(?:le|la|les|un|une|du|de la|de l'|d'|l')\s+",
+            r"^(?:le|la|les|un|une|du|de la|de l'|d'|l'|the|a|an)\s+",
             "",
             name,
             flags=re.IGNORECASE,
         )
 
-        # Remove common trailing words
+        # Remove common trailing words (French + English)
         name = re.sub(
-            r"\s+(?:demain|aujourd'hui|ce soir|s'il vous plait|please|svp)$",
+            r"\s+(?:demain|aujourd'hui|ce soir|s'il vous plait|svp|"
+            r"tomorrow|today|tonight|please)$",
             "",
             name,
             flags=re.IGNORECASE,
@@ -251,6 +320,22 @@ class RegexEntityExtractor(EntityExtractor):
                 departure = self._clean_station_name(match.group(1))
                 destination = self._clean_station_name(match.group(2))
 
+        # ENGLISH PATTERNS
+
+        # Try English "from X to Y" pattern
+        if not departure or not destination:
+            match = self.from_to_pattern.search(text)
+            if match:
+                departure = self._clean_station_name(match.group(1))
+                destination = self._clean_station_name(match.group(2))
+
+        # Try English "X to Y" pattern
+        if not departure or not destination:
+            match = self.x_to_y_pattern.search(text)
+            if match:
+                departure = self._clean_station_name(match.group(1))
+                destination = self._clean_station_name(match.group(2))
+
         # Fallback: try to find two capitalized words/phrases
         if not departure or not destination:
             potential_stations = self._find_potential_stations(text)
@@ -260,9 +345,9 @@ class RegexEntityExtractor(EntityExtractor):
                 if len(potential_stations) > 2:
                     intermediates = potential_stations[1:-1]
 
-        # Extract intermediate stations
+        # Extract intermediate stations (French + English patterns)
         if not intermediates:
-            via_match = self.via_pattern.search(text)
+            via_match = self.via_pattern.search(text) or self.en_via_pattern.search(text)
             if via_match:
                 via = self._clean_station_name(via_match.group(1))
                 if via and via != departure and via != destination:

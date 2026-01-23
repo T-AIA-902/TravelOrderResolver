@@ -5,9 +5,11 @@ Uses the transformers zero-shot-classification pipeline to classify
 travel intent without fine-tuning.
 """
 
-from typing import List, Tuple
+from typing import Callable, List, Literal, Tuple
 
 from ..interfaces import IntentClassifier
+
+DeviceType = Literal["auto", "cuda", "cpu"]
 
 
 class CamembertIntentClassifier(IntentClassifier):
@@ -17,25 +19,35 @@ class CamembertIntentClassifier(IntentClassifier):
     Uses hypothesis templates to classify text as travel request or not.
     """
 
-    def __init__(self, model_name: str = "almanach/camembert-base") -> None:
+    def __init__(
+        self,
+        model_name: str = "almanach/camembert-base",
+        device: DeviceType = "auto",
+    ) -> None:
         """
         Initialize the CamemBERT intent classifier.
 
         Args:
             model_name: HuggingFace model name (default: almanach/camembert-base)
+            device: Device to use - "auto", "cuda", or "cpu" (default: auto)
         """
         try:
             from transformers import pipeline
         except ImportError:
             raise ImportError("transformers not available. Install with: pip install transformers")
 
+        from src.utils.device import get_torch_device
+
+        self.device = get_torch_device(device)
+
         print(f"Loading CamemBERT for zero-shot classification: {model_name}...")
         self.classifier = pipeline(
             "zero-shot-classification",
             model=model_name,
+            device=self.device,
         )
         self.labels = ["demande de voyage en train", "autre question"]
-        print("CamemBERT intent classifier ready")
+        print(f"CamemBERT intent classifier ready (device: {self.device})")
 
     @property
     def name(self) -> str:
@@ -66,46 +78,56 @@ class CamembertIntentClassifier(IntentClassifier):
 
         return ("TRIP" if is_trip else "NOT_TRIP", confidence)
 
-    def classify_batch(self, texts: List[str], batch_size: int = 128) -> List[Tuple[str, float]]:
+    def classify_batch(
+        self,
+        texts: List[str],
+        batch_size: int = 32,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> List[Tuple[str, float]]:
         """
-        Classify multiple texts in batches for efficiency.
+        Classify multiple texts efficiently using HuggingFace Dataset.
+
+        Uses Dataset-based batching for optimal GPU throughput.
 
         Args:
             texts: List of input texts to classify
-            batch_size: Number of texts per batch (default: 128)
+            batch_size: Batch size for GPU processing (default: 32)
+            progress_callback: Optional callback(current, total) for progress updates
 
         Returns:
             List of (intent_label, confidence) tuples
         """
-        results: List[Tuple[str, float]] = []
+        from src.nlp.utils.hf_batching import run_pipeline_batched
 
-        # Process in batches
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i : i + batch_size]
+        total = len(texts)
 
-            # Filter out empty/short texts and track their indices
-            valid_texts = []
-            valid_indices = []
-            batch_results: List[Tuple[str, float]] = [("UNKNOWN", 0.5)] * len(batch)
+        # Filter invalid texts, track indices
+        valid_texts = []
+        valid_indices = []
+        for i, text in enumerate(texts):
+            if len(text.strip()) >= 3:
+                valid_texts.append(text)
+                valid_indices.append(i)
 
-            for j, text in enumerate(batch):
-                if len(text.strip()) >= 3:
-                    valid_texts.append(text)
-                    valid_indices.append(j)
+        # Initialize all results as UNKNOWN
+        all_results: List[Tuple[str, float]] = [("UNKNOWN", 0.5)] * total
 
-            # Run batched classification on valid texts
-            if valid_texts:
-                batch_outputs = self.classifier(valid_texts, self.labels)
+        if valid_texts:
+            # Single batched call with Dataset optimization
+            outputs = run_pipeline_batched(
+                self.classifier,
+                valid_texts,
+                batch_size=batch_size,
+                candidate_labels=self.labels,
+            )
 
-                # Handle single result (not a list)
-                if isinstance(batch_outputs, dict):
-                    batch_outputs = [batch_outputs]
+            # Map results back to original indices
+            for idx, output in zip(valid_indices, outputs):
+                is_trip = output["labels"][0] == "demande de voyage en train"
+                confidence = output["scores"][0]
+                all_results[idx] = ("TRIP" if is_trip else "NOT_TRIP", confidence)
 
-                for idx, output in zip(valid_indices, batch_outputs):
-                    is_trip = output["labels"][0] == "demande de voyage en train"
-                    confidence = output["scores"][0]
-                    batch_results[idx] = ("TRIP" if is_trip else "NOT_TRIP", confidence)
+        if progress_callback:
+            progress_callback(total, total)
 
-            results.extend(batch_results)
-
-        return results
+        return all_results

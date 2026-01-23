@@ -1,4 +1,4 @@
-.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-camembert demo-spacy demo-fuzzy demo-regex demo-all
+.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-camembert demo-spacy demo-regex demo-all
 
 # Default target
 .DEFAULT_GOAL := help
@@ -45,14 +45,14 @@ test-e2e: ## Run end-to-end tests only
 	poetry run pytest tests/e2e -v
 
 lint: ## Run all linters
-	poetry run flake8 src tests evaluation
+	poetry run flake8 src tests
 	poetry run mypy src
-	poetry run isort --check-only src tests evaluation
-	poetry run black --check src tests evaluation
+	poetry run isort --check-only src tests
+	poetry run black --check src tests
 
 format: ## Format code with black and isort
-	poetry run isort src tests evaluation
-	poetry run black src tests evaluation
+	poetry run isort src tests
+	poetry run black src tests
 
 typecheck: ## Run type checking
 	poetry run mypy src
@@ -66,12 +66,6 @@ run: ## Run the main CLI
 
 run-interactive: ## Run in interactive mode
 	poetry run python -m src.main --interactive
-
-run-api: ## Start the API server
-	poetry run uvicorn src.api.app:app --reload --host 0.0.0.0 --port 8000
-
-run-demo: ## Launch Gradio demo (if available)
-	poetry run python -m src.api.demo
 
 # =============================================================================
 # DEMOS (Interactive with map visualization)
@@ -87,34 +81,21 @@ demo-spacy: ## Demo with SpaCy extractor
 	@echo "Demo: SpaCy extractor"
 	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor spacy
 
-demo-fuzzy: ## Demo with SpaCy + Fuzzy extractor
-	@echo "Demo: SpaCy + Fuzzy extractor"
-	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor fuzzy
-
 demo-regex: ## Demo with Regex extractor
 	@echo "Demo: Regex extractor"
 	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor regex
 
-demo-all: demo-regex demo-spacy demo-fuzzy demo-camembert ## Run demo with all extractors
+demo-all: demo-regex demo-spacy demo-camembert ## Run demo with all extractors
 
 # =============================================================================
-# NLP & TRAINING
+# NLP & EVALUATION
 # =============================================================================
 
-train-baseline: ## Train baseline model
-	poetry run python training/train_classifier.py --model baseline
+evaluate: ## Run NLP evaluation (5 tables, augmented dataset)
+	poetry run python -m src.evaluation --eval-type all --dataset datasets/augmented/test.csv
 
-train-camembert: ## Fine-tune CamemBERT
-	poetry run python training/fine_tune_camembert.py
-
-train-flan: ## Fine-tune Flan-T5
-	poetry run python training/fine_tune_flan_t5.py
-
-evaluate: ## Run NLP evaluation (5 tables, short dataset)
-	poetry run python evaluation/evaluate_all.py --eval-type all --dataset datasets/splits/short-splits/test.csv --output-json evaluation_results.json
-
-evaluate-full: ## Run NLP evaluation (5 tables, full dataset)
-	poetry run python evaluation/evaluate_all.py --eval-type all --dataset datasets/splits/test.csv --output-json evaluation_results.json
+evaluate-full: ## Run NLP evaluation (5 tables, full augmented dataset)
+	poetry run python -m src.evaluation --eval-type all --dataset datasets/augmented/stt_dataset_100k.csv
 
 # =============================================================================
 # DATA
@@ -123,14 +104,14 @@ evaluate-full: ## Run NLP evaluation (5 tables, full dataset)
 download-data: ## Download SNCF data
 	poetry run python datasets/scripts/import_sncf_data.py
 
-generate-dataset: ## Generate training dataset
-	poetry run python datasets/scripts/generate_sentences.py
+generate-dataset: ## Generate base dataset (clean, no STT errors)
+	poetry run python datasets/scripts/generate_base.py
 
-augment-data: ## Augment dataset
-	poetry run python datasets/scripts/augment_data.py
+augment-data: ## Apply STT augmentation to base dataset
+	poetry run python datasets/scripts/augment_stt.py
 
 validate-dataset: ## Validate dataset
-	poetry run python datasets/scripts/validate_dataset.py
+	poetry run python datasets/scripts/validate_dataset.py --input datasets/augmented
 
 # =============================================================================
 # MODELS

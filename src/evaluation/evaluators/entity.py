@@ -1,0 +1,154 @@
+"""
+Entity extractor evaluation.
+"""
+
+import time
+from typing import Any, Callable
+
+from ..data_loader import (
+    is_lowercase_sample,
+    is_misspelled_sample,
+    normalize_fuzzy_station,
+    normalize_location,
+)
+from ..metrics import EntityResults, update_entity_metrics
+from ..progress import print_progress
+
+
+def evaluate_entity_extractors(
+    extractors: list[tuple[str, Any]],
+    data: list[dict[str, Any]],
+    fuzzy_post: Any = None,
+    normalize_fuzzy: bool = False,
+    batch_size: int = 128,
+    progress_callback: Callable[[int, int], None] | None = None,
+) -> dict[str, EntityResults]:
+    """
+    Evaluate all entity extractors.
+
+    Args:
+        extractors: List of (name, extractor) tuples
+        data: List of samples with 'sentence', 'intent', 'departure', 'destination' keys
+        fuzzy_post: Optional fuzzy post-processor
+        normalize_fuzzy: Whether to normalize station names for comparison
+        batch_size: Batch size for batched inference
+        progress_callback: Optional callback for progress updates
+
+    Returns:
+        Dictionary mapping extractor names to EntityResults
+    """
+    results: dict[str, EntityResults] = {}
+    callback = progress_callback or print_progress
+
+    # Filter TRIP samples
+    trip_samples = [s for s in data if s["intent"] == "TRIP"]
+    sentences = [s["sentence"] for s in trip_samples]
+
+    for name, extractor in extractors:
+        suffix = " + Fuzzy" if fuzzy_post else ""
+        display_name = f"{name}{suffix}"
+        print(f"  Evaluating entity: {display_name}...")
+
+        r = EntityResults(name=display_name)
+
+        if hasattr(extractor, "extract_batch"):
+            print(f"    Using batched inference (batch_size={batch_size})...")
+            start = time.perf_counter()
+            all_entities = extractor.extract_batch(
+                sentences,
+                batch_size=batch_size,
+                progress_callback=callback,
+            )
+            extraction_time_ms = (time.perf_counter() - start) * 1000
+
+            # Time fuzzy post-processing if enabled
+            fuzzy_time_ms = 0.0
+            if fuzzy_post:
+                start = time.perf_counter()
+                all_entities = [fuzzy_post.process(e, s) for e, s in zip(all_entities, sentences)]
+                fuzzy_time_ms = (time.perf_counter() - start) * 1000
+
+            total_time_ms = extraction_time_ms + fuzzy_time_ms
+            avg_latency = total_time_ms / len(sentences) if sentences else 0
+
+            for sample, entities in zip(trip_samples, all_entities):
+                # Pass None for fuzzy_post since already applied above
+                _process_sample(r, sample, entities, None, normalize_fuzzy, avg_latency)
+        else:
+            # Sequential extraction
+            total = len(trip_samples)
+            for i, sample in enumerate(trip_samples):
+                if i % batch_size == 0:
+                    callback(i, total)
+
+                sentence = sample["sentence"]
+
+                start = time.perf_counter()
+                entities = extractor.extract(sentence)
+                if fuzzy_post:
+                    entities = fuzzy_post.process(entities, sentence)
+                end = time.perf_counter()
+
+                latency = (end - start) * 1000
+                _process_sample(r, sample, entities, None, normalize_fuzzy, latency)
+
+            callback(total, total)
+
+        results[display_name] = r
+        print(f"    Done. Accuracy: {r.accuracy*100:.1f}%")
+
+    return results
+
+
+def _process_sample(
+    r: EntityResults,
+    sample: dict[str, Any],
+    entities: dict[str, Any],
+    fuzzy_post: Any,
+    normalize_fuzzy: bool,
+    latency: float,
+) -> None:
+    """Process a single sample and update results."""
+    sentence = sample["sentence"]
+    orig_true_dep = normalize_location(sample.get("departure"))
+    orig_true_dest = normalize_location(sample.get("destination"))
+    true_dep = orig_true_dep
+    true_dest = orig_true_dest
+
+    # Apply fuzzy post-processing if provided
+    if fuzzy_post:
+        entities = fuzzy_post.process(entities, sentence)
+
+    r.latencies.append(latency)
+
+    # Get predictions
+    pred_dep = normalize_location(entities.get("departure"))
+    pred_dest = normalize_location(entities.get("destination"))
+
+    # Normalize for fuzzy comparison
+    if normalize_fuzzy:
+        pred_dep = normalize_fuzzy_station(pred_dep)
+        pred_dest = normalize_fuzzy_station(pred_dest)
+        true_dep = normalize_fuzzy_station(true_dep)
+        true_dest = normalize_fuzzy_station(true_dest)
+
+    r.total += 1
+
+    # Update metrics
+    dep_correct = update_entity_metrics(r.departure_metrics, pred_dep, true_dep)
+    dest_correct = update_entity_metrics(r.destination_metrics, pred_dest, true_dest)
+
+    both_correct = dep_correct and dest_correct
+    if both_correct:
+        r.correct += 1
+
+    # Category metrics
+    if is_misspelled_sample(sentence, orig_true_dep or "", orig_true_dest or ""):
+        r.misspelling_total += 1
+        if both_correct:
+            r.misspelling_correct += 1
+
+    if is_lowercase_sample(sentence):
+        r.lowercase_total += 1
+        if both_correct:
+            r.lowercase_correct += 1

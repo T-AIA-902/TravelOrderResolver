@@ -5,14 +5,13 @@ This module provides the TravelOrderResolver class that orchestrates
 entity extraction, pathfinding, and visualization for travel requests.
 
 Supports multiple extraction backends:
-- camembert: Fine-tuned CamemBERT NER (best accuracy)
+- camembert: Zero-shot CamemBERT NER (best accuracy)
 - spacy: spaCy fr_core_news_lg NER
-- fuzzy: SpaCy + RapidFuzz station matching
 - regex: Rule-based baseline
 
 Usage:
     python -m src.main --extractor camembert
-    python -m src.main --extractor spacy
+    python -m src.main --extractor regex
 """
 
 import argparse
@@ -44,10 +43,9 @@ class TravelOrderResolver:
 
     # Available extraction backends
     EXTRACTORS: Dict[str, str] = {
-        "camembert": "src.nlp.entity_extractor.CamembertEntityExtractor",
-        "spacy": "src.nlp.entity_extractor.SpacyEntityExtractor",
-        "fuzzy": "src.nlp.entity_extractor.FuzzyEntityExtractor",
-        "regex": "src.nlp.models.baseline_regex.BaselineRegexModel",
+        "camembert": "src.nlp.entity.camembert_entity.CamembertEntityExtractor",
+        "spacy": "src.nlp.entity.spacy_entity.SpacyEntityExtractor",
+        "regex": "src.nlp.entity.regex_entity.RegexEntityExtractor",
     }
 
     # Instance attributes
@@ -125,7 +123,7 @@ class TravelOrderResolver:
             TravelResult with extracted entities and computed path
         """
         # Extract entities
-        entities = self.extractor.extract_entities(text)
+        entities = self.extractor.extract(text)
 
         departure = entities.get("departure")
         destination = entities.get("destination")
@@ -284,13 +282,11 @@ def main() -> None:
 Examples:
   python -m src.main --extractor camembert
   python -m src.main --extractor spacy
-  python -m src.main --extractor fuzzy
   python -m src.main --extractor regex
 
 Available extractors:
-  camembert  Fine-tuned CamemBERT NER (best accuracy)
+  camembert  Zero-shot CamemBERT NER (best accuracy)
   spacy      spaCy fr_core_news_lg NER
-  fuzzy      SpaCy + RapidFuzz station matching
   regex      Rule-based baseline
         """,
     )

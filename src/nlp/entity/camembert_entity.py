@@ -5,9 +5,11 @@ Uses exact string matching against station database.
 This is the zero-shot baseline (no fine-tuning on SNCF data).
 """
 
-from typing import Any, Dict, List, Set
+from typing import Any, Callable, Dict, List, Literal, Set
 
 from ..interfaces import EntityExtractor
+
+DeviceType = Literal["auto", "cuda", "cpu"]
 
 
 class CamembertEntityExtractor(EntityExtractor):
@@ -26,6 +28,7 @@ class CamembertEntityExtractor(EntityExtractor):
         self,
         model_name: str = "almanach/camembert-base",
         threshold: float = 0.85,
+        device: DeviceType = "auto",
     ) -> None:
         """
         Initialize the zero-shot CamemBERT extractor.
@@ -33,6 +36,7 @@ class CamembertEntityExtractor(EntityExtractor):
         Args:
             model_name: HuggingFace model name (default: almanach/camembert-base)
             threshold: Minimum cosine similarity for station matching (default: 0.85)
+            device: Device to use - "auto", "cuda", or "cpu" (default: auto)
         """
         try:
             import torch
@@ -42,9 +46,14 @@ class CamembertEntityExtractor(EntityExtractor):
                 "transformers/torch not available. " "Install with: pip install transformers torch"
             )
 
+        from src.utils.device import get_torch_device
+
+        self.device = get_torch_device(device)
+
         print(f"Loading CamemBERT base model: {model_name}...")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name)
+        self.model = self.model.to(self.device)  # Move model to device
         self.model.eval()  # Set to evaluation mode
         self.threshold = threshold
         self.torch = torch
@@ -55,7 +64,9 @@ class CamembertEntityExtractor(EntityExtractor):
         self.station_db = StationDatabase()
         self.station_db.load()
         self._precompute_station_embeddings()
-        print(f"CamemBERT zero-shot extractor ready (threshold: {threshold})")
+        print(
+            f"CamemBERT zero-shot extractor ready (device: {self.device}, threshold: {threshold})"
+        )
 
     @property
     def name(self) -> str:
@@ -67,6 +78,8 @@ class CamembertEntityExtractor(EntityExtractor):
             inputs = self.tokenizer(
                 text, return_tensors="pt", padding=True, truncation=True, max_length=32
             )
+            # Move inputs to device
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
             outputs = self.model(**inputs)
             # Mean pooling over token embeddings (excluding special tokens)
             attention_mask = inputs["attention_mask"]
@@ -202,3 +215,36 @@ class CamembertEntityExtractor(EntityExtractor):
                 result["intermediate"] = [m["matched_city"] for m in matches[1:-1]]
 
         return result
+
+    def extract_batch(
+        self,
+        texts: List[str],
+        batch_size: int = 128,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Extract entities from multiple texts.
+
+        Args:
+            texts: List of input texts to process
+            batch_size: Batch size for progress reporting
+            progress_callback: Optional callback(current, total) for progress updates
+
+        Returns:
+            List of entity dictionaries
+        """
+        results: List[Dict[str, Any]] = []
+        total = len(texts)
+
+        for i, text in enumerate(texts):
+            results.append(self.extract(text))
+
+            # Report progress at batch boundaries
+            if progress_callback and (i + 1) % batch_size == 0:
+                progress_callback(i + 1, total)
+
+        # Final progress update
+        if progress_callback:
+            progress_callback(total, total)
+
+        return results
