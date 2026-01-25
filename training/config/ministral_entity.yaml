@@ -1,0 +1,51 @@
+# Ministral Entity Extraction Training Config
+# QLoRA fine-tuning for generative entity extraction
+
+model:
+  # Unsloth-optimized variant: faster training, lower memory
+  name: "unsloth/Ministral-3-3B-Base-2512-unsloth-bnb-4bit"
+  max_seq_length: 2048
+
+lora:
+  r: 32  # Higher rank for more complex task
+  lora_alpha: 64
+  lora_dropout: 0  # MUST be 0 for Unsloth fast patching
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+  bias: "none"
+  task_type: "CAUSAL_LM"
+
+training:
+  output_dir: "models/ministral-entity-lora"
+  num_train_epochs: 3
+  per_device_train_batch_size: 4  # Smaller due to longer sequences
+  per_device_eval_batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate: 1.0e-4  # Lower LR for generative
+  weight_decay: 0.001
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  fp16: true
+  logging_steps: 50
+  eval_strategy: "steps"
+  eval_steps: 500
+  save_steps: 500
+  save_total_limit: 3
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  greater_is_better: false
+  report_to: "none"
+
+data:
+  train_file: "datasets/base/train.json"
+  val_file: "datasets/base/val.json"
+  test_file: "datasets/base/test.json"
+  max_length: 512  # Longer for JSON output
+  trip_only: true  # Only train on TRIP samples
+
+debug:
+  num_train_samples: null
+  num_val_samples: null

@@ -1,4 +1,4 @@
-.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-camembert demo-spacy demo-regex demo-all
+.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-camembert demo-spacy demo-regex demo-all colab-notebook install-adapter test-unified eval-unified
 
 # Default target
 .DEFAULT_GOAL := help
@@ -119,6 +119,66 @@ validate-dataset: ## Validate dataset
 
 download-models: ## Download pre-trained models
 	./scripts/download_models.sh
+
+# =============================================================================
+# TRAINING (QLoRA Fine-tuning)
+# =============================================================================
+
+# NOTE: Local training requires ~9.73 GB VRAM (RTX 2060 6GB is insufficient)
+# Use Google Colab for training: training/notebooks/ministral_unified_colab.ipynb
+
+train-ministral-intent: ## Train Ministral for intent classification (requires ~10GB VRAM)
+	poetry run python -m training.scripts.train_ministral_intent --config training/config/ministral_intent.yaml
+
+train-ministral-entity: ## Train Ministral for entity extraction (requires ~10GB VRAM)
+	poetry run python -m training.scripts.train_ministral_entity --config training/config/ministral_entity.yaml
+
+train-ministral-all: train-ministral-intent train-ministral-entity ## Train both Ministral models
+
+merge-lora-intent: ## Merge intent LoRA adapter with base model
+	poetry run python -m training.scripts.merge_lora_weights \
+		--adapter-path models/ministral-intent-lora \
+		--output-dir models/ministral-intent-merged
+
+merge-lora-entity: ## Merge entity LoRA adapter with base model
+	poetry run python -m training.scripts.merge_lora_weights \
+		--adapter-path models/ministral-entity-lora \
+		--output-dir models/ministral-entity-merged
+
+# =============================================================================
+# MINISTRAL UNIFIED (Train on Colab, evaluate locally)
+# =============================================================================
+
+colab-notebook: ## Open Colab notebook URL for unified training
+	@echo "Open this notebook in Google Colab for training:"
+	@echo "https://colab.research.google.com/github/$(shell git remote get-url origin | sed 's/.*github.com[:/]//;s/.git$$//')/blob/$(shell git branch --show-current)/training/notebooks/ministral_unified_colab.ipynb"
+	@echo ""
+	@echo "After training, download ministral-unified-lora.zip and run:"
+	@echo "  make install-adapter"
+
+install-adapter: ## Install downloaded LoRA adapter from Colab
+	@if [ -f ministral-unified-lora.zip ]; then \
+		unzip -o ministral-unified-lora.zip -d models/; \
+		echo "Adapter installed to models/ministral-unified-lora/"; \
+	else \
+		echo "Error: ministral-unified-lora.zip not found"; \
+		echo "Download it from Colab first."; \
+		exit 1; \
+	fi
+
+test-unified: ## Test unified Ministral model inference
+	@if [ -d models/ministral-unified-lora ]; then \
+		poetry run python -c "from src.nlp.unified import MinistralUnifiedNLP; \
+		nlp = MinistralUnifiedNLP('models/ministral-unified-lora'); \
+		print('Test 1:', nlp.process('Je voudrais aller de Paris a Lyon')); \
+		print('Test 2:', nlp.process('Quel temps fait-il demain?'))"; \
+	else \
+		echo "Error: Adapter not found. Run 'make install-adapter' first."; \
+		exit 1; \
+	fi
+
+eval-unified: ## Evaluate unified Ministral model
+	poetry run python -m src.evaluation --models ministral-unified --eval-type all
 
 # =============================================================================
 # DOCKER

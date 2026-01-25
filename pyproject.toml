@@ -65,6 +65,13 @@ codecarbon = "^2.3"
 # Fine-tuning
 peft = "^0.7"
 accelerate = "^0.25"
+# QLoRA / Quantization
+bitsandbytes = "^0.45"
+scipy = "^1.11"
+# Unsloth - fast LLM fine-tuning
+unsloth = {version = "^2024.12", extras = ["colab-new"]}
+# TRL - Transformer Reinforcement Learning (SFTTrainer)
+trl = "^0.9"
 
 [tool.poetry.group.notebooks.dependencies]
 jupyter = "^1.0"
