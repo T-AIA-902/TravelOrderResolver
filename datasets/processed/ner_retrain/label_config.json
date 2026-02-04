@@ -1,0 +1,23 @@
+{
+  "label_list": [
+    "O",
+    "B-DEP",
+    "I-DEP",
+    "B-DEST",
+    "I-DEST"
+  ],
+  "label2id": {
+    "O": 0,
+    "B-DEP": 1,
+    "I-DEP": 2,
+    "B-DEST": 3,
+    "I-DEST": 4
+  },
+  "id2label": {
+    "0": "O",
+    "1": "B-DEP",
+    "2": "I-DEP",
+    "3": "B-DEST",
+    "4": "I-DEST"
+  }
+}

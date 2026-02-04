@@ -44,6 +44,7 @@ class TravelOrderResolver:
     # Available extraction backends
     EXTRACTORS: Dict[str, str] = {
         "camembert": "src.nlp.entity.camembert_entity.CamembertEntityExtractor",
+        "camembert_ner": "src.nlp.entity.camembert_ner_retrain_entity.CamembertNerRetrainExtractor",
         "spacy": "src.nlp.entity.spacy_entity.SpacyEntityExtractor",
         "regex": "src.nlp.entity.regex_entity.RegexEntityExtractor",
     }

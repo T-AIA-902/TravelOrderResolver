@@ -264,15 +264,15 @@ pip install seqeval
 UTILISATION:
 
 # 1. Preparer les donnees
-python -m training.camembert_ner_native.prepare_data
+python -m training.camembert_ner_retrain.prepare_data
 
 # 2. Entrainer le modele (sauvegarde dans models/camembert-ner-retrain/)
-python -m training.camembert_ner_native.train
+python -m models.camembert-ner-retrain.train
 
 # 3. Evaluer
-python -m training.camembert_ner_native.evaluate
+python -m training.camembert_ner_retrain.evaluate
 
 # 4. Inference
-python -m training.camembert_ner_native.inference --sentence "Je veux aller de Paris a Lyon"
+python -m training.camembert_ner_retrain.inference --sentence "Je veux aller de Paris a Lyon"
 
 
