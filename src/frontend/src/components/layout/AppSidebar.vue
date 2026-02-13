@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import { LayoutDashboard, MessageSquare, Brain, BarChart3, Map } from 'lucide-vue-next'
+import { LayoutDashboard, MessageSquare, BarChart3, Map } from 'lucide-vue-next'
 
 const route = useRoute()
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/chat', label: 'Chat', icon: MessageSquare },
-  { to: '/nlp', label: 'NLP', icon: Brain },
   { to: '/evaluation', label: 'Évaluation', icon: BarChart3 },
   { to: '/map', label: 'Carte', icon: Map },
 ]

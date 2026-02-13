@@ -16,12 +16,6 @@ const router = createRouter({
       component: () => import('../pages/ChatPage.vue'),
     },
     {
-      path: '/nlp',
-      name: 'nlp-playground',
-      meta: { title: 'NLP' },
-      component: () => import('../pages/NlpPlaygroundPage.vue'),
-    },
-    {
       path: '/evaluation',
       name: 'evaluation',
       meta: { title: 'Évaluation' },
