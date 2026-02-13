@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { Send } from 'lucide-vue-next'
+import RecordButton from './RecordButton.vue'
+import { useAudioRecorder } from '../../composables/useAudioRecorder'
 
 defineProps<{
   disabled: boolean
@@ -11,6 +13,8 @@ const emit = defineEmits<{
 }>()
 
 const text = ref('')
+
+const { state: recorderState, transcription, startRecording, stopRecording } = useAudioRecorder()
 
 function handleSend() {
   const trimmed = text.value.trim()
@@ -25,6 +29,21 @@ function onKeydown(e: KeyboardEvent) {
     handleSend()
   }
 }
+
+function onToggleRecord() {
+  if (recorderState.value === 'idle') {
+    startRecording()
+  } else if (recorderState.value === 'recording') {
+    stopRecording()
+  }
+}
+
+// When transcription succeeds, auto-send the text
+watch(transcription, (val) => {
+  if (val?.text) {
+    emit('send', val.text)
+  }
+})
 </script>
 
 <template>
@@ -38,6 +57,7 @@ function onKeydown(e: KeyboardEvent) {
         class="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-5 py-3.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
         @keydown="onKeydown"
       />
+      <RecordButton :state="recorderState" :disabled="disabled" @toggle="onToggleRecord" />
       <button
         type="button"
         :disabled="disabled || !text.trim()"
@@ -47,5 +67,9 @@ function onKeydown(e: KeyboardEvent) {
         <Send class="h-5 w-5" />
       </button>
     </div>
+    <!-- Transcription status -->
+    <p v-if="recorderState === 'processing'" class="mt-2 text-xs text-gray-400">
+      Transcription en cours...
+    </p>
   </div>
 </template>
