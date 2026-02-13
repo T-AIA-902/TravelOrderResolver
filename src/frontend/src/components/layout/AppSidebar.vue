@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import { LayoutDashboard, MessageSquare, BarChart3 } from 'lucide-vue-next'
+import { Home, MessageSquare, BarChart3, FileText, Database, Train } from 'lucide-vue-next'
 
 const route = useRoute()
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/', label: 'Home', icon: Home },
   { to: '/chat', label: 'Chat', icon: MessageSquare },
   { to: '/evaluation', label: 'Évaluation', icon: BarChart3 },
+  { to: '/dataset', label: 'Dataset', icon: Database },
+  { to: '/rapports', label: 'Rapports', icon: FileText },
 ]
 
 function isActive(to: string): boolean {
@@ -17,35 +19,32 @@ function isActive(to: string): boolean {
 </script>
 
 <template>
-  <aside
-    class="group fixed left-0 top-0 z-40 flex h-screen w-16 flex-col bg-slate-900 text-white transition-all duration-300 ease-in-out hover:w-56"
-  >
-    <!-- Logo / Title -->
-    <router-link to="/" class="flex h-14 items-center gap-3 border-b border-slate-700 px-4">
-      <span class="text-lg font-bold tracking-wider">TOR</span>
-      <span
-        class="whitespace-nowrap text-sm font-medium opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-      >
-        Travel Order Resolver
-      </span>
+  <aside class="fixed left-0 top-0 z-40 flex h-screen w-56 flex-col bg-slate-900 text-white">
+    <!-- Logo -->
+    <router-link to="/" class="flex h-16 items-center gap-3 border-b border-slate-700/50 px-5">
+      <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800">
+        <Train class="h-5 w-5 text-white" />
+      </div>
+      <span class="text-sm font-semibold tracking-wide">Travel Order Resolver</span>
     </router-link>
 
     <!-- Navigation -->
-    <nav class="mt-4 flex flex-1 flex-col gap-1 px-2">
+    <nav class="mt-6 flex flex-1 flex-col gap-1 px-3">
       <router-link
         v-for="item in navItems"
         :key="item.to"
         :to="item.to"
-        class="flex items-center gap-3 rounded px-3 py-2.5 text-slate-300 transition-colors duration-200 hover:bg-slate-800 hover:text-white"
-        :class="{ 'bg-slate-700 text-white': isActive(item.to) }"
+        class="flex items-center gap-3 rounded-lg px-3 py-3 text-slate-400 transition-colors duration-150 hover:bg-slate-800 hover:text-white"
+        :class="{ 'bg-slate-800 text-white font-medium': isActive(item.to) }"
       >
         <component :is="item.icon" class="h-5 w-5 shrink-0" />
-        <span
-          class="whitespace-nowrap text-sm opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        >
-          {{ item.label }}
-        </span>
+        <span class="text-sm">{{ item.label }}</span>
       </router-link>
     </nav>
+
+    <!-- Footer -->
+    <div class="border-t border-slate-700/50 px-5 py-4">
+      <p class="text-xs text-slate-500">T-AIA-902 — Epitech</p>
+    </div>
   </aside>
 </template>

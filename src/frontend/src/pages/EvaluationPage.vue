@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Play } from 'lucide-vue-next'
+import { Play, BarChart3 } from 'lucide-vue-next'
 import LoadingSpinner from '../components/common/LoadingSpinner.vue'
 import ErrorAlert from '../components/common/ErrorAlert.vue'
 import MetricsTable from '../components/evaluation/MetricsTable.vue'
@@ -135,20 +135,25 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="space-y-8 p-6">
+  <div class="space-y-6 p-8">
     <!-- Header -->
-    <div>
-      <h1 class="text-2xl font-bold text-gray-900">Évaluation</h1>
-      <p class="text-gray-600">Métriques d'évaluation et lancement de benchmarks</p>
+    <div class="flex items-center gap-4">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50">
+        <BarChart3 class="h-6 w-6 text-violet-600" />
+      </div>
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900">Évaluation</h1>
+        <p class="text-gray-500">Métriques d'évaluation et lancement de benchmarks</p>
+      </div>
     </div>
 
     <!-- ===================== Évaluation du modèle ===================== -->
     <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+      <div class="flex items-center justify-between border-b border-gray-200 px-6 py-5">
         <h2 class="text-lg font-semibold text-gray-900">Évaluation du modèle</h2>
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="isEvalRunning"
           @click="handleRun"
         >
@@ -158,7 +163,7 @@ onMounted(async () => {
         </button>
       </div>
 
-      <div class="px-5 py-4">
+      <div class="px-6 py-5">
         <ErrorAlert v-if="runError" :message="runError" class="mb-4" />
 
         <!-- Progress -->
@@ -174,11 +179,11 @@ onMounted(async () => {
         <!-- Results -->
         <div v-else>
           <!-- Tabs -->
-          <div class="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1">
+          <div class="mb-5 flex gap-1 rounded-lg bg-gray-100 p-1">
             <button
               v-for="tab in tabs"
               :key="tab.key"
-              class="rounded-md px-4 py-2 text-sm font-medium transition"
+              class="rounded-md px-5 py-2.5 text-sm font-medium transition"
               :class="
                 activeTab === tab.key
                   ? 'bg-white text-gray-900 shadow-sm'
@@ -207,21 +212,10 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div v-else class="py-8 text-center text-sm text-gray-500">
+          <div v-else class="rounded-lg bg-gray-50 py-12 text-center text-sm text-gray-400">
             Aucune donnée disponible pour cet onglet.
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- ===================== Comparaison des modèles ===================== -->
-    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div class="border-b border-gray-200 px-5 py-4">
-        <h2 class="text-lg font-semibold text-gray-900">Comparaison des modèles</h2>
-      </div>
-
-      <div class="px-5 py-8 text-center text-sm text-gray-500">
-        Les résultats comparatifs des autres modèles seront ajoutés ici.
       </div>
     </div>
   </div>

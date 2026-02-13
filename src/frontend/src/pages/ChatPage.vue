@@ -69,8 +69,8 @@ const isEmpty = computed(() => messages.value.length === 0 && !isLoading.value)
 
 <template>
   <div class="flex h-full overflow-hidden">
-    <!-- Left: Chat (60%) -->
-    <div class="flex w-3/5 flex-col border-r border-gray-200">
+    <!-- Left: Chat -->
+    <div class="flex w-1/2 flex-col border-r border-gray-200">
       <!-- Empty state: centered input -->
       <div v-if="isEmpty" class="flex flex-1 flex-col items-center justify-center px-4">
         <MessageCircle class="mb-5 h-16 w-16 text-gray-300" />
@@ -88,8 +88,8 @@ const isEmpty = computed(() => messages.value.length === 0 && !isLoading.value)
       </template>
     </div>
 
-    <!-- Right: Map + Debug (40%) -->
-    <div class="relative z-0 flex w-2/5 flex-col overflow-hidden">
+    <!-- Right: Map + Debug -->
+    <div class="relative z-0 flex w-1/2 flex-col overflow-hidden">
       <div class="min-h-0 flex-1 p-4">
         <RailwayMap
           :route="routeSegments"

@@ -5,8 +5,8 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'dashboard',
-      meta: { title: 'Dashboard' },
+      name: 'home',
+      meta: { title: 'Home' },
       component: () => import('../pages/DashboardPage.vue'),
     },
     {
@@ -20,6 +20,18 @@ const router = createRouter({
       name: 'evaluation',
       meta: { title: 'Évaluation' },
       component: () => import('../pages/EvaluationPage.vue'),
+    },
+    {
+      path: '/rapports',
+      name: 'rapports',
+      meta: { title: 'Rapports' },
+      component: () => import('../pages/RapportsPage.vue'),
+    },
+    {
+      path: '/dataset',
+      name: 'dataset',
+      meta: { title: 'Dataset' },
+      component: () => import('../pages/DatasetPage.vue'),
     },
   ],
 })

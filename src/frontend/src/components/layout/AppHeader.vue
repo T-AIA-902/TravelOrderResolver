@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ExternalLink } from 'lucide-vue-next'
 import StatusDot from '../common/StatusDot.vue'
 
 const route = useRoute()
@@ -45,10 +44,10 @@ const pageTitle = computed(() => {
 
 <template>
   <header
-    class="fixed left-16 right-0 top-0 z-1000 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm"
+    class="fixed left-56 right-0 top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-8 shadow-sm"
   >
     <!-- Left: Page title -->
-    <h1 class="text-lg font-semibold text-slate-800">{{ pageTitle }}</h1>
+    <h1 class="text-xl font-semibold text-slate-800">{{ pageTitle }}</h1>
 
     <!-- Right: Status + Grafana -->
     <div class="flex items-center gap-4">
@@ -77,17 +76,6 @@ const pageTitle = computed(() => {
           <p v-else class="text-xs text-slate-400">Aucune donnée disponible</p>
         </div>
       </div>
-
-      <!-- Grafana link -->
-      <a
-        href="http://localhost:3000"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-slate-600 transition-colors duration-150 hover:bg-gray-50 hover:text-slate-900"
-      >
-        Grafana
-        <ExternalLink class="h-3.5 w-3.5" />
-      </a>
     </div>
   </header>
 </template>
