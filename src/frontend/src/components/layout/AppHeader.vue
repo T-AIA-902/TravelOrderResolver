@@ -45,7 +45,7 @@ const pageTitle = computed(() => {
 
 <template>
   <header
-    class="fixed left-16 right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm"
+    class="fixed left-16 right-0 top-0 z-1000 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm"
   >
     <!-- Left: Page title -->
     <h1 class="text-lg font-semibold text-slate-800">{{ pageTitle }}</h1>

@@ -23,6 +23,7 @@ export default ts.config(
         Blob: 'readonly',
         MediaRecorder: 'readonly',
         HTMLElement: 'readonly',
+        KeyboardEvent: 'readonly',
       },
     },
   },
@@ -40,6 +41,7 @@ export default ts.config(
       'vue/singleline-html-element-content-newline': 'off',
       'vue/max-attributes-per-line': 'off',
       'no-useless-assignment': 'off',
+      'vue/html-self-closing': 'off',
     },
   },
 )

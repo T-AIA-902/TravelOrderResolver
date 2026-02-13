@@ -9,7 +9,7 @@ import AppHeader from './AppHeader.vue'
     <AppHeader />
 
     <!-- Main content area -->
-    <main class="ml-16 mt-14 min-h-screen bg-gray-50 p-6">
+    <main class="ml-16 mt-14 h-[calc(100vh-3.5rem)] overflow-auto bg-gray-50">
       <slot />
     </main>
   </div>
