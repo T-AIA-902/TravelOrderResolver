@@ -117,6 +117,9 @@ Thumbs.db
 # Personal files
 .claude/
 
+# Local-only spec files (never commit)
+*.local.md
+
 # Generated HTML maps
 trajet_*.html
 
