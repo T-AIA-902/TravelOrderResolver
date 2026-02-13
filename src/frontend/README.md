@@ -1,6 +1,6 @@
 # Frontend — TravelOrderResolver
 
-Interface Vue 3 pour le projet TravelOrderResolver (dashboard, chat, évaluation, carte).
+Interface Vue 3 pour le projet TravelOrderResolver (dashboard, chat, évaluation).
 
 ## Stack
 
@@ -9,7 +9,6 @@ Interface Vue 3 pour le projet TravelOrderResolver (dashboard, chat, évaluation
 - **Vite 7** — dev server / build
 - **Tailwind CSS 4** — styling
 - **Vue Router 4** — navigation
-- **Leaflet** + vue-leaflet — carte interactive
 - **ECharts** + vue-echarts — graphiques dashboard
 - **Lucide** — icônes
 
@@ -46,10 +45,9 @@ src/
 │   ├── common/     # LoadingSpinner, ErrorAlert
 │   ├── chat/       # ChatWindow, ChatMessage, RecordButton (STT)
 │   ├── evaluation/ # MetricsTable, ConfusionMatrixView, EvalProgress
-│   ├── layout/     # AppLayout, AppSidebar
-│   └── map/        # MapView
+│   └── layout/     # AppLayout, AppSidebar
 ├── composables/    # useChat, useEvaluation, useSpeech, etc.
-├── pages/          # Pages routées (Dashboard, Chat, Evaluation, Map)
+├── pages/          # Pages routées (Dashboard, Chat, Evaluation)
 └── router/         # Configuration Vue Router
 ```
 
@@ -60,7 +58,6 @@ src/
 | `/`           | DashboardPage       | Vue d'ensemble (graphiques ECharts)      |
 | `/chat`       | ChatPage            | Chat conversationnel + STT              |
 | `/evaluation` | EvaluationPage      | Lancer une évaluation, voir les métriques |
-| `/map`        | MapExplorerPage     | Carte Leaflet des itinéraires            |
 
 ## Données mockées (TODO)
 
@@ -83,4 +80,3 @@ Le frontend consomme les endpoints suivants (voir `src/api/` pour le détail) :
 - `GET /eval/reports/:id` — détail d'un rapport
 - `POST /eval/run` — lancer une évaluation
 - `GET /eval/status/:task_id` — statut d'une évaluation en cours
-- `POST /pathfinding/route` — calcul d'itinéraire

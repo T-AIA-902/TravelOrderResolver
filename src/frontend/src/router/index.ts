@@ -21,12 +21,6 @@ const router = createRouter({
       meta: { title: 'Évaluation' },
       component: () => import('../pages/EvaluationPage.vue'),
     },
-    {
-      path: '/map',
-      name: 'map-explorer',
-      meta: { title: 'Carte' },
-      component: () => import('../pages/MapExplorerPage.vue'),
-    },
   ],
 })
 
