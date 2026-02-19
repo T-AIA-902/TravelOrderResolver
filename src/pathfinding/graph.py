@@ -224,7 +224,7 @@ class TrainGraph:
         """
         pos1 = self.graph.nodes[node_uic]["pos"]
         pos2 = self.graph.nodes[goal_uic]["pos"]
-        return geodesic(pos1, pos2).km
+        return float(geodesic(pos1, pos2).km)
 
     def get_path(
         self,
@@ -278,9 +278,7 @@ class TrainGraph:
                         weight="weight",
                     )
                 else:
-                    segment = nx.shortest_path(
-                        self.graph, start_uic, end_uic, weight="weight"
-                    )
+                    segment = nx.shortest_path(self.graph, start_uic, end_uic, weight="weight")
 
                 # Avoid duplicating junction points
                 if full_path_uics and segment:
@@ -325,7 +323,11 @@ class TrainGraph:
             is_waypoint = u in waypoints_set
 
             # Add stop if line changes, at major hub, or explicitly requested waypoint
-            if (prev_line and curr_line != prev_line) or (is_hub and "TGV" in u_name) or is_waypoint:
+            if (
+                (prev_line and curr_line != prev_line)
+                or (is_hub and "TGV" in u_name)
+                or is_waypoint
+            ):
                 if final_stops[-1] != u_name:
                     final_stops.append(u_name)
             prev_line = curr_line

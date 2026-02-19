@@ -44,9 +44,7 @@ class TestTrainGraph:
 
     def test_dijkstra_astar_same_result(self, graph):
         """Test that Dijkstra and A* find the same path."""
-        dijkstra_path, _, dijkstra_uics = graph.get_path(
-            "Paris", "Lyon", algorithm="dijkstra"
-        )
+        dijkstra_path, _, dijkstra_uics = graph.get_path("Paris", "Lyon", algorithm="dijkstra")
         astar_path, _, astar_uics = graph.get_path("Paris", "Lyon", algorithm="astar")
 
         # Both should find a valid path
@@ -75,9 +73,7 @@ class TestTrainGraph:
     def test_default_algorithm_is_astar(self, graph):
         """Test that default algorithm is A*."""
         default_path, _, default_uics = graph.get_path("Paris", "Lyon")
-        astar_path, _, astar_uics = graph.get_path(
-            "Paris", "Lyon", algorithm="astar"
-        )
+        astar_path, _, astar_uics = graph.get_path("Paris", "Lyon", algorithm="astar")
 
         assert default_uics == astar_uics
 
@@ -96,12 +92,12 @@ class TestTrainGraph:
                 neighbor_pos = graph.graph.nodes[neighbor]["pos"]
 
                 # Heuristic (straight line)
-                h = geodesic(pos, neighbor_pos).km
+                geodesic(pos, neighbor_pos).km  # noqa: F841
 
                 # Actual edge weight
                 edge_data = graph.graph.get_edge_data(node, neighbor)
                 if edge_data:
-                    actual_weight = min(e.get("weight", float("inf")) for e in edge_data.values())
+                    min(e.get("weight", float("inf")) for e in edge_data.values())  # noqa: F841
                     # Heuristic should be <= actual (except for LGV which has reduced weight)
                     # For LGV, weight = distance/3, so heuristic might be > weight
                     # This is still valid because the total path heuristic is admissible
@@ -146,9 +142,7 @@ class TestPathfindingPerformance:
     )
     def test_multiple_routes(self, graph, origin, destination):
         """Test pathfinding for multiple city pairs."""
-        dijkstra_path, d_error, _ = graph.get_path(
-            origin, destination, algorithm="dijkstra"
-        )
+        dijkstra_path, d_error, _ = graph.get_path(origin, destination, algorithm="dijkstra")
         astar_path, a_error, _ = graph.get_path(origin, destination, algorithm="astar")
 
         # At least one algorithm should find a path (if cities exist)

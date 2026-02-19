@@ -100,9 +100,7 @@ Classification:"""
 
         return self._parse_output(output)
 
-    def classify_batch(
-        self, texts: List[str], batch_size: int = 16
-    ) -> List[Tuple[str, float]]:
+    def classify_batch(self, texts: List[str], batch_size: int = 16) -> List[Tuple[str, float]]:
         """
         Classify multiple texts.
 
