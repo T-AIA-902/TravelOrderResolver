@@ -5,6 +5,7 @@ Wraps the CodeCarbon EmissionsTracker to measure CO2 emissions
 during inference and training operations.
 """
 
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -46,6 +47,7 @@ class CarbonCalculator:
         self._country_iso_code = country_iso_code
         self._project_name = project_name
         self._tracker = None
+        self._start_time: Optional[float] = None
         self.metrics: Optional[CarbonMetrics] = None
 
     def _ensure_codecarbon(self) -> None:
@@ -61,15 +63,16 @@ class CarbonCalculator:
     def start(self) -> None:
         """Start tracking carbon emissions."""
         self._ensure_codecarbon()
-        from codecarbon import EmissionsTracker
+        from codecarbon import OfflineEmissionsTracker
 
-        self._tracker = EmissionsTracker(
+        self._tracker = OfflineEmissionsTracker(
             project_name=self._project_name,
             country_iso_code=self._country_iso_code,
             log_level="warning",
             save_to_file=False,
         )
         self._tracker.start()
+        self._start_time = time.time()
         logger.debug("Carbon tracking started")
 
     def stop(self) -> CarbonMetrics:
@@ -84,10 +87,20 @@ class CarbonCalculator:
 
         emissions_kg = self._tracker.stop()
 
+        duration_s = (time.time() - self._start_time) if self._start_time else 0.0
+
+        # Extract energy from tracker internals (resilient to API changes)
+        energy_kwh = 0.0
+        try:
+            if hasattr(self._tracker, "_total_energy") and self._tracker._total_energy:
+                energy_kwh = self._tracker._total_energy.kWh
+        except Exception:
+            pass
+
         self.metrics = CarbonMetrics(
             emissions_kg=emissions_kg if emissions_kg is not None else 0.0,
-            energy_kwh=self._tracker._total_energy.kWh if self._tracker._total_energy else 0.0,
-            duration_s=self._tracker._last_measured_time or 0.0,
+            energy_kwh=energy_kwh,
+            duration_s=duration_s,
             country_iso_code=self._country_iso_code,
         )
 
