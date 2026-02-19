@@ -227,21 +227,12 @@ class TravelOrderResolver:
 
 def interactive_cli(resolver: TravelOrderResolver, speech: bool = False) -> None:
     """Run interactive command-line interface."""
-    transcriber = None
+    speech_input = None
     if speech:
-        try:
-            from src.speech import SpeechTranscriber
+        from src.speech.speech_input import SpeechInput
 
-            transcriber = SpeechTranscriber(model_name="medium")
-            transcriber.warmup()
-            print("Speech-to-text ready (Whisper medium)", file=sys.stderr)
-        except ImportError:
-            print(
-                "Error: speech dependencies not installed. "
-                "Run: pip install openai-whisper sounddevice soundfile",
-                file=sys.stderr,
-            )
-            speech = False
+        speech_input = SpeechInput()
+        speech = speech_input.available
 
     print("\n" + "=" * 60)
     print(f"Travel Order Resolver (extractor: {resolver.extractor_name})")
@@ -261,17 +252,9 @@ def interactive_cli(resolver: TravelOrderResolver, speech: bool = False) -> None
             break
 
         # Speech mode: empty input triggers recording
-        if not line and speech and transcriber:
-            try:
-                print("Parle maintenant (5 secondes)...")
-                result = transcriber.transcribe_from_mic(duration=5.0)
-                line = result.text.strip()
-                print(f"Transcription: {line}")
-                if not line:
-                    print("(rien detecte, reessayez)", file=sys.stderr)
-                    continue
-            except Exception as e:
-                print(f"Erreur micro: {e}", file=sys.stderr)
+        if not line and speech and speech_input:
+            line = speech_input.record()
+            if not line:
                 continue
         elif not line:
             continue
