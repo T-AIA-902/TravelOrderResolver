@@ -202,18 +202,19 @@ pip install openai-whisper sounddevice soundfile codecarbon mlflow
 ### CLI (Mode principal)
 
 ```bash
-# Depuis stdin
-echo "1,Je veux aller de Paris a Lyon" | python -m src.main
+# Mode interactif (texte, extracteur CamemBERT par defaut)
+python -m src.main --extractor camembert
 
-# Depuis un fichier
-python -m src.main --input sentences.csv --output results.csv
+# Mode interactif avec speech-to-text (Windows PowerShell uniquement)
+python -m src.main --extractor camembert --speech
 
-# Depuis une URL
-python -m src.main --input https://example.com/sentences.csv
-
-# Mode interactif
-python -m src.main --interactive
+# Autres extracteurs disponibles : regex, spacy
+python -m src.main --extractor regex
+python -m src.main --extractor spacy
 ```
+
+> **Note :** Le mode `--speech` necessite Windows PowerShell (le micro n'est pas accessible en WSL).
+> Appuyez sur Entree sans texte pour enregistrer depuis le micro, ou tapez votre demande directement.
 
 ### NLP uniquement (pour evaluation)
 
@@ -227,7 +228,7 @@ python -m src.nlp.pipeline --input sentences.csv
 ```python
 from src.speech import SpeechTranscriber
 
-transcriber = SpeechTranscriber(model_size="medium")
+transcriber = SpeechTranscriber(model_name="medium")
 
 # Enregistrement micro avec duree fixe (5 secondes)
 result = transcriber.transcribe_from_mic(duration=5.0)
@@ -243,7 +244,7 @@ print(result.text)
 from src.speech import WhisperModel
 
 # Transcription d'un fichier audio
-model = WhisperModel(model_size="medium")
+model = WhisperModel(model_name="medium")
 result = model.transcribe("recording.wav")
 print(result.text)
 ```
