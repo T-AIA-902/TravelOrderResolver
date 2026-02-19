@@ -225,90 +225,11 @@ python -m src.nlp.pipeline --input sentences.csv
 
 ### Speech-to-Text (Whisper)
 
-```python
-from src.speech import SpeechTranscriber
+Voir [src/speech/README.md](src/speech/README.md) pour la documentation complete (API Python, modeles, limitations).
 
-transcriber = SpeechTranscriber(model_name="medium")
+### Monitoring (CPU/RAM/Carbone + Docker)
 
-# Enregistrement micro avec duree fixe (5 secondes)
-result = transcriber.transcribe_from_mic(duration=5.0)
-print(result.text)      # "Je veux aller de Paris a Lyon"
-print(result.language)   # "fr"
-
-# Enregistrement micro avec detection de silence
-result = transcriber.transcribe_from_mic_auto()
-print(result.text)
-```
-
-```python
-from src.speech import WhisperModel
-
-# Transcription d'un fichier audio
-model = WhisperModel(model_name="medium")
-result = model.transcribe("recording.wav")
-print(result.text)
-```
-
-### Monitoring
-
-#### Tracking Python (CPU/RAM/Carbone)
-
-```python
-from src.monitoring import ResourceTracker, CarbonCalculator, MetricsLogger
-
-# Suivi CPU/RAM pendant une operation
-with ResourceTracker() as tracker:
-    result = model.predict(data)
-print(f"CPU: {tracker.usage.cpu_percent_avg:.1f}%")
-print(f"RAM peak: {tracker.usage.ram_peak_mb:.0f} MB")
-
-# Estimation empreinte carbone (CodeCarbon)
-with CarbonCalculator() as calc:
-    result = model.predict(data)
-print(f"Emissions: {calc.metrics.emissions_kg:.6f} kg CO2")
-print(f"Energie: {calc.metrics.energy_kwh:.6f} kWh")
-
-# Logging des metriques de requetes (JSONL)
-logger = MetricsLogger()
-with logger.start_request() as timer:
-    result = model.predict(data)
-# Metriques sauvegardees dans reports/metrics/
-```
-
-#### Stack Docker (Prometheus + Grafana + Gatus)
-
-```bash
-# Lancer la stack monitoring
-cd docker
-docker compose --profile monitoring up -d
-
-# Arreter la stack
-docker compose --profile monitoring down
-```
-
-> **Troubleshooting :** L'erreur NVIDIA (`nvidia-container-cli: initialization error`) concerne
-> uniquement le container `app` (GPU requis) et n'affecte pas le monitoring.
-> Si Gatus ou Grafana restent en etat "Created" sans demarrer :
-> ```bash
-> # Demarrer manuellement un container bloque
-> docker start docker-gatus-1
-> docker start docker-grafana-1
->
-> # En cas de probleme persistant, recreer la stack
-> docker compose --profile monitoring down -v
-> docker compose --profile monitoring up -d
->
-> # Verifier l'etat des containers
-> docker compose --profile monitoring ps
-> ```
-
-| Service | URL | Description |
-|---|---|---|
-| Prometheus | http://localhost:49090 | Collecte de metriques (CPU/RAM/containers) |
-| Grafana | http://localhost:43000 | Dashboards visuels (`admin`/`admin`) |
-| Node Exporter | http://localhost:49100 | Metriques systeme |
-| cAdvisor | http://localhost:48080 | Metriques containers Docker |
-| Gatus | http://localhost:48081 | Health checks & uptime |
+Voir [src/monitoring/README.md](src/monitoring/README.md) pour la documentation complete (tracking Python, stack Docker, troubleshooting).
 
 ### API REST (Not Yet Implemented)
 
