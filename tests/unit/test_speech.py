@@ -4,12 +4,10 @@ Unit tests for the Speech-to-Text module.
 All tests use mocks to avoid requiring a microphone or Whisper model.
 """
 
-import tempfile
 from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
 import numpy as np
-import pytest
 
 
 @dataclass
