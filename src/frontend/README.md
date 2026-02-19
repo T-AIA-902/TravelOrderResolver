@@ -20,24 +20,12 @@ Le plus simple pour lancer le frontend sans installer Node :
 
 ```bash
 # Depuis la racine du projet
-docker build -f docker/Dockerfile.frontend -t tor-frontend .
-docker run -d --name tor-frontend -p 3000:80 tor-frontend
+make front-run       # Build + lance sur http://localhost:3000
+make front-stop      # Stopper
+make front-rebuild   # Rebuild + relance après modification du code
 ```
 
 Ouvrir http://localhost:3000
-
-```bash
-# Stopper
-docker stop tor-frontend
-
-# Relancer
-docker start tor-frontend
-
-# Rebuild après modification du code
-docker rm -f tor-frontend
-docker build -f docker/Dockerfile.frontend -t tor-frontend .
-docker run -d --name tor-frontend -p 3000:80 tor-frontend
-```
 
 Le proxy `/api/` redirige vers le backend (`app:8000` en docker-compose). Si le backend n'est pas lancé, le frontend démarre quand même — seuls les appels API échoueront.
 

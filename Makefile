@@ -1,4 +1,4 @@
-.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-camembert demo-spacy demo-regex demo-all
+.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-camembert demo-spacy demo-regex demo-all front-build front-run front-stop front-rebuild
 
 # Default target
 .DEFAULT_GOAL := help
@@ -124,10 +124,10 @@ download-models: ## Download pre-trained models
 # DOCKER
 # =============================================================================
 
-docker-build: ## Build Docker image
+docker-build: ## Build backend Docker image
 	docker build -t travel-order-resolver -f docker/Dockerfile .
 
-docker-run: ## Run Docker container
+docker-run: ## Run backend Docker container
 	docker run -p 8000:8000 travel-order-resolver
 
 docker-compose-up: ## Start all services with docker-compose
@@ -135,6 +135,23 @@ docker-compose-up: ## Start all services with docker-compose
 
 docker-compose-down: ## Stop all services
 	docker-compose -f docker/docker-compose.yml down
+
+# =============================================================================
+# FRONTEND
+# =============================================================================
+
+front-build: ## Build frontend Docker image
+	docker build -f docker/Dockerfile.frontend -t tor-frontend .
+
+front-run: front-build ## Build and run frontend on http://localhost:3000
+	@docker rm -f tor-frontend 2>/dev/null || true
+	docker run -d --name tor-frontend -p 3000:80 tor-frontend
+	@echo "Frontend running on http://localhost:3000"
+
+front-stop: ## Stop frontend container
+	docker stop tor-frontend
+
+front-rebuild: front-run ## Rebuild and restart frontend
 
 # =============================================================================
 # DOCUMENTATION
