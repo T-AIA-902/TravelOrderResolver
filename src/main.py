@@ -225,24 +225,55 @@ class TravelOrderResolver:
         return None
 
 
-def interactive_cli(resolver: TravelOrderResolver) -> None:
+def interactive_cli(resolver: TravelOrderResolver, speech: bool = False) -> None:
     """Run interactive command-line interface."""
+    transcriber = None
+    if speech:
+        try:
+            from src.speech import SpeechTranscriber
+
+            transcriber = SpeechTranscriber(model_name="medium")
+            transcriber.warmup()
+            print("Speech-to-text ready (Whisper medium)", file=sys.stderr)
+        except ImportError:
+            print(
+                "Error: speech dependencies not installed. "
+                "Run: pip install openai-whisper sounddevice soundfile",
+                file=sys.stderr,
+            )
+            speech = False
+
     print("\n" + "=" * 60)
     print(f"Travel Order Resolver (extractor: {resolver.extractor_name})")
     print("=" * 60)
     print("\nCommands:")
     print("  Enter a travel request (e.g., 'De Paris à Lyon')")
     print("  Format: 'ID, text' or just 'text' (auto-assigns ID)")
+    if speech:
+        print("  Press Enter (empty) to record from microphone")
     print("  Ctrl+C to quit\n")
 
-    # Handle stdin encoding for French characters
-    import io
+    while True:
+        try:
+            line = input("[texte ou Entree=parler] > " if speech else "> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nExiting...")
+            break
 
-    stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8", errors="replace")
-
-    for line in stdin:
-        line = line.strip()
-        if not line:
+        # Speech mode: empty input triggers recording
+        if not line and speech and transcriber:
+            try:
+                print("Parle maintenant (5 secondes)...")
+                result = transcriber.transcribe_from_mic(duration=5.0)
+                line = result.text.strip()
+                print(f"Transcription: {line}")
+                if not line:
+                    print("(rien detecte, reessayez)", file=sys.stderr)
+                    continue
+            except Exception as e:
+                print(f"Erreur micro: {e}", file=sys.stderr)
+                continue
+        elif not line:
             continue
 
         try:
@@ -302,6 +333,11 @@ Available extractors:
         action="store_true",
         help="Don't load the railway graph (extraction only)",
     )
+    parser.add_argument(
+        "--speech",
+        action="store_true",
+        help="Enable speech-to-text input (requires microphone + Whisper)",
+    )
 
     args = parser.parse_args()
 
@@ -310,7 +346,7 @@ Available extractors:
             extractor=args.extractor,
             load_graph=not args.no_graph,
         )
-        interactive_cli(resolver)
+        interactive_cli(resolver, speech=args.speech)
     except KeyboardInterrupt:
         print("\nExiting...")
     except Exception as e:
