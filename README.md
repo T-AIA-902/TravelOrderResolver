@@ -57,10 +57,11 @@ Output: 1,NOT_TRIP
 - [ ] Pathfinding (Dijkstra/A*)
 
 ### Bonus
-- [ ] Speech-to-Text (Whisper offline)
+- [x] Speech-to-Text (Whisper offline)
 - [ ] Arrets intermediaires
 - [ ] Benchmarking multi-modeles
-- [ ] Monitoring CPU/RAM/Carbone
+- [x] Monitoring CPU/RAM/Carbone
+- [x] Monitoring infrastructure (Prometheus, Grafana, Gatus)
 - [ ] API REST
 - [ ] Interface web demo (Gradio)
 
@@ -153,6 +154,7 @@ Output: 1,NOT_TRIP
 - Python 3.10+
 - Poetry (recommande) ou pip
 - GPU CUDA (optionnel, pour entrainement)
+- Docker + Docker Compose (optionnel, pour monitoring infrastructure)
 
 ### Installation rapide
 
@@ -198,6 +200,16 @@ make front-rebuild
 
 Voir [src/frontend/README.md](src/frontend/README.md) pour le détail (dev local, structure, API attendue).
 
+### Dependances optionnelles (ML)
+
+```bash
+# Speech-to-Text (Whisper) + Carbon tracking + Experiment tracking
+poetry install --with ml
+
+# Ou avec pip
+pip install openai-whisper sounddevice soundfile codecarbon mlflow
+```
+
 ---
 
 ## Utilisation
@@ -205,18 +217,19 @@ Voir [src/frontend/README.md](src/frontend/README.md) pour le détail (dev local
 ### CLI (Mode principal)
 
 ```bash
-# Depuis stdin
-echo "1,Je veux aller de Paris a Lyon" | python -m src.main
+# Mode interactif (texte, extracteur CamemBERT par defaut)
+python -m src.main --extractor camembert
 
-# Depuis un fichier
-python -m src.main --input sentences.csv --output results.csv
+# Mode interactif avec speech-to-text (Windows PowerShell uniquement)
+python -m src.main --extractor camembert --speech
 
-# Depuis une URL
-python -m src.main --input https://example.com/sentences.csv
-
-# Mode interactif
-python -m src.main --interactive
+# Autres extracteurs disponibles : regex, spacy
+python -m src.main --extractor regex
+python -m src.main --extractor spacy
 ```
+
+> **Note :** Le mode `--speech` necessite Windows PowerShell (le micro n'est pas accessible en WSL).
+> Appuyez sur Entree sans texte pour enregistrer depuis le micro, ou tapez votre demande directement.
 
 ### NLP uniquement (pour evaluation)
 
@@ -225,15 +238,13 @@ python -m src.main --interactive
 python -m src.nlp.pipeline --input sentences.csv
 ```
 
-### Speech-to-Text
+### Speech-to-Text (Whisper)
 
-```bash
-# Transcription audio
-python -m src.speech.transcriber --audio recording.wav
+Voir [src/speech/README.md](src/speech/README.md) pour la documentation complete (API Python, modeles, limitations).
 
-# Pipeline complet (audio -> itineraire)
-python -m src.main --audio recording.wav
-```
+### Monitoring (CPU/RAM/Carbone + Docker)
+
+Voir [src/monitoring/README.md](src/monitoring/README.md) pour la documentation complete (tracking Python, stack Docker, troubleshooting).
 
 ### API REST (Not Yet Implemented)
 
