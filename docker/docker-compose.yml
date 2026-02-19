@@ -1,6 +1,16 @@
 version: '3.8'
 
 services:
+  # Frontend (Vue 3 + Nginx)
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - app
+
   # Main application service (GPU-enabled)
   app:
     image: travel-order-resolver

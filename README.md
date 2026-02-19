@@ -185,6 +185,21 @@ pip install -r requirements.txt
 python -m spacy download fr_dep_news_trf
 ```
 
+### Frontend (Docker)
+
+```bash
+# Build et lancer le frontend sur http://localhost:3000
+make front-run
+
+# Stopper
+make front-stop
+
+# Rebuild après modification du code
+make front-rebuild
+```
+
+Voir [src/frontend/README.md](src/frontend/README.md) pour le détail (dev local, structure, API attendue).
+
 ### Dependances optionnelles (ML)
 
 ```bash
