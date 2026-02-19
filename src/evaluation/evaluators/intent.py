@@ -21,8 +21,7 @@ def evaluate_intent_classifiers(
     batch_size: int = ...,
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[False] = ...,
-) -> dict[str, IntentResults]:
-    ...
+) -> dict[str, IntentResults]: ...
 
 
 @overload
@@ -32,8 +31,7 @@ def evaluate_intent_classifiers(
     batch_size: int = ...,
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[True] = ...,
-) -> tuple[dict[str, IntentResults], PredictionsDict]:
-    ...
+) -> tuple[dict[str, IntentResults], PredictionsDict]: ...
 
 
 def evaluate_intent_classifiers(

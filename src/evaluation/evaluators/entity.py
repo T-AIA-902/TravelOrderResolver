@@ -41,8 +41,7 @@ def evaluate_entity_extractors(
     batch_size: int = ...,
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[False] = ...,
-) -> dict[str, EntityResults]:
-    ...
+) -> dict[str, EntityResults]: ...
 
 
 @overload
@@ -54,8 +53,7 @@ def evaluate_entity_extractors(
     batch_size: int = ...,
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[True] = ...,
-) -> tuple[dict[str, EntityResults], EntityPredictionsDict]:
-    ...
+) -> tuple[dict[str, EntityResults], EntityPredictionsDict]: ...
 
 
 def evaluate_entity_extractors(
