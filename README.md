@@ -57,10 +57,11 @@ Output: 1,NOT_TRIP
 - [ ] Pathfinding (Dijkstra/A*)
 
 ### Bonus
-- [ ] Speech-to-Text (Whisper offline)
+- [x] Speech-to-Text (Whisper offline)
 - [ ] Arrets intermediaires
 - [ ] Benchmarking multi-modeles
-- [ ] Monitoring CPU/RAM/Carbone
+- [x] Monitoring CPU/RAM/Carbone
+- [x] Monitoring infrastructure (Prometheus, Grafana, Gatus)
 - [ ] API REST
 - [ ] Interface web demo (Gradio)
 
@@ -153,6 +154,7 @@ Output: 1,NOT_TRIP
 - Python 3.10+
 - Poetry (recommande) ou pip
 - GPU CUDA (optionnel, pour entrainement)
+- Docker + Docker Compose (optionnel, pour monitoring infrastructure)
 
 ### Installation rapide
 
@@ -183,6 +185,16 @@ pip install -r requirements.txt
 python -m spacy download fr_dep_news_trf
 ```
 
+### Dependances optionnelles (ML)
+
+```bash
+# Speech-to-Text (Whisper) + Carbon tracking + Experiment tracking
+poetry install --with ml
+
+# Ou avec pip
+pip install openai-whisper sounddevice soundfile codecarbon mlflow
+```
+
 ---
 
 ## Utilisation
@@ -210,15 +222,92 @@ python -m src.main --interactive
 python -m src.nlp.pipeline --input sentences.csv
 ```
 
-### Speech-to-Text
+### Speech-to-Text (Whisper)
+
+```python
+from src.speech import SpeechTranscriber
+
+transcriber = SpeechTranscriber(model_size="medium")
+
+# Enregistrement micro avec duree fixe (5 secondes)
+result = transcriber.transcribe_from_mic(duration=5.0)
+print(result.text)      # "Je veux aller de Paris a Lyon"
+print(result.language)   # "fr"
+
+# Enregistrement micro avec detection de silence
+result = transcriber.transcribe_from_mic_auto()
+print(result.text)
+```
+
+```python
+from src.speech import WhisperModel
+
+# Transcription d'un fichier audio
+model = WhisperModel(model_size="medium")
+result = model.transcribe("recording.wav")
+print(result.text)
+```
+
+### Monitoring
+
+#### Tracking Python (CPU/RAM/Carbone)
+
+```python
+from src.monitoring import ResourceTracker, CarbonCalculator, MetricsLogger
+
+# Suivi CPU/RAM pendant une operation
+with ResourceTracker() as tracker:
+    result = model.predict(data)
+print(f"CPU: {tracker.usage.cpu_percent_avg:.1f}%")
+print(f"RAM peak: {tracker.usage.ram_peak_mb:.0f} MB")
+
+# Estimation empreinte carbone (CodeCarbon)
+with CarbonCalculator() as calc:
+    result = model.predict(data)
+print(f"Emissions: {calc.metrics.emissions_kg:.6f} kg CO2")
+print(f"Energie: {calc.metrics.energy_kwh:.6f} kWh")
+
+# Logging des metriques de requetes (JSONL)
+logger = MetricsLogger()
+with logger.start_request() as timer:
+    result = model.predict(data)
+# Metriques sauvegardees dans reports/metrics/
+```
+
+#### Stack Docker (Prometheus + Grafana + Gatus)
 
 ```bash
-# Transcription audio
-python -m src.speech.transcriber --audio recording.wav
+# Lancer la stack monitoring
+cd docker
+docker compose --profile monitoring up -d
 
-# Pipeline complet (audio -> itineraire)
-python -m src.main --audio recording.wav
+# Arreter la stack
+docker compose --profile monitoring down
 ```
+
+> **Troubleshooting :** L'erreur NVIDIA (`nvidia-container-cli: initialization error`) concerne
+> uniquement le container `app` (GPU requis) et n'affecte pas le monitoring.
+> Si Gatus ou Grafana restent en etat "Created" sans demarrer :
+> ```bash
+> # Demarrer manuellement un container bloque
+> docker start docker-gatus-1
+> docker start docker-grafana-1
+>
+> # En cas de probleme persistant, recreer la stack
+> docker compose --profile monitoring down -v
+> docker compose --profile monitoring up -d
+>
+> # Verifier l'etat des containers
+> docker compose --profile monitoring ps
+> ```
+
+| Service | URL | Description |
+|---|---|---|
+| Prometheus | http://localhost:49090 | Collecte de metriques (CPU/RAM/containers) |
+| Grafana | http://localhost:43000 | Dashboards visuels (`admin`/`admin`) |
+| Node Exporter | http://localhost:49100 | Metriques systeme |
+| cAdvisor | http://localhost:48080 | Metriques containers Docker |
+| Gatus | http://localhost:48081 | Health checks & uptime |
 
 ### API REST (Not Yet Implemented)
 
