@@ -21,7 +21,8 @@ def evaluate_language_detectors(
     batch_size: int = ...,
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[False] = ...,
-) -> dict[str, LanguageResults]: ...
+) -> dict[str, LanguageResults]:
+    ...
 
 
 @overload
@@ -31,7 +32,8 @@ def evaluate_language_detectors(
     batch_size: int = ...,
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[True] = ...,
-) -> tuple[dict[str, LanguageResults], PredictionsDict]: ...
+) -> tuple[dict[str, LanguageResults], PredictionsDict]:
+    ...
 
 
 def evaluate_language_detectors(
