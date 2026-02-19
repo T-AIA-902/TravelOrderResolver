@@ -14,13 +14,42 @@ Interface Vue 3 pour le projet Travel Order Resolver : page d'accueil, chat NLP 
 
 ## Lancer le projet
 
+### Docker (recommandé)
+
+Le plus simple pour lancer le frontend sans installer Node :
+
+```bash
+# Depuis la racine du projet
+docker build -f docker/Dockerfile.frontend -t tor-frontend .
+docker run -d --name tor-frontend -p 3000:80 tor-frontend
+```
+
+Ouvrir http://localhost:3000
+
+```bash
+# Stopper
+docker stop tor-frontend
+
+# Relancer
+docker start tor-frontend
+
+# Rebuild après modification du code
+docker rm -f tor-frontend
+docker build -f docker/Dockerfile.frontend -t tor-frontend .
+docker run -d --name tor-frontend -p 3000:80 tor-frontend
+```
+
+Le proxy `/api/` redirige vers le backend (`app:8000` en docker-compose). Si le backend n'est pas lancé, le frontend démarre quand même — seuls les appels API échoueront.
+
+### Dev local (avec Node)
+
 ```bash
 cd src/frontend
 npm install
 npm run dev
 ```
 
-Le serveur de dev démarre sur `http://localhost:5173`.
+Le serveur de dev démarre sur `http://localhost:5173` avec hot-reload.
 
 L'URL de l'API backend se configure via `VITE_API_URL` dans `.env` (par défaut : même origine).
 

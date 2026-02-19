@@ -183,6 +183,16 @@ pip install -r requirements.txt
 python -m spacy download fr_dep_news_trf
 ```
 
+### Frontend (Docker)
+
+```bash
+# Build et lancer le frontend sur http://localhost:3000
+docker build -f docker/Dockerfile.frontend -t tor-frontend .
+docker run -d --name tor-frontend -p 3000:80 tor-frontend
+```
+
+Voir [src/frontend/README.md](src/frontend/README.md) pour le détail (dev local, structure, API attendue).
+
 ---
 
 ## Utilisation
