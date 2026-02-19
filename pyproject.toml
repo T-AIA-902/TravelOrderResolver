@@ -59,8 +59,6 @@ ipython = "^8.19"
 [tool.poetry.group.ml.dependencies]
 # Speech-to-text
 openai-whisper = "^20231117"
-sounddevice = "^0.4"
-soundfile = "^0.12"
 # Experiment tracking
 mlflow = "^2.9"
 wandb = "^0.16"
@@ -69,6 +67,8 @@ codecarbon = "^2.3"
 # Fine-tuning
 peft = "^0.7"
 accelerate = "^0.25"
+sounddevice = "^0.5.5"
+soundfile = "^0.13.1"
 
 [tool.poetry.group.notebooks.dependencies]
 jupyter = "^1.0"
