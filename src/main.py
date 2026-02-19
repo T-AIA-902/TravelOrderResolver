@@ -253,9 +253,10 @@ def interactive_cli(resolver: TravelOrderResolver, speech: bool = False) -> None
 
         # Speech mode: empty input triggers recording
         if not line and speech and speech_input:
-            line = speech_input.record()
-            if not line:
+            recorded = speech_input.record()
+            if not recorded:
                 continue
+            line = recorded
         elif not line:
             continue
 

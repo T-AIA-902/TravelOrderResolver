@@ -58,8 +58,7 @@ class MetricsLogger:
         entry = asdict(metrics)
         self._append_jsonl(self._request_file, entry)
         logger.debug(
-            f"Request logged: model={metrics.model_name}, "
-            f"duration={metrics.duration_s:.3f}s"
+            f"Request logged: model={metrics.model_name}, " f"duration={metrics.duration_s:.3f}s"
         )
 
     def log_training(self, metrics: dict[str, Any]) -> None:

@@ -6,13 +6,16 @@ for the interactive command-line interface.
 """
 
 import sys
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from src.speech.whisper_model import WhisperModelSize
 
 
 class SpeechInput:
     """Manages speech-to-text input for the CLI."""
 
-    def __init__(self, model_name: str = "medium"):
+    def __init__(self, model_name: "WhisperModelSize" = "medium"):
         self._transcriber = None
         self._available = False
 

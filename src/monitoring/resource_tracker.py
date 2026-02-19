@@ -5,6 +5,7 @@ Provides a context manager to measure resource consumption
 during any operation (inference, training, etc.).
 """
 
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Optional
@@ -64,7 +65,7 @@ class ResourceTracker:
         self._snapshots: list[ResourceSnapshot] = []
         self._start_time: Optional[float] = None
         self._end_time: Optional[float] = None
-        self._thread: Optional[object] = None
+        self._thread: Optional["threading.Thread"] = None
         self._running = False
         self.usage: Optional[ResourceUsage] = None
 
@@ -75,8 +76,7 @@ class ResourceTracker:
             import psutil
         except ImportError:
             raise ImportError(
-                "psutil is required for resource tracking. "
-                "Install with: pip install psutil"
+                "psutil is required for resource tracking. " "Install with: pip install psutil"
             )
 
         cpu_percent = psutil.cpu_percent(interval=None)
@@ -96,7 +96,7 @@ class ResourceTracker:
             if torch.cuda.is_available():
                 snapshot.gpu_name = torch.cuda.get_device_name(0)
                 allocated = torch.cuda.memory_allocated(0)
-                total = torch.cuda.get_device_properties(0).total_mem
+                total = torch.cuda.get_device_properties(0).total_memory
                 snapshot.gpu_used_mb = allocated / (1024 * 1024)
                 snapshot.gpu_total_mb = total / (1024 * 1024)
                 snapshot.gpu_percent = (allocated / total) * 100 if total > 0 else 0.0

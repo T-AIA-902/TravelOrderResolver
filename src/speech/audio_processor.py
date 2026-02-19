@@ -75,7 +75,7 @@ class AudioRecorder:
         # Flatten to 1D if mono
         audio = audio.squeeze()
         logger.info(f"Recording complete: {len(audio)} samples")
-        return audio
+        return np.asarray(audio)
 
     def record_until_silence(
         self,
@@ -106,8 +106,7 @@ class AudioRecorder:
         silence_samples = int(silence_duration * self._sample_rate)
 
         logger.info(
-            f"Recording until silence (threshold={silence_threshold}, "
-            f"max={max_duration}s)..."
+            f"Recording until silence (threshold={silence_threshold}, " f"max={max_duration}s)..."
         )
 
         chunks: list[np.ndarray] = []
@@ -137,8 +136,10 @@ class AudioRecorder:
                     break
 
         audio = np.concatenate(chunks)
-        logger.info(f"Recording complete: {len(audio)} samples ({len(audio) / self._sample_rate:.1f}s)")
-        return audio
+        logger.info(
+            f"Recording complete: {len(audio)} samples ({len(audio) / self._sample_rate:.1f}s)"
+        )
+        return np.asarray(audio)
 
     def save(self, audio: np.ndarray, path: str) -> str:
         """

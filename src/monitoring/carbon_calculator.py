@@ -7,7 +7,10 @@ during inference and training operations.
 
 import time
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from codecarbon import OfflineEmissionsTracker
 
 from loguru import logger
 
@@ -46,7 +49,7 @@ class CarbonCalculator:
     ):
         self._country_iso_code = country_iso_code
         self._project_name = project_name
-        self._tracker = None
+        self._tracker: Optional["OfflineEmissionsTracker"] = None  # type: ignore[type-arg]
         self._start_time: Optional[float] = None
         self.metrics: Optional[CarbonMetrics] = None
 

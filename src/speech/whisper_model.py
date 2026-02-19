@@ -87,6 +87,7 @@ class WhisperModel:
         if self._model is None:
             self.load()
 
+        assert self._model is not None
         logger.info("Transcribing audio...")
         result = self._model.transcribe(
             audio,
