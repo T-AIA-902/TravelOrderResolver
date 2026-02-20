@@ -80,6 +80,7 @@ dmypy.json
 # Ignore model weights but keep tokenizer configs
 /models/*
 !/models/camembert-ner/
+!/models/flan-t5-travel/
 *.safetensors
 *.bin
 *.pt
