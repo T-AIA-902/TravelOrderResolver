@@ -78,9 +78,7 @@ dmypy.json
 # ML / Models
 # -----------------------------------------------------------------------------
 # Ignore model weights but keep tokenizer configs
-/models/*
-!/models/camembert-ner/
-!/models/camembert-ner-retrain/
+/models/*.safetensors
 *.safetensors
 *.bin
 *.pt
