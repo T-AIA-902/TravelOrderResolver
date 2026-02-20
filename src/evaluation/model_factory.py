@@ -41,7 +41,7 @@ def create_intent_classifiers(
     """Create intent classifiers based on model list.
 
     Args:
-        models: List of model names. Options: "regex", "spacy", "camembert", "all"
+        models: List of model names. Options: "regex", "spacy", "camembert", "flant5", "all"
         device: Device for ML models ("auto", "cuda", "cpu")
 
     Returns:
@@ -64,6 +64,11 @@ def create_intent_classifiers(
 
         classifiers.append(("SpaCy", SpacyIntentClassifier(device=device)))
 
+    if "flant5" in models or "all" in models:
+        from src.nlp.intent import FlanT5IntentClassifier
+
+        classifiers.append(("Flan-T5", FlanT5IntentClassifier()))
+
     return classifiers
 
 
@@ -73,7 +78,7 @@ def create_entity_extractors(
     """Create entity extractors based on model list.
 
     Args:
-        models: List of model names. Options: "regex", "spacy", "camembert", "all"
+        models: List of model names. Options: "regex", "spacy", "camembert", "flant5", "all"
         device: Device for ML models ("auto", "cuda", "cpu")
 
     Returns:
@@ -95,6 +100,11 @@ def create_entity_extractors(
         from src.nlp.entity import CamembertEntityExtractor
 
         extractors.append(("CamemBERT", CamembertEntityExtractor(device=device)))
+
+    if "flant5" in models or "all" in models:
+        from src.nlp.entity import FlanT5EntityExtractor
+
+        extractors.append(("Flan-T5", FlanT5EntityExtractor()))
 
     return extractors
 

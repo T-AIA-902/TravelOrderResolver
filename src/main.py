@@ -5,11 +5,13 @@ This module provides the TravelOrderResolver class that orchestrates
 entity extraction, pathfinding, and visualization for travel requests.
 
 Supports multiple extraction backends:
-- camembert: Zero-shot CamemBERT NER (best accuracy)
+- flant5: Fine-tuned Flan-T5 seq2seq (best accuracy, 87% F1)
+- camembert: Zero-shot CamemBERT NER
 - spacy: spaCy fr_core_news_lg NER
 - regex: Rule-based baseline
 
 Usage:
+    python -m src.main --extractor flant5
     python -m src.main --extractor camembert
     python -m src.main --extractor regex
 """
@@ -43,6 +45,7 @@ class TravelOrderResolver:
 
     # Available extraction backends
     EXTRACTORS: Dict[str, str] = {
+        "flant5": "src.nlp.entity.flant5_entity.FlanT5EntityExtractor",
         "camembert": "src.nlp.entity.camembert_entity.CamembertEntityExtractor",
         "spacy": "src.nlp.entity.spacy_entity.SpacyEntityExtractor",
         "regex": "src.nlp.entity.regex_entity.RegexEntityExtractor",
@@ -56,7 +59,7 @@ class TravelOrderResolver:
 
     def __init__(
         self,
-        extractor: str = "camembert",
+        extractor: str = "flant5",
         load_graph: bool = True,
     ) -> None:
         """
@@ -153,8 +156,10 @@ class TravelOrderResolver:
                 error="Missing departure or destination",
             )
 
-        # Find path
-        path, error, uics = self.graph.get_path(departure, destination)
+        # Find path (with intermediates if extracted)
+        path, error, uics = self.graph.get_path(
+            departure, destination, intermediates=intermediate if intermediate else None
+        )
 
         return TravelResult(
             departure=departure,
@@ -211,8 +216,12 @@ class TravelOrderResolver:
         if self.graph is None or not result.departure or not result.destination:
             return None
 
-        # Get full UIC path for visualization
-        _, _, uics = self.graph.get_path(result.departure, result.destination)
+        # Get full UIC path for visualization (with intermediates)
+        _, _, uics = self.graph.get_path(
+            result.departure,
+            result.destination,
+            intermediates=result.intermediate if result.intermediate else None,
+        )
 
         if uics:
             try:
@@ -295,12 +304,13 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  python -m src.main --extractor flant5
   python -m src.main --extractor camembert
-  python -m src.main --extractor spacy
   python -m src.main --extractor regex
 
 Available extractors:
-  camembert  Zero-shot CamemBERT NER (best accuracy)
+  flant5     Fine-tuned Flan-T5 seq2seq (best accuracy, 87% F1)
+  camembert  Zero-shot CamemBERT NER
   spacy      spaCy fr_core_news_lg NER
   regex      Rule-based baseline
         """,
@@ -309,8 +319,8 @@ Available extractors:
         "--extractor",
         "-e",
         choices=list(TravelOrderResolver.EXTRACTORS.keys()),
-        default="camembert",
-        help="Entity extraction backend (default: camembert)",
+        default="flant5",
+        help="Entity extraction backend (default: flant5)",
     )
     parser.add_argument(
         "--no-graph",

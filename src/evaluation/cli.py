@@ -79,7 +79,7 @@ def main() -> None:
     parser.add_argument(
         "--models",
         nargs="+",
-        choices=["regex", "spacy", "camembert", "langdetect", "all"],
+        choices=["regex", "spacy", "camembert", "flant5", "langdetect", "all"],
         default=["all"],
         help="Models to evaluate (default: all)",
     )
@@ -94,14 +94,14 @@ def main() -> None:
     parser.add_argument(
         "--intent-model",
         nargs="+",
-        choices=["regex", "camembert", "spacy"],
+        choices=["regex", "camembert", "spacy", "flant5"],
         default=None,
         help="Intent classifier(s) to use. Overrides --models for intent.",
     )
     parser.add_argument(
         "--entity-model",
         nargs="+",
-        choices=["regex", "spacy", "camembert"],
+        choices=["regex", "spacy", "camembert", "flant5"],
         default=None,
         help="Entity extractor(s) to use. Overrides --models for entity.",
     )

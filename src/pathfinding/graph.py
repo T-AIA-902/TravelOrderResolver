@@ -1,83 +1,82 @@
-"""
-Railway network graph for pathfinding.
-
-This module builds a graph of the French railway network from SNCF data
-and provides shortest path computation using Dijkstra's algorithm.
-"""
-
 import json
 import os
 import sys
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 
 import networkx as nx
 from geopy.distance import geodesic
-from shapely.geometry import Point, shape
-from shapely.ops import substring
 
-# Default paths to SNCF data files (JSON format)
-DEFAULT_GARES_JSON = os.path.join(
+_DATA_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
     "datasets",
     "raw",
     "sncf",
-    "gares-de-voyageurs.json",
 )
-DEFAULT_LIGNES_JSON = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "datasets",
-    "raw",
-    "sncf",
-    "lignes-par-type.json",
-)
+DEFAULT_GARES_JSON = os.path.join(_DATA_DIR, "gares-de-voyageurs.json")
+DEFAULT_LIGNES_JSON = os.path.join(_DATA_DIR, "lignes-par-type.json")
+DEFAULT_LISTE_GARES_JSON = os.path.join(_DATA_DIR, "liste-des-gares.json")
+
+
+def _parse_pk(pk_str: str) -> Optional[float]:
+    """Parse '602+834' -> 602.834 km. Returns None if unparseable."""
+    if not pk_str or not isinstance(pk_str, str):
+        return None
+    try:
+        parts = pk_str.split("+")
+        km = float(parts[0])
+        m = float(parts[1]) / 1000.0 if len(parts) > 1 else 0.0
+        return km + m
+    except (ValueError, IndexError):
+        return None
 
 
 class TrainGraph:
     """
-    Railway network graph with Dijkstra pathfinding.
+    Railway network graph with Dijkstra and A* pathfinding.
 
     Builds a MultiGraph from SNCF station and line data, with optimized
     weights for high-speed lines (LGV). Provides shortest path computation
-    and path simplification to show only key stops.
+    using either Dijkstra or A* algorithm, and path simplification to show
+    only key stops.
+
+    A* uses geodesic distance as heuristic, which is admissible since the
+    straight-line distance is always <= actual path distance.
+
+    Complexity:
+        - Dijkstra: O((V + E) log V)
+        - A*: O((V + E) log V) but explores fewer nodes due to heuristic
     """
 
     def __init__(
         self,
         gares_json: Optional[str] = None,
         lignes_json: Optional[str] = None,
+        liste_gares_json: Optional[str] = None,
     ) -> None:
-        """
-        Initialize the railway graph.
-
-        Args:
-            gares_json: Path to stations JSON file
-                (default: datasets/raw/sncf/gares-de-voyageurs.json)
-            lignes_json: Path to lines JSON file
-                (default: datasets/raw/sncf/lignes-par-type.json)
-        """
         gares_json = gares_json or DEFAULT_GARES_JSON
         lignes_json = lignes_json or DEFAULT_LIGNES_JSON
+        liste_gares_json = liste_gares_json or DEFAULT_LISTE_GARES_JSON
 
         print(
-            "Building railway graph (HD geometry with LGV optimization)...",
+            "Building railway graph (hybrid: topology + geometry)...",
             file=sys.stderr,
         )
         self.graph: nx.MultiGraph = nx.MultiGraph()
         self.stations: List[Dict[str, Any]] = []
 
         self._load_stations(gares_json)
-        self._map_lines(lignes_json)
+        self._build_topology(liste_gares_json, lignes_json)
         self._add_city_transfers()
-        self._ensure_connectivity()
 
         print(
-            f"Graph ready: {self.graph.number_of_nodes()} stations connected.",
+            f"Graph ready: {self.graph.number_of_nodes()} nodes, "
+            f"{self.graph.number_of_edges()} edges.",
             file=sys.stderr,
         )
 
     def _load_stations(self, json_file: str) -> None:
-        """Load station data from JSON file."""
-        print("   - Loading stations...", file=sys.stderr)
+        print("   - Loading passenger stations...", file=sys.stderr)
         with open(json_file, "r", encoding="utf-8") as f:
             stations_data = json.load(f)
 
@@ -101,7 +100,6 @@ class TrainGraph:
                 station_data = {
                     "uic": uic,
                     "name": name,
-                    "point": Point(lon, lat),
                     "coords": (lat, lon),
                 }
                 self.stations.append(station_data)
@@ -109,75 +107,127 @@ class TrainGraph:
             except Exception:
                 continue
 
-    def _map_lines(self, lignes_json: str) -> None:
-        """Map railway lines and create edges between stations."""
-        print(
-            "   - Mapping line geometries (LGV optimization enabled)...",
-            file=sys.stderr,
-        )
-        with open(lignes_json, "r", encoding="utf-8") as f:
-            lignes_data = json.load(f)
+    def _build_topology(self, liste_gares_json: str, lignes_json: str) -> None:
+        print("   - Building topology from station-line mapping...", file=sys.stderr)
 
-        tolerance_deg = 0.002
+        lgv_lines = self._detect_lgv_lines(lignes_json)
+        line_geometries = self._load_line_geometries(lignes_json)
 
-        for row in lignes_data:
+        with open(liste_gares_json, "r", encoding="utf-8") as f:
+            liste_data = json.load(f)
+
+        known_uics = set(self.graph.nodes())
+        lines: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+
+        for row in liste_data:
             try:
-                geo_shape = row.get("geo_shape", {})
-                geometry = geo_shape.get("geometry")
-                if not geometry:
+                uic = str(row.get("code_uic", ""))
+                code_ligne = str(row.get("code_ligne", ""))
+                pk_str = str(row.get("pk", ""))
+                voyageurs = row.get("voyageurs", "N")
+
+                if voyageurs != "O" or uic not in known_uics or not code_ligne:
                     continue
 
-                line_obj = shape(geometry)
-                line_code = str(row.get("code_ligne", ""))
-                line_name = str(row.get("lib_ligne", "")).upper()
+                pk_val = _parse_pk(pk_str)
+                if pk_val is None:
+                    continue
 
-                # High-speed lines get reduced weight (3x faster)
-                is_lgv = "LGV" in line_name or "VITESSE" in line_name
+                x_wgs = row.get("x_wgs84")
+                y_wgs = row.get("y_wgs84")
 
-                minx, miny, maxx, maxy = line_obj.bounds
-                possible_stations = [
-                    s
-                    for s in self.stations
-                    if minx - tolerance_deg <= s["point"].x <= maxx + tolerance_deg
-                    and miny - tolerance_deg <= s["point"].y <= maxy + tolerance_deg
-                ]
-
-                stations_on_line: List[Tuple[Dict[str, Any], float]] = []
-                for s in possible_stations:
-                    dist_proj = line_obj.project(s["point"])
-                    if line_obj.distance(s["point"]) < tolerance_deg:
-                        stations_on_line.append((s, dist_proj))
-
-                stations_on_line.sort(key=lambda x: x[1])
-
-                for i in range(len(stations_on_line) - 1):
-                    s1, dist1 = stations_on_line[i]
-                    s2, dist2 = stations_on_line[i + 1]
-
-                    if dist1 != dist2:
-                        segment = substring(line_obj, dist1, dist2)
-                        curve_coords = [[y, x] for x, y in segment.coords]
-                    else:
-                        curve_coords = [s1["coords"], s2["coords"]]
-
-                    dist_km = geodesic(s1["coords"], s2["coords"]).km
-                    weight = dist_km / 3.0 if is_lgv else dist_km
-
-                    self.graph.add_edge(
-                        s1["uic"],
-                        s2["uic"],
-                        weight=weight,
-                        line=line_code,
-                        type="TRAIN",
-                        geometry=curve_coords,
-                    )
-
+                lines[code_ligne].append(
+                    {
+                        "uic": uic,
+                        "pk": pk_val,
+                        "lat": y_wgs,
+                        "lon": x_wgs,
+                    }
+                )
             except Exception:
                 continue
 
+        edges_added = 0
+        for code_ligne, stations_on_line in lines.items():
+            if len(stations_on_line) < 2:
+                continue
+
+            stations_on_line.sort(key=lambda s: s["pk"])
+
+            deduped = [stations_on_line[0]]
+            for s in stations_on_line[1:]:
+                if s["uic"] != deduped[-1]["uic"]:
+                    deduped.append(s)
+
+            is_lgv = code_ligne in lgv_lines
+            speed = 280.0 if is_lgv else 80.0
+
+            for i in range(len(deduped) - 1):
+                s1 = deduped[i]
+                s2 = deduped[i + 1]
+
+                dist_km = abs(s2["pk"] - s1["pk"])
+
+                if dist_km < 0.1 or dist_km > 500:
+                    pos1 = self.graph.nodes[s1["uic"]]["pos"]
+                    pos2 = self.graph.nodes[s2["uic"]]["pos"]
+                    dist_km = geodesic(pos1, pos2).km
+
+                if dist_km < 0.1:
+                    continue
+
+                weight = dist_km / 3.0 if is_lgv else dist_km
+
+                geometry = line_geometries.get(code_ligne)
+
+                self.graph.add_edge(
+                    s1["uic"],
+                    s2["uic"],
+                    weight=weight,
+                    dist_km=dist_km,
+                    speed=speed,
+                    line=code_ligne,
+                    type="TRAIN",
+                    geometry=geometry,
+                )
+                edges_added += 1
+
+        print(f"   - Topology: {edges_added} edges from {len(lines)} lines", file=sys.stderr)
+
+    def _detect_lgv_lines(self, lignes_json: str) -> set:
+        lgv_lines: set = set()
+        with open(lignes_json, "r", encoding="utf-8") as f:
+            lignes_data = json.load(f)
+
+        for row in lignes_data:
+            code = str(row.get("code_ligne", ""))
+            name = str(row.get("lib_ligne", "")).upper()
+            if "LGV" in name or "VITESSE" in name:
+                lgv_lines.add(code)
+
+        print(f"   - Detected {len(lgv_lines)} LGV lines", file=sys.stderr)
+        return lgv_lines
+
+    def _load_line_geometries(self, lignes_json: str) -> Dict[str, Any]:
+        geometries: Dict[str, Any] = {}
+        with open(lignes_json, "r", encoding="utf-8") as f:
+            lignes_data = json.load(f)
+
+        for row in lignes_data:
+            code = str(row.get("code_ligne", ""))
+            geo_shape = row.get("geo_shape", {})
+            geometry = geo_shape.get("geometry")
+            if code and geometry:
+                coords = geometry.get("coordinates", [])
+                if coords:
+                    geometries[code] = [[c[1], c[0]] for c in coords]
+
+        return geometries
+
     def _add_city_transfers(self) -> None:
-        """Add walking transfer edges between stations in the same city hub."""
         hubs = ["Paris", "Lyon", "Lille", "Marseille", "Bordeaux", "Nantes"]
+        transfers_added = 0
+
         for hub in hubs:
             candidates: List[str] = []
             for uic, data in self.graph.nodes(data=True):
@@ -191,53 +241,110 @@ class TrainGraph:
                     d2 = self.graph.nodes[u2]["pos"]
                     dist = geodesic(d1, d2).km
 
-                    # Only add transfer if stations are within 8km
                     if dist < 8:
-                        self.graph.add_edge(u1, u2, weight=15, line="TRANSFERT", type="WALK")
+                        self.graph.add_edge(
+                            u1,
+                            u2,
+                            weight=15,
+                            dist_km=dist,
+                            speed=5.0,
+                            line="TRANSFERT",
+                            type="WALK",
+                        )
+                        transfers_added += 1
 
-    def _ensure_connectivity(self) -> None:
-        """Placeholder for future connectivity improvements."""
-        # Could add logic to connect orphan nodes
-        pass
+        print(f"   - Added {transfers_added} transfer edges", file=sys.stderr)
+
+    def _heuristic(self, node_uic: str, goal_uic: str) -> float:
+        """
+        A* heuristic: geodesic distance to goal.
+
+        This heuristic is admissible because the straight-line distance
+        is always less than or equal to the actual path distance.
+
+        Args:
+            node_uic: Current node UIC
+            goal_uic: Goal node UIC
+
+        Returns:
+            Estimated distance to goal in km
+        """
+        pos1 = self.graph.nodes[node_uic]["pos"]
+        pos2 = self.graph.nodes[goal_uic]["pos"]
+        return float(geodesic(pos1, pos2).km)
 
     def get_path(
-        self, dep_name: str, dest_name: str
+        self,
+        dep_name: str,
+        dest_name: str,
+        intermediates: Optional[List[str]] = None,
+        algorithm: str = "astar",
     ) -> Tuple[Optional[List[str]], Optional[str], Optional[List[str]]]:
         """
-        Find shortest path between two stations.
+        Find shortest path between two stations, optionally via intermediates.
 
         Args:
             dep_name: Departure station name
             dest_name: Destination station name
+            intermediates: Optional list of intermediate station names
+            algorithm: Pathfinding algorithm ("dijkstra" or "astar")
 
         Returns:
             Tuple of (simplified_path, error_message, full_uic_path)
-            - simplified_path: List of key station names on the route
-            - error_message: Error string if path not found, None otherwise
-            - full_uic_path: Complete list of station UICs for visualization
         """
-        start_uic = self._find_uic_by_name(dep_name)
-        end_uic = self._find_uic_by_name(dest_name)
+        # Build waypoints: departure -> intermediates -> destination
+        waypoints = [dep_name]
+        if intermediates:
+            waypoints.extend(intermediates)
+        waypoints.append(dest_name)
 
-        if not start_uic:
-            return None, f"Departure not found: {dep_name}", None
-        if not end_uic:
-            return None, f"Destination not found: {dest_name}", None
+        # Find UICs for all waypoints
+        waypoint_uics = []
+        for wp in waypoints:
+            uic = self._find_uic_by_name(wp)
+            if not uic:
+                return None, f"Station not found: {wp}", None
+            waypoint_uics.append(uic)
 
+        # Chain paths between consecutive waypoints
+        full_path_uics: List[str] = []
         try:
-            full_path_uics = nx.shortest_path(self.graph, start_uic, end_uic, weight="weight")
-            simplified_names = self._simplify_path(full_path_uics)
+            for i in range(len(waypoint_uics) - 1):
+                start_uic = waypoint_uics[i]
+                end_uic = waypoint_uics[i + 1]
+
+                if algorithm == "astar":
+                    segment = nx.astar_path(
+                        self.graph,
+                        start_uic,
+                        end_uic,
+                        heuristic=lambda u, v: self._heuristic(u, end_uic),
+                        weight="weight",
+                    )
+                else:
+                    segment = nx.shortest_path(self.graph, start_uic, end_uic, weight="weight")
+
+                # Avoid duplicating junction points
+                if full_path_uics and segment:
+                    full_path_uics.extend(segment[1:])
+                else:
+                    full_path_uics.extend(segment)
+
+            simplified_names = self._simplify_path(full_path_uics, waypoint_uics)
             return simplified_names, None, full_path_uics
 
         except nx.NetworkXNoPath:
             return None, "No path found", None
 
-    def _simplify_path(self, path_uics: List[str]) -> List[str]:
+    def _simplify_path(
+        self, path_uics: List[str], waypoint_uics: Optional[List[str]] = None
+    ) -> List[str]:
         """
-        Simplify path to show only key stops (hubs and line changes).
+        Simplify path to show only key stops (hubs, line changes, and waypoints).
 
         Args:
             path_uics: Full list of station UICs
+            waypoint_uics: Optional list of waypoint UICs that must be included
 
         Returns:
             Simplified list of station names
@@ -245,6 +352,7 @@ class TrainGraph:
         if not path_uics:
             return []
 
+        waypoints_set = set(waypoint_uics) if waypoint_uics else set()
         full_names = [self.graph.nodes[u]["name"] for u in path_uics]
         final_stops = [full_names[0]]
         prev_line: Optional[str] = None
@@ -256,9 +364,14 @@ class TrainGraph:
             u_name = self.graph.nodes[u]["name"]
 
             is_hub = any(x in u_name for x in ["Paris", "Lyon", "Lille", "Bordeaux", "Marseille"])
+            is_waypoint = u in waypoints_set
 
-            # Add stop if line changes or at major hub
-            if (prev_line and curr_line != prev_line) or (is_hub and "TGV" in u_name):
+            # Add stop if line changes, at major hub, or explicitly requested waypoint
+            if (
+                (prev_line and curr_line != prev_line)
+                or (is_hub and "TGV" in u_name)
+                or is_waypoint
+            ):
                 if final_stops[-1] != u_name:
                     final_stops.append(u_name)
             prev_line = curr_line
@@ -269,24 +382,28 @@ class TrainGraph:
 
     def _find_uic_by_name(self, search_name: str) -> Optional[str]:
         """
-        Find station UIC by name (exact match first, then partial).
+        Find station UIC by name (exact match, then prefix, then contains).
 
-        Args:
-            search_name: Station name to search
-
-        Returns:
-            Station UIC if found, None otherwise
+        Priority:
+        1. Exact match: "Paris" == "Paris"
+        2. Prefix match: "Paris" matches "Paris Gare de Lyon"
+        3. Contains match: "Paris" matches "Cormeilles-en-Parisis" (fallback)
         """
         if not search_name:
             return None
         s = search_name.lower().strip()
 
-        # Try exact match first
         for uic, data in self.graph.nodes(data=True):
             if data["name"].lower() == s:
                 return str(uic)
 
-        # Fall back to partial match
+        # Try prefix match (station name starts with search term)
+        for uic, data in self.graph.nodes(data=True):
+            name_lower = data["name"].lower()
+            if name_lower.startswith(s) or name_lower.startswith(s + " "):
+                return str(uic)
+
+        # Fall back to contains match
         for uic, data in self.graph.nodes(data=True):
             if s in data["name"].lower():
                 return str(uic)
