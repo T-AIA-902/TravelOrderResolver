@@ -123,6 +123,7 @@ Thumbs.db
 trajet_*.html
 
 # Keep directory structure but ignore contents
+models/camemBERT/
 !models/.gitkeep
 !datasets/raw/audio/.gitkeep
 
