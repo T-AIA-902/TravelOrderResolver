@@ -2,11 +2,38 @@
 Intent classifier evaluation.
 """
 
+from __future__ import annotations
+
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Literal, overload
 
 from ..metrics import IntentResults
 from ..progress import print_progress
+
+# Type alias for predictions dict
+PredictionsDict = dict[str, tuple[list[str], list[str]]]
+
+
+@overload
+def evaluate_intent_classifiers(
+    classifiers: list[tuple[str, Any]],
+    data: list[dict[str, Any]],
+    batch_size: int = ...,
+    progress_callback: Callable[[int, int], None] | None = ...,
+    return_predictions: Literal[False] = ...,
+) -> dict[str, IntentResults]:
+    ...
+
+
+@overload
+def evaluate_intent_classifiers(
+    classifiers: list[tuple[str, Any]],
+    data: list[dict[str, Any]],
+    batch_size: int = ...,
+    progress_callback: Callable[[int, int], None] | None = ...,
+    return_predictions: Literal[True] = ...,
+) -> tuple[dict[str, IntentResults], PredictionsDict]:
+    ...
 
 
 def evaluate_intent_classifiers(
@@ -14,7 +41,8 @@ def evaluate_intent_classifiers(
     data: list[dict[str, Any]],
     batch_size: int = 128,
     progress_callback: Callable[[int, int], None] | None = None,
-) -> dict[str, IntentResults]:
+    return_predictions: bool = False,
+) -> dict[str, IntentResults] | tuple[dict[str, IntentResults], PredictionsDict]:
     """
     Evaluate all intent classifiers.
 
@@ -23,11 +51,15 @@ def evaluate_intent_classifiers(
         data: List of samples with 'sentence', 'intent', 'language' keys
         batch_size: Batch size for batched inference
         progress_callback: Optional callback for progress updates
+        return_predictions: If True, also return y_true/y_pred for confusion matrices
 
     Returns:
-        Dictionary mapping classifier names to IntentResults
+        If return_predictions=False: Dictionary mapping classifier names to IntentResults
+        If return_predictions=True: Tuple of (results_dict, predictions_dict)
+            where predictions_dict[name] = (y_true, y_pred)
     """
     results: dict[str, IntentResults] = {}
+    all_predictions: PredictionsDict = {}
     callback = progress_callback or print_progress
 
     sentences = [sample["sentence"] for sample in data]
@@ -37,6 +69,8 @@ def evaluate_intent_classifiers(
     for name, classifier in classifiers:
         print(f"  Evaluating intent: {name}...")
         r = IntentResults(name=name)
+        y_true: list[str] = []
+        y_pred: list[str] = []
 
         if hasattr(classifier, "classify_batch"):
             print(f"    Using batched inference (batch_size={batch_size})...")
@@ -55,6 +89,10 @@ def evaluate_intent_classifiers(
                 pred_intent, _ = pred
                 r.latencies.append(avg_latency)
                 r.total += 1
+
+                # Store predictions for confusion matrix
+                y_true.append(true_intent)
+                y_pred.append(pred_intent)
 
                 is_correct = pred_intent == true_intent
                 if is_correct:
@@ -78,6 +116,10 @@ def evaluate_intent_classifiers(
                 r.latencies.append((end - start) * 1000)
                 r.total += 1
 
+                # Store predictions for confusion matrix
+                y_true.append(true_intent)
+                y_pred.append(pred_intent)
+
                 is_correct = pred_intent == true_intent
                 if is_correct:
                     r.correct += 1
@@ -88,8 +130,11 @@ def evaluate_intent_classifiers(
             callback(total, total)
 
         results[name] = r
+        all_predictions[name] = (y_true, y_pred)
         print(f"    Done. Accuracy: {r.accuracy*100:.1f}%")
 
+    if return_predictions:
+        return results, all_predictions
     return results
 
 

@@ -1,3 +1,155 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:c68f680afe8c1c6aa6ca73ada82ba54fe37fc55bfc663dea68d2101baaee5286
-size 4166
+{
+  "intent": {
+    "Regex": {
+      "accuracy": 0.655248250583139,
+      "latency_ms": 0.005736507488992183
+    },
+    "CamemBERT": {
+      "accuracy": 0.699900033322226,
+      "latency_ms": 27.522563402792002
+    }
+  },
+  "entity": {
+    "Regex": {
+      "accuracy": 0.2923648134044174,
+      "precision": 0.43252633938578794,
+      "recall": 0.384176706993317,
+      "f1": 0.4067061919704835,
+      "latency_ms": 0.02703333013784415
+    },
+    "SpaCy": {
+      "accuracy": 0.2508568164508759,
+      "precision": 0.5767138604220934,
+      "recall": 0.35536174886145333,
+      "f1": 0.43384291491917926,
+      "latency_ms": 1.9496771450879178
+    },
+    "CamemBERT": {
+      "accuracy": 0.1507996953541508,
+      "precision": 0.45321195225127286,
+      "recall": 0.29455361580934214,
+      "f1": 0.3495075772691736,
+      "latency_ms": 1.197559723628731
+    }
+  },
+  "entity_fuzzy": {
+    "Regex + Fuzzy": {
+      "accuracy": 0.5133282559025133,
+      "precision": 0.7361578121497423,
+      "recall": 0.655826403535876,
+      "f1": 0.693309282687798,
+      "latency_ms": 18.352239502722426
+    },
+    "SpaCy + Fuzzy": {
+      "accuracy": 0.3138804265041889,
+      "precision": 0.6986793517514864,
+      "recall": 0.42842301595257115,
+      "f1": 0.5239987573187361,
+      "latency_ms": 1.5013411768836866
+    },
+    "CamemBERT + Fuzzy": {
+      "accuracy": 0.30445544554455445,
+      "precision": 0.6784194267138843,
+      "recall": 0.43964875821680904,
+      "f1": 0.522261550415909,
+      "latency_ms": 1.2044062399095197
+    }
+  },
+  "combined": [
+    {
+      "intent": "Regex",
+      "entity": "Regex",
+      "intent_accuracy": 0.655248250583139,
+      "entity_accuracy": 0.2923648134044174,
+      "latency_ms": 0.02977502947980901
+    },
+    {
+      "intent": "Regex",
+      "entity": "SpaCy",
+      "intent_accuracy": 0.655248250583139,
+      "entity_accuracy": 0.2508568164508759,
+      "latency_ms": 6.890121778493314
+    },
+    {
+      "intent": "Regex",
+      "entity": "CamemBERT",
+      "intent_accuracy": 0.655248250583139,
+      "entity_accuracy": 0.1507996953541508,
+      "latency_ms": 1.180480068802594
+    },
+    {
+      "intent": "CamemBERT",
+      "entity": "Regex",
+      "intent_accuracy": 0.699900033322226,
+      "entity_accuracy": 0.2923648134044174,
+      "latency_ms": 27.662531461166
+    },
+    {
+      "intent": "CamemBERT",
+      "entity": "SpaCy",
+      "intent_accuracy": 0.699900033322226,
+      "entity_accuracy": 0.2508568164508759,
+      "latency_ms": 35.70246066227022
+    },
+    {
+      "intent": "CamemBERT",
+      "entity": "CamemBERT",
+      "intent_accuracy": 0.699900033322226,
+      "entity_accuracy": 0.1507996953541508,
+      "latency_ms": 29.287465807185345
+    }
+  ],
+  "combined_fuzzy": [
+    {
+      "intent": "Regex",
+      "entity": "Regex",
+      "intent_accuracy": 0.655248250583139,
+      "entity_accuracy": 0.5133282559025133,
+      "latency_ms": 0.10667099708078943
+    },
+    {
+      "intent": "Regex",
+      "entity": "SpaCy",
+      "intent_accuracy": 0.655248250583139,
+      "entity_accuracy": 0.3138804265041889,
+      "latency_ms": 6.6778348054312
+    },
+    {
+      "intent": "Regex",
+      "entity": "CamemBERT",
+      "intent_accuracy": 0.655248250583139,
+      "entity_accuracy": 0.30445544554455445,
+      "latency_ms": 1.1806187156899883
+    },
+    {
+      "intent": "CamemBERT",
+      "entity": "Regex",
+      "intent_accuracy": 0.699900033322226,
+      "entity_accuracy": 0.5133282559025133,
+      "latency_ms": 27.350904111376003
+    },
+    {
+      "intent": "CamemBERT",
+      "entity": "SpaCy",
+      "intent_accuracy": 0.699900033322226,
+      "entity_accuracy": 0.3138804265041889,
+      "latency_ms": 35.560599222323425
+    },
+    {
+      "intent": "CamemBERT",
+      "entity": "CamemBERT",
+      "intent_accuracy": 0.699900033322226,
+      "entity_accuracy": 0.30445544554455445,
+      "latency_ms": 28.72002938333188
+    }
+  ],
+  "language": {
+    "Regex": {
+      "accuracy": 0.6892369210263246,
+      "french_accuracy": 0.6759649122807018,
+      "english_accuracy": 0.6846666666666666,
+      "unknown_accuracy": 0.7643705463182898,
+      "latency_ms": 0.026031256248302194
+    }
+  }
+}

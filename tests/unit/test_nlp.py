@@ -26,9 +26,9 @@ class TestPreprocessor:
     """Tests for the Preprocessor class."""
 
     def test_default_preprocessor(self) -> None:
-        """Test default preprocessing."""
+        """Test default preprocessing (preserves case)."""
         result = preprocess("  Hello   World  ")
-        assert result == "hello world"
+        assert result == "Hello World"
 
     def test_unicode_normalization(self) -> None:
         """Test unicode normalization."""
@@ -69,17 +69,17 @@ class TestPreprocessor:
         assert result == "Hello World"
 
     def test_config_remove_accents(self) -> None:
-        """Test config with accent removal."""
+        """Test config with accent removal (preserves case by default)."""
         config = PreprocessorConfig(remove_accents=True)
         preprocessor = Preprocessor(config)
         result = preprocessor.preprocess("Café")
-        assert result == "cafe"
+        assert result == "Cafe"
 
     def test_tokenize(self) -> None:
-        """Test tokenization."""
+        """Test tokenization (preserves case)."""
         tokens = tokenize("Je veux aller à Paris")
         assert len(tokens) == 5
-        assert "paris" in tokens
+        assert "Paris" in tokens
 
     def test_empty_string(self) -> None:
         """Test empty string handling."""

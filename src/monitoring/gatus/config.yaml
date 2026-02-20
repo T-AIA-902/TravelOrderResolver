@@ -1,0 +1,28 @@
+endpoints:
+  - name: Prometheus
+    group: monitoring
+    url: "http://prometheus:9090/-/healthy"
+    interval: 30s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Grafana
+    group: monitoring
+    url: "http://grafana:3000/api/health"
+    interval: 30s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Node Exporter
+    group: monitoring
+    url: "http://node-exporter:9100/metrics"
+    interval: 30s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: cAdvisor
+    group: monitoring
+    url: "http://cadvisor:8080/healthz"
+    interval: 30s
+    conditions:
+      - "[STATUS] == 200"

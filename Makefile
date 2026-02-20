@@ -1,4 +1,4 @@
-.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-camembert demo-spacy demo-regex demo-all
+.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-flant5 demo-camembert demo-spacy demo-regex demo-all front-build front-run front-stop front-rebuild
 
 # Default target
 .DEFAULT_GOAL := help
@@ -81,11 +81,15 @@ demo-spacy: ## Demo with SpaCy extractor
 	@echo "Demo: SpaCy extractor"
 	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor spacy
 
+demo-flant5: ## Demo with Flan-T5 extractor
+	@echo "Demo: Flan-T5 extractor"
+	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor flant5
+
 demo-regex: ## Demo with Regex extractor
 	@echo "Demo: Regex extractor"
 	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor regex
 
-demo-all: demo-regex demo-spacy demo-camembert ## Run demo with all extractors
+demo-all: demo-regex demo-spacy demo-camembert demo-flant5 ## Run demo with all extractors
 
 # =============================================================================
 # NLP & EVALUATION
@@ -124,10 +128,10 @@ download-models: ## Download pre-trained models
 # DOCKER
 # =============================================================================
 
-docker-build: ## Build Docker image
+docker-build: ## Build backend Docker image
 	docker build -t travel-order-resolver -f docker/Dockerfile .
 
-docker-run: ## Run Docker container
+docker-run: ## Run backend Docker container
 	docker run -p 8000:8000 travel-order-resolver
 
 docker-compose-up: ## Start all services with docker-compose
@@ -135,6 +139,23 @@ docker-compose-up: ## Start all services with docker-compose
 
 docker-compose-down: ## Stop all services
 	docker-compose -f docker/docker-compose.yml down
+
+# =============================================================================
+# FRONTEND
+# =============================================================================
+
+front-build: ## Build frontend Docker image
+	docker build -f docker/Dockerfile.frontend -t tor-frontend .
+
+front-run: front-build ## Build and run frontend on http://localhost:3000
+	@docker rm -f tor-frontend 2>/dev/null || true
+	docker run -d --name tor-frontend -p 3000:80 tor-frontend
+	@echo "Frontend running on http://localhost:3000"
+
+front-stop: ## Stop frontend container
+	docker stop tor-frontend
+
+front-rebuild: front-run ## Rebuild and restart frontend
 
 # =============================================================================
 # DOCUMENTATION

@@ -12,16 +12,22 @@ Architecture:
 
 Available implementations:
 - Language: RegexLanguageDetector, LangdetectLanguageDetector
-- Intent: RegexIntentClassifier, CamembertIntentClassifier
-- Entity: RegexEntityExtractor, SpacyEntityExtractor, CamembertEntityExtractor
+- Intent: RegexIntentClassifier, CamembertIntentClassifier, FlanT5IntentClassifier
+- Entity: RegexEntityExtractor, SpacyEntityExtractor, CamembertEntityExtractor,
+          FlanT5EntityExtractor
 - Post: FuzzyPostProcessor
 """
 
 # Entity extractors
-from .entity import CamembertEntityExtractor, RegexEntityExtractor, SpacyEntityExtractor
+from .entity import (
+    CamembertEntityExtractor,
+    FlanT5EntityExtractor,
+    RegexEntityExtractor,
+    SpacyEntityExtractor,
+)
 
 # Intent classifiers
-from .intent import CamembertIntentClassifier, RegexIntentClassifier
+from .intent import CamembertIntentClassifier, FlanT5IntentClassifier, RegexIntentClassifier
 
 # Core interfaces
 from .interfaces import EntityExtractor, IntentClassifier, LanguageDetector, PostProcessor
@@ -35,8 +41,8 @@ from .pipeline import NLPPipeline, PipelineConfig, parse_travel_request
 # Post-processors
 from .post import FuzzyPostProcessor
 
-# Preprocessor
-from .preprocessor import Preprocessor, PreprocessorConfig, preprocess, tokenize
+# Pre-processors
+from .pre import Preprocessor, PreprocessorConfig, STTArtifactFilter, preprocess, tokenize
 
 # Types
 from .types import Intent, Language, PredictionResult, TravelEntity
@@ -53,10 +59,12 @@ __all__ = [
     # Intent classifiers
     "RegexIntentClassifier",
     "CamembertIntentClassifier",
+    "FlanT5IntentClassifier",
     # Entity extractors
     "RegexEntityExtractor",
     "SpacyEntityExtractor",
     "CamembertEntityExtractor",
+    "FlanT5EntityExtractor",
     # Post-processors
     "FuzzyPostProcessor",
     # Types
@@ -68,7 +76,8 @@ __all__ = [
     "NLPPipeline",
     "PipelineConfig",
     "parse_travel_request",
-    # Preprocessor
+    # Pre-processors
+    "STTArtifactFilter",
     "Preprocessor",
     "PreprocessorConfig",
     "preprocess",

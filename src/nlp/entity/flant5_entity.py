@@ -6,7 +6,7 @@ Uses prompted seq2seq generation for extracting travel entities
 """
 
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ..interfaces import EntityExtractor
 
@@ -22,7 +22,7 @@ class FlanT5EntityExtractor(EntityExtractor):
     # Prompt used during fine-tuning
     PROMPT_TEMPLATE = "Extrais les villes: {text}"
 
-    def __init__(self, model_name: str | None = None) -> None:
+    def __init__(self, model_name: Optional[str] = None) -> None:
         """
         Initialize the Flan-T5 entity extractor.
 

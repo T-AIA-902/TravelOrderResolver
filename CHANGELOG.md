@@ -5,6 +5,138 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] Evaluation Module Refactor & Notebook Split - 2026-01-23
+
+### Added
+- **Confusion Matrix Module** (`src/evaluation/confusion.py`):
+  - `compute_confusion_matrix()` - Compute matrix from y_true/y_pred
+  - `format_confusion_matrix_ascii()` - ASCII table output for CLI
+  - `plot_confusion_matrix()` - Matplotlib heatmap visualization for notebooks
+- **sklearn-Style Report Formatting** (`src/evaluation/formatting.py`):
+  - `format_classification_report_md()` - Markdown tables matching sklearn format
+  - `format_classification_report_ascii()` - ASCII tables for CLI output
+  - Convenience wrappers: `format_language_report_md()`, `format_intent_report_md()`, `format_entity_report_md()`
+- **Shared Evaluation Functions** (`src/evaluation/`):
+  - `preprocessing.py` - Reusable `apply_preprocessing()` function
+  - `model_factory.py` - Factory functions for creating models
+  - DRY principle: CLI and notebooks use the same core functions
+- **Return Predictions Support** (`src/evaluation/evaluators/*.py`):
+  - All evaluators now support `return_predictions=True` parameter
+  - Returns y_true/y_pred lists for confusion matrix generation
+  - Type-safe with `Literal[True]`/`Literal[False]` overloads
+
+### Changed
+- **Notebook Split**:
+  - Renamed `evaluation.ipynb` → `full_evaluation.ipynb` (comprehensive benchmark)
+  - Created `single_evaluation.ipynb` (quick benchmark for individual models)
+- **BENCHMARK.md** (`docs/BENCHMARK.md`):
+  - Updated with full evaluation results from notebook
+  - 6 detailed sections with tables and analysis
+  - Added methodology and pipeline impact summary
+- **README.md**:
+  - Updated benchmark latencies from notebook results
+  - Added links to both notebooks
+
+### Architecture
+```
+notebooks/
+├── full_evaluation.ipynb    # Comprehensive benchmark of ALL models
+└── single_evaluation.ipynb  # Quick benchmark for YOUR model
+
+src/evaluation/
+├── confusion.py             # NEW: Confusion matrix utilities
+├── formatting.py            # UPDATED: sklearn-style formatters
+├── preprocessing.py         # NEW: Shared preprocessing
+├── model_factory.py         # NEW: Model creation factories
+└── evaluators/              # UPDATED: return_predictions support
+```
+
+---
+
+## [0.3.8] Realistic Dataset Distribution - 2026-01-23
+
+### Changed
+- **Dataset Distribution** (`datasets/scripts/generate_base.py`):
+  - French: 76% → **89%** (realistic for SNCF system)
+  - English: 10% → **6%** (tourists, lingua franca)
+  - Other languages: 7% → **2%** (Spanish, German, Italian)
+  - UNKNOWN: 5% → **1%** (noise/gibberish only)
+
+- **Template Refactoring** - Balanced realism with language detection:
+  - **Added `TRIP_TEMPLATES_FR_MINIMAL`**: Ultra-minimal patterns (e.g., "Paris Lyon", "Vers Lyon") sampled at **10%** of French TRIP entries for realism
+  - `NOT_TRIP_TEMPLATES_FR_INCOMPLETE`: Removed single-word entries ("Oui", "Non", "TGV", "TER", "Train", "Gare", etc.)
+  - `NOT_TRIP_TEMPLATES_FR_GENERAL`: Removed single-word entries ("Genial", "Ok", "D'accord", etc.)
+
+- **Evaluation Pipeline** (`src/evaluation/cli.py`):
+  - Added full pre-processing (STTArtifactFilter + Preprocessor) before all evaluations
+
+- **PreprocessorConfig Default** (`src/nlp/pre/preprocessor.py`):
+  - Changed `lowercase` default from `True` to `False` (preserves case for language detection)
+
+### Performance Improvement
+- **Langdetect Accuracy**: 74.7% → **77.9%** (+3.2%)
+- **French Recall**: 77.4% → **80%** (+2.6%)
+- **French F1**: 0.84 → **0.87** (+0.03)
+
+### Updated
+- `datasets/README.md`: Updated with new distribution tables
+
+---
+
+## [0.3.7] Pre-processing Module Consolidation - 2026-01-23
+
+### Changed
+- **Architecture Refactor**: Consolidated all pre-processing into `src/nlp/pre/`
+  - Moved `src/pipeline/stt_filter.py` → `src/nlp/pre/stt_filter.py`
+  - Moved `src/nlp/preprocessor.py` → `src/nlp/pre/preprocessor.py`
+  - Removed `src/pipeline/` directory
+- **Module Structure**: Now mirrors `post/` for symmetry
+  ```
+  src/nlp/
+  ├── pre/                  # Pre-processing (NEW location)
+  │   ├── stt_filter.py     # STT artifact cleaning
+  │   └── preprocessor.py   # Text normalization
+  ├── language/
+  ├── intent/
+  ├── entity/
+  └── post/                 # Post-processing
+  ```
+- **README**: Updated architecture diagram to show `PRE-PROCESSING (src/nlp/pre/)`
+
+### Added
+- **`src/nlp/pre/__init__.py`**: New module exporting `STTArtifactFilter`, `Preprocessor`, `PreprocessorConfig`, `preprocess`, `tokenize`
+- **`src/nlp.__init__.py`**: Now exports `STTArtifactFilter` from `pre/`
+
+### Removed
+- **`src/pipeline/`**: Directory removed (consolidated into `src/nlp/pre/`)
+
+---
+
+## [0.3.6] STT Artifact Filter & Dataset Quality Fixes - 2026-01-23
+
+### Added
+- **STT Artifact Filter** (`src/nlp/pre/stt_filter.py`):
+  - `STTArtifactFilter` class for cleaning Speech-to-Text artifacts before NLP processing
+  - Handles Whisper noise markers: `[coupure]`, `[music]`, `[inaudible]`, `*bruit*`, etc.
+  - Pattern-based cleaning for bracketed content `[...]`, asterisk content `*...*`, and ellipsis
+  - `filter()` method returns `(cleaned_text, is_pure_noise)` tuple
+  - Only marks as UNKNOWN when **entire** text is noise; otherwise continues classification
+
+### Changed
+- **Pipeline Architecture**:
+  - Pre-processing now runs **first** in the NLP pipeline (before language detection)
+  - Flow: `Raw Input → PRE (stt_filter, preprocessor) → Language → Intent → Entity → POST`
+  - All downstream NLP components receive pre-cleaned text
+
+### Fixed
+- **Dataset Labeling** (`datasets/scripts/generate_base.py`):
+  - Moved "Help" from `NOT_TRIP_TEMPLATES_FR_QUESTIONS` to `NOT_TRIP_TEMPLATES_EN` (was English word labeled as French)
+  - Added `TRIP_TEMPLATES_FR_TRUNCATED` for unambiguous truncated French sentences
+  - Truncated patterns like "Je voudrais aller de Par..." now labeled as TRIP/FRENCH with empty entities
+  - Ambiguous truncated sentences ("De Lyo...", "Vers Ma...") remain in UNKNOWN_TEMPLATES
+
+---
+
 ## [0.3.5] sklearn-Style Reports, 3-Class Intent & Dataset Fix - 2026-01-22
 
 ### Changed

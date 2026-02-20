@@ -15,7 +15,6 @@ Usage:
 import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
 
 from .data_loader import load_dataset
 from .evaluators import (
@@ -25,6 +24,14 @@ from .evaluators import (
     evaluate_language_detectors,
 )
 from .metrics import CombinedResults, EntityResults, IntentResults, LanguageResults
+from .model_factory import (
+    DeviceType,
+    create_entity_extractors,
+    create_fuzzy_post_processor,
+    create_intent_classifiers,
+    create_language_detectors,
+)
+from .preprocessing import apply_preprocessing
 from .reporting import (
     export_results_json,
     print_table_combined,
@@ -33,90 +40,6 @@ from .reporting import (
     print_table_intent,
     print_table_language,
 )
-
-DeviceType = Literal["auto", "cuda", "cpu"]
-
-
-def create_intent_classifiers(
-    models: list[str], device: DeviceType = "auto"
-) -> list[tuple[str, Any]]:
-    """Create intent classifiers based on model list."""
-    classifiers: list[tuple[str, Any]] = []
-
-    if "regex" in models or "all" in models:
-        from src.nlp.intent import RegexIntentClassifier
-
-        classifiers.append(("Regex", RegexIntentClassifier()))
-
-    if "camembert" in models or "all" in models:
-        from src.nlp.intent import CamembertIntentClassifier
-
-        classifiers.append(("CamemBERT", CamembertIntentClassifier(device=device)))
-
-    if "spacy" in models or "all" in models:
-        from src.nlp.intent import SpacyIntentClassifier
-
-        classifiers.append(("SpaCy", SpacyIntentClassifier(device=device)))
-
-    if "flant5" in models or "all" in models:
-        from src.nlp.intent import FlanT5IntentClassifier
-
-        classifiers.append(("Flan-T5", FlanT5IntentClassifier()))
-
-    return classifiers
-
-
-def create_entity_extractors(
-    models: list[str], device: DeviceType = "auto"
-) -> list[tuple[str, Any]]:
-    """Create entity extractors based on model list."""
-    extractors: list[tuple[str, Any]] = []
-
-    if "regex" in models or "all" in models:
-        from src.nlp.entity import RegexEntityExtractor
-
-        extractors.append(("Regex", RegexEntityExtractor()))
-
-    if "spacy" in models or "all" in models:
-        from src.nlp.entity import SpacyEntityExtractor
-
-        extractors.append(("SpaCy", SpacyEntityExtractor(device=device)))
-
-    if "camembert" in models or "all" in models:
-        from src.nlp.entity import CamembertEntityExtractor
-
-        extractors.append(("CamemBERT", CamembertEntityExtractor(device=device)))
-
-    if "flant5" in models or "all" in models:
-        from src.nlp.entity import FlanT5EntityExtractor
-
-        extractors.append(("Flan-T5", FlanT5EntityExtractor()))
-
-    return extractors
-
-
-def create_fuzzy_post_processor() -> Any:
-    """Create fuzzy post-processor."""
-    from src.nlp.post import FuzzyPostProcessor
-
-    return FuzzyPostProcessor()
-
-
-def create_language_detectors(models: list[str]) -> list[tuple[str, Any]]:
-    """Create language detectors based on model list."""
-    detectors: list[tuple[str, Any]] = []
-
-    if "regex" in models or "all" in models:
-        from src.nlp.language import RegexLanguageDetector
-
-        detectors.append(("Regex", RegexLanguageDetector()))
-
-    if "langdetect" in models or "all" in models:
-        from src.nlp.language import LangdetectLanguageDetector
-
-        detectors.append(("Langdetect", LangdetectLanguageDetector()))
-
-    return detectors
 
 
 def main() -> None:
@@ -194,6 +117,11 @@ def main() -> None:
         action="store_true",
         help="Enable fuzzy post-processing for entity extraction.",
     )
+    parser.add_argument(
+        "--no-preprocess",
+        action="store_true",
+        help="Skip pre-processing (STT filter + normalization) for raw evaluation.",
+    )
 
     args = parser.parse_args()
 
@@ -210,6 +138,12 @@ def main() -> None:
     print(f"\nLoading dataset from: {dataset_path}")
     data = load_dataset(dataset_path)
     print(f"Loaded {len(data)} samples")
+
+    # Pre-process: Apply full NLP pre-processing pipeline (unless --no-preprocess)
+    if not args.no_preprocess:
+        data = apply_preprocessing(data, verbose=True, inplace=True)
+    else:
+        print("Pre-processing: SKIPPED (--no-preprocess flag)")
 
     # Count by intent
     intent_counts: dict[str, int] = {}
