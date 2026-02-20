@@ -120,12 +120,14 @@ class TrainGraph:
                 x_wgs = row.get("x_wgs84")
                 y_wgs = row.get("y_wgs84")
 
-                lines[code_ligne].append({
-                    "uic": uic,
-                    "pk": pk_val,
-                    "lat": y_wgs,
-                    "lon": x_wgs,
-                })
+                lines[code_ligne].append(
+                    {
+                        "uic": uic,
+                        "pk": pk_val,
+                        "lat": y_wgs,
+                        "lon": x_wgs,
+                    }
+                )
             except Exception:
                 continue
 
@@ -225,7 +227,8 @@ class TrainGraph:
 
                     if dist < 8:
                         self.graph.add_edge(
-                            u1, u2,
+                            u1,
+                            u2,
                             weight=15,
                             dist_km=dist,
                             speed=5.0,
@@ -248,9 +251,7 @@ class TrainGraph:
             return None, f"Destination not found: {dest_name}", None
 
         try:
-            full_path_uics = nx.shortest_path(
-                self.graph, start_uic, end_uic, weight="weight"
-            )
+            full_path_uics = nx.shortest_path(self.graph, start_uic, end_uic, weight="weight")
             simplified_names = self._simplify_path(full_path_uics)
             return simplified_names, None, full_path_uics
 
@@ -271,14 +272,9 @@ class TrainGraph:
             curr_line = edge_data.get("line", "UNKNOWN")
             u_name = self.graph.nodes[u]["name"]
 
-            is_hub = any(
-                x in u_name
-                for x in ["Paris", "Lyon", "Lille", "Bordeaux", "Marseille"]
-            )
+            is_hub = any(x in u_name for x in ["Paris", "Lyon", "Lille", "Bordeaux", "Marseille"])
 
-            if (prev_line and curr_line != prev_line) or (
-                is_hub and "TGV" in u_name
-            ):
+            if (prev_line and curr_line != prev_line) or (is_hub and "TGV" in u_name):
                 if final_stops[-1] != u_name:
                     final_stops.append(u_name)
             prev_line = curr_line

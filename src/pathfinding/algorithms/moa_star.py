@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import heapq
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
 
 import networkx as nx
 from geopy.distance import geodesic
@@ -77,10 +77,12 @@ def _edge_costs(
         time_h = dist_km / speed
         transfer = 1 if (prev_line is not None and line_code != prev_line) else 0
 
-        results.append((
-            CostVector(time=time_h, distance=dist_km, transfers=transfer),
-            line_code,
-        ))
+        results.append(
+            (
+                CostVector(time=time_h, distance=dist_km, transfers=transfer),
+                line_code,
+            )
+        )
 
     return results
 
@@ -114,14 +116,17 @@ def moastar_paths(
     h = _heuristic_vector(graph, start, goal)
 
     open_set: list = []
-    heapq.heappush(open_set, (
-        h.time,
-        counter,
-        zero_cost,
-        start,
-        None,
-        [start],
-    ))
+    heapq.heappush(
+        open_set,
+        (
+            h.time,
+            counter,
+            zero_cost,
+            start,
+            None,
+            [start],
+        ),
+    )
 
     frontiers: Dict[str, _ParetoFrontier] = {}
     frontiers[start] = _ParetoFrontier()
@@ -163,13 +168,16 @@ def moastar_paths(
                     h_vec = _heuristic_vector(graph, neighbor, goal)
                     f_time = new_g.time + h_vec.time
                     counter += 1
-                    heapq.heappush(open_set, (
-                        f_time,
-                        counter,
-                        new_g,
-                        neighbor,
-                        line_code,
-                        path + [neighbor],
-                    ))
+                    heapq.heappush(
+                        open_set,
+                        (
+                            f_time,
+                            counter,
+                            new_g,
+                            neighbor,
+                            line_code,
+                            path + [neighbor],
+                        ),
+                    )
 
     return results

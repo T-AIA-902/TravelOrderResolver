@@ -37,10 +37,10 @@ class MapVisualizer:
         )
 
     def _get_node_pos(self, uic: str) -> Tuple[float, float]:
-        return self.graph_engine.graph.nodes[uic]["pos"]
+        return tuple(self.graph_engine.graph.nodes[uic]["pos"])  # type: ignore[return-value]
 
     def _get_node_name(self, uic: str) -> str:
-        return self.graph_engine.graph.nodes[uic]["name"]
+        return str(self.graph_engine.graph.nodes[uic]["name"])
 
     def _draw_single_path(
         self,
@@ -128,7 +128,7 @@ class MapVisualizer:
                 f'<li style="margin:4px 0">'
                 f'<span style="background:{c};width:20px;height:3px;'
                 f'display:inline-block;margin-right:6px;vertical-align:middle"></span>'
-                f'{label}</li>'
+                f"{label}</li>"
             )
 
         legend_html = f"""
@@ -189,7 +189,7 @@ class MapVisualizer:
     def _draw_pareto_paths(
         self,
         route_result: "RouteResult",
-        filename: str,
+        filename: Optional[str],
         open_browser: bool,
     ) -> str:
         print("   Generating MOA* Pareto map...", file=sys.stderr)
@@ -197,7 +197,7 @@ class MapVisualizer:
         fmap = self._create_map()
         all_coords: List[List[float]] = []
         legend_entries: List[dict] = []
-        pareto = route_result.pareto_paths
+        pareto = route_result.pareto_paths or []
 
         for idx, path_result in enumerate(pareto):
             color = _PARETO_COLORS[idx % len(_PARETO_COLORS)]

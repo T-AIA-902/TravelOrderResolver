@@ -1,11 +1,11 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional
 
 import networkx as nx
 
 from .algorithms.astar import astar_path
-from .algorithms.moa_star import CostVector, PathResult, moastar_paths
+from .algorithms.moa_star import PathResult, moastar_paths
 from .graph import TrainGraph
 
 
@@ -51,9 +51,7 @@ class RouteOptimizer:
         if intermediate:
             mid_uic = self.tg._find_uic_by_name(intermediate)
             if not mid_uic:
-                return RouteResult(
-                    error=f"Intermediate city not found: {intermediate}"
-                )
+                return RouteResult(error=f"Intermediate city not found: {intermediate}")
             return self._route_via_waypoint(dep_uic, mid_uic, dest_uic, algorithm)
 
         return self._compute_route(dep_uic, dest_uic, algorithm)
@@ -106,13 +104,9 @@ class RouteOptimizer:
         combined_uics = path1 + path2[1:]
 
         simplified = self.tg._simplify_path(combined_uics)
-        return RouteResult(
-            simplified_path=simplified, full_uic_path=combined_uics
-        )
+        return RouteResult(simplified_path=simplified, full_uic_path=combined_uics)
 
-    def _compute_route(
-        self, start_uic: str, goal_uic: str, algorithm: Algorithm
-    ) -> RouteResult:
+    def _compute_route(self, start_uic: str, goal_uic: str, algorithm: Algorithm) -> RouteResult:
         graph = self.tg.graph
 
         if algorithm == Algorithm.DIJKSTRA:
@@ -124,9 +118,7 @@ class RouteOptimizer:
         else:
             return RouteResult(error=f"Unknown algorithm: {algorithm}")
 
-    def _run_dijkstra(
-        self, graph: nx.MultiGraph, start: str, goal: str
-    ) -> RouteResult:
+    def _run_dijkstra(self, graph: nx.MultiGraph, start: str, goal: str) -> RouteResult:
         try:
             uic_path = nx.shortest_path(graph, start, goal, weight="weight")
             simplified = self.tg._simplify_path(uic_path)
@@ -134,18 +126,14 @@ class RouteOptimizer:
         except nx.NetworkXNoPath:
             return RouteResult(error="No path found (Dijkstra)")
 
-    def _run_astar(
-        self, graph: nx.MultiGraph, start: str, goal: str
-    ) -> RouteResult:
+    def _run_astar(self, graph: nx.MultiGraph, start: str, goal: str) -> RouteResult:
         uic_path = astar_path(graph, start, goal)
         if uic_path is None:
             return RouteResult(error="No path found (A*)")
         simplified = self.tg._simplify_path(uic_path)
         return RouteResult(simplified_path=simplified, full_uic_path=uic_path)
 
-    def _run_moastar(
-        self, graph: nx.MultiGraph, start: str, goal: str
-    ) -> RouteResult:
+    def _run_moastar(self, graph: nx.MultiGraph, start: str, goal: str) -> RouteResult:
         pareto = moastar_paths(graph, start, goal)
         if not pareto:
             return RouteResult(error="No path found (MOA*)")

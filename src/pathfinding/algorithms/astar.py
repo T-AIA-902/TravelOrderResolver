@@ -8,7 +8,7 @@ from geopy.distance import geodesic
 def _geodesic_heuristic(graph: nx.MultiGraph, node: str, goal: str) -> float:
     pos_node = graph.nodes[node]["pos"]
     pos_goal = graph.nodes[goal]["pos"]
-    return geodesic(pos_node, pos_goal).km / 3.0
+    return float(geodesic(pos_node, pos_goal).km) / 3.0
 
 
 def astar_path(
@@ -44,9 +44,7 @@ def astar_path(
                 continue
 
             edge_data = graph.get_edge_data(current, neighbor)
-            min_weight = min(
-                edge_data[k].get("weight", 1.0) for k in edge_data
-            )
+            min_weight = min(edge_data[k].get("weight", 1.0) for k in edge_data)
 
             tentative_g = current_g + min_weight
 
@@ -55,9 +53,7 @@ def astar_path(
                 g_score[neighbor] = tentative_g
                 h = _geodesic_heuristic(graph, neighbor, goal)
                 counter += 1
-                heapq.heappush(
-                    open_set, (tentative_g + h, counter, neighbor)
-                )
+                heapq.heappush(open_set, (tentative_g + h, counter, neighbor))
 
     return None
 
