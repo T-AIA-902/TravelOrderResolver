@@ -1,0 +1,6 @@
+# Override parent: allow binary model files (tracked via LFS)
+!*.safetensors
+!*.bin
+
+# Ignore cache
+__pycache__/
