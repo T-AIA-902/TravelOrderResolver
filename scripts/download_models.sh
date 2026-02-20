@@ -14,11 +14,9 @@ echo "Downloading pre-trained models..."
 echo "Downloading spaCy fr_dep_news_trf..."
 python -m spacy download fr_dep_news_trf
 
-# Note: Add commands here to download other models as needed
-# For example:
-# - CamemBERT from HuggingFace
-# - Whisper for speech-to-text
-# - Custom fine-tuned models
+# Modèles CamemBERT fine-tunés (hébergés sur HuggingFace)
+echo "Downloading CamemBERT fine-tuned models..."
+huggingface-cli download Vatt/travel-order-resolver-models --local-dir models/camemBERT
 
 echo ""
 echo "To download CamemBERT (for fine-tuning):"
