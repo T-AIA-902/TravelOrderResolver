@@ -5,6 +5,7 @@ from typing import List, Optional
 import networkx as nx
 
 from .algorithms.astar import astar_path
+from .algorithms.dijkstra import dijkstra_path
 from .algorithms.moa_star import PathResult, moastar_paths
 from .graph import TrainGraph
 
@@ -119,12 +120,11 @@ class RouteOptimizer:
             return RouteResult(error=f"Unknown algorithm: {algorithm}")
 
     def _run_dijkstra(self, graph: nx.MultiGraph, start: str, goal: str) -> RouteResult:
-        try:
-            uic_path = nx.shortest_path(graph, start, goal, weight="weight")
-            simplified = self.tg._simplify_path(uic_path)
-            return RouteResult(simplified_path=simplified, full_uic_path=uic_path)
-        except nx.NetworkXNoPath:
+        uic_path = dijkstra_path(graph, start, goal)
+        if uic_path is None:
             return RouteResult(error="No path found (Dijkstra)")
+        simplified = self.tg._simplify_path(uic_path)
+        return RouteResult(simplified_path=simplified, full_uic_path=uic_path)
 
     def _run_astar(self, graph: nx.MultiGraph, start: str, goal: str) -> RouteResult:
         uic_path = astar_path(graph, start, goal)
