@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import { Home, MessageSquare, BarChart3, FileText, Database, Train } from 'lucide-vue-next'
+import {
+  Home,
+  MessageSquare,
+  BarChart3,
+  FileText,
+  Database,
+  Activity,
+  Train,
+} from 'lucide-vue-next'
 
 const route = useRoute()
 
@@ -10,6 +18,7 @@ const navItems = [
   { to: '/evaluation', label: 'Évaluation', icon: BarChart3 },
   { to: '/dataset', label: 'Dataset', icon: Database },
   { to: '/rapports', label: 'Rapports', icon: FileText },
+  { to: '/monitoring', label: 'Monitoring', icon: Activity },
 ]
 
 function isActive(to: string): boolean {

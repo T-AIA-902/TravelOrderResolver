@@ -33,6 +33,11 @@ const router = createRouter({
       meta: { title: 'Dataset' },
       component: () => import('../pages/DatasetPage.vue'),
     },
+    {
+      path: '/monitoring',
+      name: 'monitoring',
+      component: () => import('../pages/MonitoringPage.vue'),
+    },
   ],
 })
 
