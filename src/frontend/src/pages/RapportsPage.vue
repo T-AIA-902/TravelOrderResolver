@@ -56,7 +56,9 @@ const benchmarkRows = [
           <thead>
             <tr class="border-b border-gray-200 bg-gray-50/80">
               <th class="px-6 py-3.5 text-left text-sm font-medium text-gray-600">Étape</th>
-              <th class="px-6 py-3.5 text-left text-sm font-medium text-gray-600">Meilleur modèle</th>
+              <th class="px-6 py-3.5 text-left text-sm font-medium text-gray-600">
+                Meilleur modèle
+              </th>
               <th class="px-6 py-3.5 text-left text-sm font-medium text-gray-600">Accuracy</th>
               <th class="px-6 py-3.5 text-left text-sm font-medium text-gray-600">Latence</th>
             </tr>

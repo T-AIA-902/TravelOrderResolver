@@ -204,3 +204,38 @@ export interface TranscriptionResponse {
   duration_seconds: number
   latency_ms: number
 }
+
+// Monitoring
+export interface RequestMetric {
+  timestamp: string
+  input_text: string
+  model_name: string
+  duration_s: number
+  cpu_percent_avg: number | null
+  ram_peak_mb: number | null
+  gpu_peak_mb: number | null
+  carbon_kg: number | null
+}
+
+export interface MonitoringMetricsResponse {
+  requests: RequestMetric[]
+  total_requests: number
+  avg_latency_ms: number
+}
+
+export interface ResourceSnapshot {
+  cpu_percent: number
+  ram_used_mb: number
+  ram_total_mb: number
+  ram_percent: number
+  gpu_used_mb: number | null
+  gpu_total_mb: number | null
+  gpu_percent: number | null
+}
+
+export interface CarbonSummary {
+  total_emissions_kg: number
+  total_energy_kwh: number
+  total_requests: number
+  country: string
+}

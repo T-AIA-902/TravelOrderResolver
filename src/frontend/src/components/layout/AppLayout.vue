@@ -14,9 +14,7 @@ const isHome = computed(() => route.path === '/')
     <AppHeader v-if="!isHome" />
 
     <!-- Main content area -->
-    <main
-      :class="isHome ? 'h-full overflow-auto' : 'ml-56 pt-16 h-full overflow-auto'"
-    >
+    <main :class="isHome ? 'h-full overflow-auto' : 'ml-56 pt-16 h-full overflow-auto'">
       <slot />
     </main>
   </div>
