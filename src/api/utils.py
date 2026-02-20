@@ -27,7 +27,8 @@ def build_route_response(graph, simplified, error, full_uic_path):
             transfers += 1
         prev_line = line
 
-        geometry = edge_data.get("geometry") or [
+        # Use node positions (not line geometry which covers the whole line)
+        geometry = [
             list(graph.graph.nodes[u]["pos"]),
             list(graph.graph.nodes[v]["pos"]),
         ]

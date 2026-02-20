@@ -19,6 +19,9 @@ interface ChatMessageItem {
 
 const messages = ref<ChatMessageItem[]>([])
 const { isLoading, error, resolveTrip } = useResolve()
+
+const availableModels = ['CamemBERT', 'SpaCy', 'Flan-T5', 'Regex'] as const
+const selectedModel = ref('Flan-T5')
 const {
   routeSegments,
   departureStation,
@@ -40,7 +43,11 @@ async function onSend(text: string) {
   })
 
   try {
-    const response = await resolveTrip({ text })
+    const response = await resolveTrip({
+      text,
+      intent_model: selectedModel.value,
+      entity_model: selectedModel.value,
+    })
 
     const systemMsg: ChatMessageItem = {
       id: nextId(),
@@ -86,6 +93,17 @@ const isEmpty = computed(() => messages.value.length === 0 && !isLoading.value)
         <ChatWindow :messages="messages" :loading="isLoading" />
         <ChatInput :disabled="isLoading" @send="onSend" />
       </template>
+
+      <!-- Model selector -->
+      <div class="flex items-center gap-2 border-t border-gray-100 bg-gray-50 px-6 py-2">
+        <span class="text-xs font-medium text-gray-500">Modèle :</span>
+        <select
+          v-model="selectedModel"
+          class="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+        >
+          <option v-for="m in availableModels" :key="m" :value="m">{{ m }}</option>
+        </select>
+      </div>
     </div>
 
     <!-- Right: Map + Debug -->

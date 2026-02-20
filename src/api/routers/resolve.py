@@ -9,11 +9,11 @@ from pydantic import BaseModel
 
 from src.api.dependencies import (
     get_entity_extractors,
+    get_fuzzy_post,
     get_graph,
     get_intent_classifiers,
     get_language_detectors,
     get_metrics_logger,
-    get_station_db,
 )
 from src.api.utils import build_route_response
 from src.nlp.pipeline import NLPPipeline, PipelineConfig
@@ -44,7 +44,7 @@ def _find_component(name: str | None, components: list[tuple[str, object]]) -> t
 def resolve(
     body: ResolveRequest,
     graph=Depends(get_graph),
-    station_db=Depends(get_station_db),
+    fuzzy_post=Depends(get_fuzzy_post),
     metrics_logger=Depends(get_metrics_logger),
     intent_classifiers=Depends(get_intent_classifiers),
     entity_extractors=Depends(get_entity_extractors),
@@ -55,11 +55,10 @@ def resolve(
     extractor_name, extractor = _find_component(body.entity_model, entity_extractors)
     detector_name, detector = language_detectors[0]
 
-    # Build pipeline
-    config = PipelineConfig(use_station_matching=body.use_fuzzy)
+    # Build pipeline — disable built-in station matching, use fuzzy_post instead
+    config = PipelineConfig(use_station_matching=False)
     pipeline = NLPPipeline(
         config=config,
-        station_db=station_db if body.use_fuzzy else None,
         language_detector=detector,  # type: ignore[arg-type]
         intent_classifier=classifier,  # type: ignore[arg-type]
         entity_extractor=extractor,  # type: ignore[arg-type]
@@ -70,33 +69,34 @@ def resolve(
     result = pipeline.process(body.text)
     latency_ms = round((time.time() - start) * 1000, 2)
 
-    # Build entity response helpers
-    def _entity_for_role(role: str) -> dict | None:
-        for e in result.entities:
-            if e.role == role:
-                matched = {
-                    "DEPARTURE": result.departure,
-                    "DESTINATION": result.destination,
-                }.get(role)
-                return {"raw": e.text, "matched": matched, "confidence": e.confidence}
-        return None
+    # Fuzzy match raw entities to real station names
+    raw_entities = {
+        "departure": result.departure or None,
+        "destination": result.destination or None,
+        "intermediate": result.intermediates or [],
+    }
+    if body.use_fuzzy:
+        matched = fuzzy_post.process(raw_entities, body.text)
+    else:
+        matched = raw_entities
 
-    dep_entity = _entity_for_role("DEPARTURE")
-    if not dep_entity and result.departure:
-        dep_entity = {"raw": result.departure, "matched": result.departure, "confidence": 1.0}
+    departure_matched = str(matched["departure"]) if matched.get("departure") else None
+    destination_matched = str(matched["destination"]) if matched.get("destination") else None
+    raw_intermediates = matched.get("intermediate", [])
+    intermediates_matched: list[str] = list(raw_intermediates)  # type: ignore[arg-type]
 
-    dest_entity = _entity_for_role("DESTINATION")
-    if not dest_entity and result.destination:
-        dest_entity = {"raw": result.destination, "matched": result.destination, "confidence": 1.0}
+    def _build_entity(raw: str | None, mtch: str | None) -> dict | None:
+        if not raw:
+            return None
+        return {"raw": raw, "matched": mtch, "confidence": 1.0 if mtch else 0.0}
 
-    intermediates = []
-    intermediate_entities = [e for e in result.entities if e.role == "INTERMEDIATE"]
-    if intermediate_entities:
-        for idx, e in enumerate(intermediate_entities):
-            matched = result.intermediates[idx] if idx < len(result.intermediates) else e.text
-            intermediates.append({"raw": e.text, "matched": matched, "confidence": e.confidence})
-    elif result.intermediates:
-        intermediates = [{"raw": s, "matched": s, "confidence": 1.0} for s in result.intermediates]
+    raw_dep = str(raw_entities["departure"]) if raw_entities.get("departure") else None
+    raw_dest = str(raw_entities["destination"]) if raw_entities.get("destination") else None
+    raw_inter: list[str] = list(raw_entities.get("intermediate", []))  # type: ignore[arg-type]
+
+    dep_entity = _build_entity(raw_dep, departure_matched)
+    dest_entity = _build_entity(raw_dest, destination_matched)
+    intermediates = [_build_entity(r, m) for r, m in zip(raw_inter, intermediates_matched) if r]
 
     nlp_response = {
         "language": {
@@ -113,18 +113,21 @@ def resolve(
             "departure": dep_entity,
             "destination": dest_entity,
             "intermediates": intermediates,
+            "model": extractor_name,
+            "fuzzy_enabled": body.use_fuzzy,
         },
         "processed_text": result.processed_text,
         "latency_ms": latency_ms,
     }
 
-    # Pathfinding
+    # Pathfinding — only if intent is TRIP or UNKNOWN (benefit of the doubt)
     pathfinding_response = None
-    if result.intent.value == "TRIP" and result.departure and result.destination:
+    intent_ok = result.intent.value != "NOT_TRIP"
+    if intent_ok and departure_matched and destination_matched:
         simplified, error, full_uic_path = graph.get_path(
-            result.departure,
-            result.destination,
-            intermediates=result.intermediates or None,
+            departure_matched,
+            destination_matched,
+            intermediates=intermediates_matched or None,
             algorithm="astar",
         )
         pathfinding_response = build_route_response(graph, simplified, error, full_uic_path)
