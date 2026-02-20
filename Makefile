@@ -1,4 +1,4 @@
-.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-camembert demo-spacy demo-regex demo-all front-build front-run front-stop front-rebuild
+.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-flant5 demo-camembert demo-spacy demo-regex demo-all front-build front-run front-stop front-rebuild
 
 # Default target
 .DEFAULT_GOAL := help
@@ -81,11 +81,15 @@ demo-spacy: ## Demo with SpaCy extractor
 	@echo "Demo: SpaCy extractor"
 	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor spacy
 
+demo-flant5: ## Demo with Flan-T5 extractor
+	@echo "Demo: Flan-T5 extractor"
+	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor flant5
+
 demo-regex: ## Demo with Regex extractor
 	@echo "Demo: Regex extractor"
 	echo "1,Je veux aller de Paris a Lyon" | poetry run python -m src.main --extractor regex
 
-demo-all: demo-regex demo-spacy demo-camembert ## Run demo with all extractors
+demo-all: demo-regex demo-spacy demo-camembert demo-flant5 ## Run demo with all extractors
 
 # =============================================================================
 # NLP & EVALUATION
