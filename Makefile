@@ -1,4 +1,4 @@
-.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-flant5 demo-camembert demo-spacy demo-regex demo-all front-build front-run front-stop front-rebuild
+.PHONY: install install-dev install-ml test lint format clean run help evaluate evaluate-full demo demo-flant5 demo-camembert demo-spacy demo-regex demo-all front-build front-run front-stop front-rebuild serve
 
 # Default target
 .DEFAULT_GOAL := help
@@ -66,6 +66,9 @@ run: ## Run the main CLI
 
 run-interactive: ## Run in interactive mode
 	poetry run python -m src.main --interactive
+
+serve: ## Start the FastAPI backend server
+	poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
 
 # =============================================================================
 # DEMOS (Interactive with map visualization)

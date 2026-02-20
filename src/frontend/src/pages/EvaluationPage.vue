@@ -7,7 +7,7 @@ import MetricsTable from '../components/evaluation/MetricsTable.vue'
 import ConfusionMatrixView from '../components/evaluation/ConfusionMatrixView.vue'
 import EvalProgress from '../components/evaluation/EvalProgress.vue'
 import { useEvaluation } from '../composables/useEvaluation'
-import type { EvalReportDetail, ModelEvalResult } from '../api/types'
+import type { ModelEvalResult } from '../api/types'
 
 const {
   reportDetail,
@@ -21,79 +21,6 @@ const {
   startEvaluation,
 } = useEvaluation()
 
-// --- Mock data (à supprimer quand le backend est prêt) ---
-const MOCK_REPORT: EvalReportDetail = {
-  id: 'mock',
-  date: new Date().toISOString(),
-  config: {
-    eval_type: 'all',
-    dataset: 'eval_dataset.csv',
-    samples: 200,
-    device: 'cpu',
-    preprocess: true,
-  },
-  language: {
-    CamemBERT: {
-      accuracy: 0.96,
-      per_class: {
-        FRENCH: { precision: 0.97, recall: 0.98, f1: 0.975, support: 150 },
-        ENGLISH: { precision: 0.94, recall: 0.92, f1: 0.93, support: 40 },
-        UNKNOWN: { precision: 0.85, recall: 0.8, f1: 0.824, support: 10 },
-      },
-      avg_latency_ms: 12.3,
-      confusion_matrix: {
-        labels: ['FRENCH', 'ENGLISH', 'UNKNOWN'],
-        matrix: [
-          [147, 2, 1],
-          [1, 37, 2],
-          [1, 1, 8],
-        ],
-      },
-    },
-  },
-  intent: {
-    CamemBERT: {
-      accuracy: 0.92,
-      per_class: {
-        TRIP: { precision: 0.95, recall: 0.93, f1: 0.94, support: 120 },
-        GREETING: { precision: 0.88, recall: 0.9, f1: 0.89, support: 30 },
-        OTHER: { precision: 0.85, recall: 0.88, f1: 0.865, support: 50 },
-      },
-      avg_latency_ms: 18.7,
-      confusion_matrix: {
-        labels: ['TRIP', 'GREETING', 'OTHER'],
-        matrix: [
-          [112, 3, 5],
-          [1, 27, 2],
-          [2, 4, 44],
-        ],
-      },
-    },
-  },
-  entity: {
-    CamemBERT: {
-      accuracy: 0.89,
-      per_class: {
-        departure: { precision: 0.91, recall: 0.88, f1: 0.895, support: 120 },
-        destination: { precision: 0.9, recall: 0.87, f1: 0.885, support: 120 },
-        intermediate: { precision: 0.82, recall: 0.78, f1: 0.8, support: 45 },
-      },
-      avg_latency_ms: 22.1,
-    },
-  },
-  entity_fuzzy: {
-    CamemBERT: {
-      accuracy: 0.93,
-      per_class: {
-        departure: { precision: 0.95, recall: 0.93, f1: 0.94, support: 120 },
-        destination: { precision: 0.94, recall: 0.92, f1: 0.93, support: 120 },
-        intermediate: { precision: 0.88, recall: 0.85, f1: 0.865, support: 45 },
-      },
-      avg_latency_ms: 24.5,
-    },
-  },
-}
-
 // --- Results ---
 const activeTab = ref<'language' | 'intent' | 'entity' | 'entity_fuzzy'>('language')
 
@@ -104,10 +31,10 @@ const tabs = [
   { key: 'entity_fuzzy' as const, label: 'Entités + Fuzzy' },
 ]
 
-const currentReport = computed(() => reportDetail.value ?? MOCK_REPORT)
+const currentReport = computed(() => reportDetail.value)
 
 const activeResults = computed<Record<string, ModelEvalResult> | undefined>(() => {
-  return currentReport.value[activeTab.value]
+  return currentReport.value?.[activeTab.value]
 })
 
 const hasConfusionMatrix = computed(() => {
