@@ -1,3 +1,2 @@
 datasets/raw/sncf/tgvmax.json filter=lfs diff=lfs merge=lfs -text
-models/flan-t5-travel/model.safetensors filter=lfs diff=lfs merge=lfs -text
-models/flan-t5-travel/spiece.model filter=lfs diff=lfs merge=lfs -text
+models/** filter=lfs diff=lfs merge=lfs -text
