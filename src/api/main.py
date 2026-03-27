@@ -23,6 +23,7 @@ DeviceType = str  # "auto" | "cuda" | "cpu"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # type: ignore[arg-type]
+    """Initialize application state: device, graph, station DB, NLP models."""
     device: DeviceType = get_torch_device("auto")
     app.state.device = device
     app.state.device_info = get_device_info()
@@ -31,11 +32,15 @@ async def lifespan(app: FastAPI):  # type: ignore[arg-type]
     app.state.station_db.load()
     app.state.metrics_logger = MetricsLogger(output_dir="reports/metrics")
     app.state.language_detectors = create_language_detectors(["all"])
+    # Create shared CamemBERT NER model to avoid loading 420MB twice
+    from src.nlp.camembert_ner_model import CamembertNERModel
+
+    ner_model = CamembertNERModel(device=device)  # type: ignore[arg-type]
     app.state.intent_classifiers = create_intent_classifiers(
-        ["all"], device=device  # type: ignore[arg-type]
+        ["all"], device=device, ner_model=ner_model  # type: ignore[arg-type]
     )
     app.state.entity_extractors = create_entity_extractors(
-        ["all"], device=device  # type: ignore[arg-type]
+        ["all"], device=device, ner_model=ner_model  # type: ignore[arg-type]
     )
     app.state.fuzzy_post = create_fuzzy_post_processor()
     app.state.whisper = WhisperModel(model_name="base", device="auto")

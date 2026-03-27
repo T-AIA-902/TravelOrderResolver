@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Order Resolver &mdash; Rapport Technique NLP</title>
+<style>
+  /* ===== TYPOGRAPHIE ===== */
+  body {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    color: #333;
+    background: #fff;
+    line-height: 1.75;
+    margin: 0;
+    padding: 0;
+  }
+  .container {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 40px 30px;
+  }
+  /* ===== PAGE DE GARDE ===== */
+  .cover {
+    text-align: center;
+    padding: 100px 20px 80px;
+    page-break-after: always;
+  }
+  .cover h1 {
+    font-size: 2.4em;
+    color: #1a3a5c;
+    margin-bottom: 0.2em;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 1.3em;
+    color: #555;
+    font-style: italic;
+    margin-bottom: 2em;
+  }
+  .cover .meta {
+    font-size: 0.95em;
+    color: #666;
+    line-height: 2;
+  }
+  .cover .meta strong { color: #333; }
+  .cover hr {
+    border: none;
+    border-top: 2px solid #1a3a5c;
+    width: 60%;
+    margin: 30px auto;
+  }
+  /* ===== TITRES ===== */
+  h2 {
+    font-size: 1.6em;
+    color: #1a3a5c;
+    border-bottom: 2px solid #1a3a5c;
+    padding-bottom: 6px;
+    margin-top: 2.5em;
+    page-break-before: always;
+  }
+  h2:first-of-type { page-break-before: avoid; }
+  h3 {
+    font-size: 1.25em;
+    color: #2a4a6c;
+    margin-top: 1.8em;
+  }
+  h4 {
+    font-size: 1.05em;
+    color: #3a5a7c;
+    margin-top: 1.4em;
+  }
+  /* ===== TABLEAUX ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.2em 0;
+    font-size: 0.92em;
+  }
+  th, td {
+    border: 1px solid #d0d5da;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th {
+    background: #f5f7fa;
+    font-weight: bold;
+    color: #1a3a5c;
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+  td.num, th.num { text-align: right; }
+  .highlight-row td { background: #eef3f8 !important; font-weight: bold; }
+  /* ===== CODE ===== */
+  code {
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 0.88em;
+    background: #f4f5f7;
+    padding: 2px 5px;
+    border-radius: 3px;
+  }
+  pre {
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 0.85em;
+    background: #f8f9fa;
+    border-left: 3px solid #1a3a5c;
+    padding: 14px 18px;
+    overflow-x: auto;
+    line-height: 1.5;
+    margin: 1em 0;
+  }
+  /* ===== DIAGRAMMES ASCII ===== */
+  .diagram {
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 0.78em;
+    background: #f8f9fa;
+    border: 1px solid #d0d5da;
+    padding: 16px 20px;
+    overflow-x: auto;
+    line-height: 1.4;
+    white-space: pre;
+    margin: 1.2em 0;
+  }
+  /* ===== TABLE DES MATIERES ===== */
+  .toc {
+    background: #f8f9fa;
+    border: 1px solid #d0d5da;
+    padding: 20px 30px;
+    margin: 1.5em 0;
+  }
+  .toc ol { padding-left: 1.5em; }
+  .toc li { margin: 4px 0; }
+  .toc a { color: #1a3a5c; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  /* ===== LIENS & DIVERS ===== */
+  a { color: #1a3a5c; }
+  blockquote {
+    border-left: 3px solid #c0c8d0;
+    margin: 1em 0;
+    padding: 8px 20px;
+    color: #555;
+    font-style: italic;
+  }
+  .note {
+    background: #f5f7fa;
+    border-left: 3px solid #1a3a5c;
+    padding: 10px 16px;
+    margin: 1em 0;
+    font-size: 0.93em;
+  }
+  .step-box {
+    background: #f8f9fa;
+    border: 1px solid #d0d5da;
+    padding: 12px 18px;
+    margin: 10px 0;
+  }
+  .step-box .step-title {
+    font-weight: bold;
+    color: #1a3a5c;
+    margin-bottom: 4px;
+  }
+  /* ===== MATRICES DE CONFUSION ===== */
+  .confusion-wrap {
+    margin: 1.5em 0;
+  }
+  .confusion-wrap .cm-title {
+    font-weight: bold;
+    color: #1a3a5c;
+    margin-bottom: 6px;
+    font-size: 0.95em;
+  }
+  table.confusion {
+    width: auto;
+    margin: 0.6em auto 1.2em;
+    font-size: 0.88em;
+    border-collapse: collapse;
+  }
+  table.confusion th,
+  table.confusion td {
+    padding: 6px 14px;
+    text-align: center;
+    border: 1px solid #c0c8d0;
+    min-width: 70px;
+  }
+  table.confusion th {
+    background: #eef1f5;
+    font-size: 0.88em;
+  }
+  table.confusion th.corner {
+    background: #fff;
+    border-color: #fff;
+  }
+  table.confusion th.axis-label {
+    background: #fff;
+    border: none;
+    font-style: italic;
+    color: #555;
+    font-weight: normal;
+    font-size: 0.82em;
+    padding: 4px 8px;
+  }
+  /* Heatmap color scale (blue shades) */
+  .cm-0   { background: #ffffff; color: #333; }
+  .cm-5   { background: #f0f4f8; color: #333; }
+  .cm-10  { background: #e1e9f0; color: #333; }
+  .cm-20  { background: #c8d6e5; color: #333; }
+  .cm-30  { background: #a8bdd4; color: #333; }
+  .cm-40  { background: #89a4c3; color: #333; }
+  .cm-50  { background: #6b8cb2; color: #fff; }
+  .cm-60  { background: #5276a0; color: #fff; }
+  .cm-70  { background: #3d6190; color: #fff; }
+  .cm-80  { background: #2a4d7e; color: #fff; }
+  .cm-90  { background: #1a3a5c; color: #fff; }
+  .cm-100 { background: #0f2640; color: #fff; font-weight: bold; }
+  /* ===== GRAPHIQUES SVG ===== */
+  .chart-container {
+    margin: 1.8em 0;
+    text-align: center;
+  }
+  .chart-container svg {
+    max-width: 100%;
+    height: auto;
+  }
+  .chart-container .chart-title {
+    font-weight: bold;
+    color: #1a3a5c;
+    margin-bottom: 8px;
+    font-size: 0.95em;
+  }
+  .chart-container .chart-note {
+    font-size: 0.82em;
+    color: #777;
+    margin-top: 4px;
+    font-style: italic;
+  }
+  /* ===== IMPRESSION ===== */
+  @media print {
+    body { font-size: 11pt; }
+    .container { max-width: 100%; padding: 0; }
+    h2 { page-break-before: always; }
+    table, pre, .diagram, .chart-container, .confusion-wrap { page-break-inside: avoid; }
+    a { color: #333; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- PAGE DE GARDE                                                  -->
+<!-- ============================================================ -->
+<div class="cover">
+  <h1>Travel Order Resolver</h1>
+  <div class="subtitle">Traitement du Langage Naturel pour la Resolution de Commandes de Voyage Ferroviaire</div>
+  <hr>
+  <div class="meta">
+    <strong>Projet Epitech T9-AIA</strong><br>
+    Romain Bernier &middot; Victor Vattier &middot; Marine Gayet &middot; Camille Kerserho<br><br>
+    Version 0.3.9 &mdash; Fevrier 2026<br>
+    Python 3.10+ &middot; PyTorch &middot; Transformers &middot; SpaCy &middot; NetworkX
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ============================================================ -->
+<!-- TABLE DES MATIERES                                            -->
+<!-- ============================================================ -->
+<div class="toc">
+<strong>Table des matieres</strong>
+<ol>
+  <li><a href="#s1">Introduction et contexte du projet</a></li>
+  <li><a href="#s2">Architecture complete du systeme</a></li>
+  <li><a href="#s3">Processus d'entrainement et jeux de donnees</a></li>
+  <li><a href="#s4">Parametres finaux des modeles</a></li>
+  <li><a href="#s5">Exemple detaille de traitement d'une phrase</a></li>
+  <li><a href="#s6">Experiences et resultats comparatifs</a></li>
+  <li><a href="#s7">Cadre d'evaluation et metriques</a></li>
+  <li><a href="#s8">Progression et historique du projet</a></li>
+  <li><a href="#s9">Fonctionnalites bonus</a></li>
+  <li><a href="#s10">Pile technologique et dependances</a></li>
+  <li><a href="#s11">Conclusion</a></li>
+</ol>
+</div>
+
+<!-- ============================================================ -->
+<!-- 1. INTRODUCTION                                                -->
+<!-- ============================================================ -->
+<h2 id="s1">1. Introduction et contexte du projet</h2>
+
+<h3>1.1 Enonce du probleme</h3>
+<p>
+Le projet Travel Order Resolver consiste a concevoir un programme capable de traiter des commandes textuelles en langage naturel pour generer un itineraire ferroviaire adapte. Le logiciel recoit des ordres de voyage sous forme de texte (par exemple provenant d'un chatbot), et produit au minimum une ligne de train correspondant aux attentes du client, en s'appuyant sur les horaires SNCF francais.
+</p>
+<p>
+Le systeme doit distinguer les ordres valides des ordres invalides, identifier le depart et la destination (qui peuvent etre une gare ou une ville), puis fournir un itineraire ferroviaire correspondant. Le programme NLP doit gerer les phrases en francais ; a titre de bonus, il peut egalement gerer d'autres langues.
+</p>
+
+<h3>1.2 Pipeline global</h3>
+<p>Le systeme s'articule autour de trois composants majeurs :</p>
+<div class="diagram">Speech-to-Text (optionnel)      NLP Pipeline               Recherche d'itineraire
+ ┌────────────────┐         ┌───────────────────┐       ┌─────────────────────┐
+ │  Audio (WAV)   │────────>│  Extraction de    │──────>│  Graphe ferroviaire │
+ │  Whisper       │         │  gares (NER)      │       │  Dijkstra / A*      │
+ └────────────────┘         └───────────────────┘       └─────────────────────┘</div>
+
+<h3>1.3 Format d'entree/sortie</h3>
+<p>Le composant NLP lit des phrases au format <code>sentenceID,sentence</code> (une par ligne, encodage UTF-8) et produit :</p>
+<ul>
+  <li>Pour une commande valide : <code>sentenceID,Depart,Destination</code></li>
+  <li>Pour une commande invalide : <code>sentenceID,Code</code> (ou Code peut etre INVALID, NOT_TRIP, UNKNOWN, etc.)</li>
+</ul>
+<p>Le composant de recherche d'itineraire recoit un triplet <code>sentenceID,Depart,Destination</code> et retourne une sequence de villes : <code>sentenceID,Depart,Etape1,Etape2,...,Destination</code>.</p>
+
+<!-- ============================================================ -->
+<!-- 2. ARCHITECTURE                                                -->
+<!-- ============================================================ -->
+<h2 id="s2">2. Architecture complete du systeme</h2>
+
+<h3>2.1 Vue d'ensemble du pipeline NLP</h3>
+<p>L'architecture suit un patron modulaire ou chaque couche est definie par une classe abstraite (ABC) dans <code>src/nlp/interfaces.py</code>, permettant de brancher differentes implementations (Regex, SpaCy, CamemBERT, Flan-T5) sans modifier le pipeline.</p>
+
+<div class="diagram">Texte brut
+    |
+    v
+[PRE-TRAITEMENT] STTArtifactFilter + Preprocessor
+    |
+    v
+[DETECTION DE LANGUE] RegexLanguageDetector | LangdetectLanguageDetector
+    |  -> (code_langue, confiance)
+    v
+[CLASSIFICATION D'INTENTION] RegexIntentClassifier | SpacyIntentClassifier
+    |                         | CamembertIntentClassifier | FlanT5IntentClassifier
+    |  -> (TRIP | NOT_TRIP | UNKNOWN, confiance)
+    v
+[EXTRACTION D'ENTITES] RegexEntityExtractor | SpacyEntityExtractor
+    |                   | CamembertEntityExtractor | FlanT5EntityExtractor
+    |  -> {departure, destination, intermediate[]}
+    v
+[POST-TRAITEMENT] FuzzyPostProcessor (RapidFuzz -> noms SNCF officiels)
+    |
+    v
+PredictionResult
+    |
+    v
+[RECHERCHE D'ITINERAIRE] Dijkstra | A* | MOA* (si TRIP valide)
+    |
+    v
+Itineraire final</div>
+
+<h3>2.2 Systeme de types</h3>
+<p>Le fichier <code>src/nlp/types.py</code> definit les structures de donnees centrales :</p>
+
+<table>
+<tr><th>Type</th><th>Valeurs / Champs</th><th>Description</th></tr>
+<tr><td><code>Intent</code> (enum)</td><td>TRIP, NOT_TRIP, UNKNOWN</td><td>Intention detectee de l'utilisateur</td></tr>
+<tr><td><code>Language</code> (enum)</td><td>FRENCH, ENGLISH, UNKNOWN</td><td>Langue detectee du texte</td></tr>
+<tr><td><code>TravelEntity</code></td><td>text, normalized, role, confidence, start, end</td><td>Entite extraite avec metadonnees</td></tr>
+<tr><td><code>PredictionResult</code></td><td>intent, language, departure, destination, intermediates, entities, raw_text, processed_text, model_name, metadata</td><td>Resultat complet du pipeline</td></tr>
+</table>
+
+<h3>2.3 Interfaces abstraites</h3>
+<p>Quatre classes abstraites definissent le contrat de chaque couche :</p>
+<pre>class LanguageDetector(ABC):
+    def detect(text: str) -> Tuple[str, float]
+
+class IntentClassifier(ABC):
+    def classify(text: str) -> Tuple[str, float]
+
+class EntityExtractor(ABC):
+    def extract(text: str) -> Dict[str, Any]
+        # Retourne {departure, destination, intermediate: []}
+
+class PostProcessor(ABC):
+    def process(entities: Dict, text: str) -> Dict</pre>
+
+<h3>2.4 Couche de pre-traitement</h3>
+
+<h4>2.4.1 STTArtifactFilter (<code>src/nlp/pre/stt_filter.py</code>)</h4>
+<p>Ce filtre supprime les artefacts produits par les systemes de transcription vocale (Whisper notamment). Il reconnait plus de 70 marqueurs de bruit :</p>
+<ul>
+  <li>Marqueurs entre crochets : <code>[coupure]</code>, <code>[bruit]</code>, <code>[musique]</code>, <code>[silence]</code>, <code>[inaudible]</code></li>
+  <li>Marqueurs entre asterisques : <code>*bruit*</code>, <code>*rire*</code></li>
+  <li>Motifs regex : contenu entre crochets, entre asterisques, points de suspension multiples, tirets repetes</li>
+</ul>
+<p>La methode <code>filter(text)</code> retourne un tuple <code>(texte_nettoye, est_bruit_pur)</code>. Si le texte entier est du bruit, la phrase est classee UNKNOWN sans traitement supplementaire.</p>
+
+<h4>2.4.2 Preprocessor (<code>src/nlp/pre/preprocessor.py</code>)</h4>
+<p>Le preprocesseur applique une serie de normalisations configurables via <code>PreprocessorConfig</code> :</p>
+<table>
+<tr><th>Parametre</th><th>Defaut</th><th>Description</th></tr>
+<tr><td><code>lowercase</code></td><td>False</td><td>Mise en minuscules (desactive pour preserver la detection de langue)</td></tr>
+<tr><td><code>remove_accents</code></td><td>False</td><td>Suppression des accents (desactive pour le francais)</td></tr>
+<tr><td><code>normalize_whitespace</code></td><td>True</td><td>Tabulations et retours a la ligne convertis en espaces</td></tr>
+<tr><td><code>normalize_apostrophes</code></td><td>True</td><td>6 variantes d'apostrophe normalisees vers <code>'</code> standard</td></tr>
+<tr><td><code>normalize_hyphens</code></td><td>True</td><td>6 variantes de tiret normalisees vers <code>-</code> standard</td></tr>
+</table>
+<p>L'ordre d'application est : normalisation Unicode (NFC) &rarr; apostrophes &rarr; tirets &rarr; accents &rarr; minuscules &rarr; ponctuation &rarr; espaces &rarr; strip.</p>
+
+<h3>2.5 Couche de detection de langue</h3>
+
+<h4>2.5.1 RegexLanguageDetector</h4>
+<p>Detecteur a base de regles utilisant environ 25 motifs regex pour le francais (ex. <code>je veux</code>, <code>aller a</code>, <code>prendre le train</code>) et 22 pour l'anglais (ex. <code>I want to</code>, <code>from X to Y</code>). Le score est calcule par le ratio de correspondances trouvees. Des indicateurs espagnols, allemands et italiens permettent de detecter les langues tierces.</p>
+<p>Performance : 67,5 % de precision sur le jeu de test.</p>
+
+<h4>2.5.2 LangdetectLanguageDetector</h4>
+<p>Encapsule la bibliotheque <code>langdetect</code> (basee sur des n-grammes statistiques). Mappe les codes ISO vers les categories internes : <code>fr</code> &rarr; FRENCH, <code>en</code> &rarr; ENGLISH, tout autre &rarr; UNKNOWN. La graine est fixee a 0 pour la reproductibilite.</p>
+<p>Performance : 77,9 % de precision sur le jeu de test (+10,4 % par rapport au Regex).</p>
+
+<h3>2.6 Couche de classification d'intention</h3>
+
+<h4>2.6.1 RegexIntentClassifier</h4>
+<p>Plus de 50 motifs regex couvrant le francais, l'anglais, l'espagnol, l'allemand et l'italien. Si un motif de voyage est detecte, retourne TRIP avec confiance 0,8. Si le texte contient 2 a 4 mots sans motif reconnu, retourne TRIP avec confiance 0,5 (potentiellement des noms de gares). Sinon, retourne NOT_TRIP.</p>
+<p>Performance (zero-shot) : 65,8 % de precision sur le jeu de test.</p>
+
+<h4>2.6.2 SpacyIntentClassifier</h4>
+<p>Heuristique basee sur le modele NER <code>fr_core_news_lg</code> de SpaCy : la presence d'entites LOC/GPE indique une intention de voyage. La confiance augmente avec le nombre d'entites detectees (min 0,5, max 0,8).</p>
+<p>Performance (zero-shot) : 79,1 % de precision sur le jeu de test.</p>
+
+<h4>2.6.3 CamembertIntentClassifier</h4>
+<p>Classification zero-shot avec le modele <code>almanach/camembert-base</code> via un pipeline HuggingFace. Les hypotheses candidates sont : <em>&laquo; demande de voyage en train &raquo;</em> et <em>&laquo; autre question &raquo;</em>.</p>
+<p>Performance (zero-shot) : 32,4 % de precision sur le jeu de test.</p>
+
+<h4>2.6.4 CamemBERT fine-tune pour la classification</h4>
+<p>Architecture <code>CamembertForSequenceClassification</code> avec 3 classes (TRIP, NOT_TRIP, UNKNOWN), fine-tunee sur le dataset augmente (70k entrainement, 15k validation). Voir la section 6 pour les resultats detailles.</p>
+<p>Performance (fine-tune) : <strong>99,95 %</strong> de precision sur le jeu de test.</p>
+
+<h3>2.7 Couche d'extraction d'entites</h3>
+
+<h4>2.7.1 RegexEntityExtractor</h4>
+<p>Motifs regex pour le francais et l'anglais, appliques dans un ordre de priorite :</p>
+<ol>
+  <li><code>X puis Y puis Z</code> (3 gares francais)</li>
+  <li><code>de/depuis X vers/a/direction Y</code></li>
+  <li><code>a Y depuis/en partant de X</code></li>
+  <li><code>X vers/direction Y</code></li>
+  <li><code>from X to/towards Y</code> (anglais)</li>
+  <li>Repli : detection de gares potentielles par elimination des mots-outils (200+ mots-outils francais et anglais)</li>
+</ol>
+<p>Performance (sans fuzzy) : 33,3 % de precision ; avec fuzzy : <strong>57,1 %</strong>.</p>
+
+<h4>2.7.2 SpacyEntityExtractor</h4>
+<p>Utilise les entites LOC/GPE extraites par <code>fr_core_news_lg</code>. La premiere entite est affectee au depart, la derniere a la destination. Les entites apparaissant apres des mots-cles intermediaires (<code>via</code>, <code>en passant par</code>) sont marquees comme etapes.</p>
+<p>Performance (sans fuzzy) : 27,8 % ; avec fuzzy : 34,2 %.</p>
+
+<h4>2.7.3 CamembertEntityExtractor (zero-shot)</h4>
+<p>Utilise le modele <code>almanach/camembert-base</code> pour calculer des embeddings de phrases, puis effectue un matching exact (par sous-chaine) contre la base de donnees de gares SNCF. Le matching par similarite d'embeddings a ete desactive en raison d'un taux eleve de faux positifs.</p>
+<p>Performance (sans fuzzy) : 16,3 % ; avec fuzzy : 31,2 %.</p>
+
+<h4>2.7.4 CamemBERT fine-tune pour le NER</h4>
+<p>Architecture <code>CamembertForTokenClassification</code> avec 7 labels BIO : O, B-DEP, I-DEP, B-DEST, I-DEST, B-INTER, I-INTER. Fine-tune sur 51 800 phrases TRIP du dataset augmente. Voir la section 6 pour les resultats detailles.</p>
+<p>Performance (fine-tune) : F1 = <strong>98,45 %</strong>, Precision = 98,33 %, Rappel = 98,58 %.</p>
+
+<h3>2.8 Couche de post-traitement</h3>
+
+<h4>2.8.1 StationMatcher (<code>src/nlp/post/station_matcher.py</code>)</h4>
+<p>Matching fuzzy base sur RapidFuzz (algorithme de Levenshtein optimise). L'algorithme fonctionne en plusieurs etapes :</p>
+<ol>
+  <li>Verification du cache (acceleration massive pour les requetes repetees)</li>
+  <li>Matching exact par prefixe avec l'index pre-calcule <code>first_words</code></li>
+  <li>Matching fuzzy sur les premiers mots (bonus de +20 points)</li>
+  <li>Matching fuzzy sur les noms complets (scorer WRatio)</li>
+  <li>Selection du meilleur resultat si le score depasse le seuil (defaut : 80)</li>
+</ol>
+
+<h4>2.8.2 FuzzyPostProcessor</h4>
+<p>Adaptateur du pipeline qui applique le <code>StationMatcher</code> au depart, a la destination et a chaque etape intermediaire. Apporte une amelioration moyenne de +15 % sur la precision d'extraction.</p>
+
+<h3>2.9 Orchestration du pipeline</h3>
+<p>La classe <code>NLPPipeline</code> (<code>src/nlp/pipeline.py</code>) compose les differentes couches par injection de dependances :</p>
+<pre>pipeline = NLPPipeline(
+    language_detector=LangdetectLanguageDetector(),
+    intent_classifier=SpacyIntentClassifier(),
+    entity_extractor=RegexEntityExtractor(),
+    config=PipelineConfig(use_station_matching=True)
+)</pre>
+<p>La methode <code>process(text)</code> enchaine : pre-traitement &rarr; detection de langue &rarr; classification d'intention &rarr; extraction d'entites &rarr; matching de gares &rarr; validation (si TRIP mais aucune gare trouvee, degradation vers NOT_TRIP).</p>
+
+<h3>2.10 Moteur de recherche d'itineraire</h3>
+
+<h4>2.10.1 Construction du graphe</h4>
+<p>Le graphe ferroviaire est construit a partir de trois fichiers SNCF open data :</p>
+<table>
+<tr><th>Fichier</th><th>Contenu</th><th>Taille</th></tr>
+<tr><td><code>gares-de-voyageurs.json</code></td><td>6 101 gares avec coordonnees GPS</td><td>579 Ko</td></tr>
+<tr><td><code>liste-des-gares.json</code></td><td>Mapping gares-lignes avec points kilometriques</td><td>4,9 Mo</td></tr>
+<tr><td><code>lignes-par-type.json</code></td><td>Lignes ferroviaires avec geometrie</td><td>9,4 Mo</td></tr>
+</table>
+<p>Le graphe est un <code>MultiGraph</code> NetworkX (aretes multiples entre memes noeuds). Les noeuds representent les gares avec leurs coordonnees GPS. Les aretes sont de type TRAIN (connexions ferroviaires) ou WALK (correspondances pietonnes dans les grands hubs urbains, rayon 8 km). Les poids des aretes LGV sont divises par 3 pour refleter la vitesse reelle (280 km/h contre 80 km/h).</p>
+
+<h4>2.10.2 Algorithme de Dijkstra</h4>
+<p>Implementation classique avec file de priorite binaire (<code>heapq</code>). Complexite : <em>O((V + E) log V)</em>. Garantit le chemin optimal a objectif unique (distance ponderee minimale).</p>
+
+<h4>2.10.3 Algorithme A*</h4>
+<p>Heuristique admissible : <em>h(n) = distance_geodesique(n, but) / 3</em>. La division par 3 correspond au meilleur cas (LGV en ligne droite), garantissant l'admissibilite. En pratique, A* explore 50 a 70 % de noeuds en moins que Dijkstra pour un resultat identique.</p>
+
+<h4>2.10.4 Algorithme MOA* (Multi-Objective A*)</h4>
+<p>Recherche de routes Pareto-optimales selon trois objectifs simultanees :</p>
+<ol>
+  <li><strong>Temps</strong> (heures) : <code>dist_km / vitesse</code></li>
+  <li><strong>Distance</strong> (km) : distance totale</li>
+  <li><strong>Correspondances</strong> : nombre de changements de ligne</li>
+</ol>
+<p>L'algorithme maintient une frontiere de Pareto par noeud et retourne jusqu'a 3 itineraires non-domines. Complexite : <em>O(k &times; (V + E) log V)</em> ou k est le nombre de solutions Pareto.</p>
+
+<h3>2.11 API Backend et interface</h3>
+<p>Le backend FastAPI expose les endpoints suivants :</p>
+<table>
+<tr><th>Endpoint</th><th>Methode</th><th>Description</th></tr>
+<tr><td><code>/api/resolve</code></td><td>POST</td><td>Pipeline complet : NLP + recherche d'itineraire</td></tr>
+<tr><td><code>/api/nlp/language</code></td><td>POST</td><td>Detection de langue isolee</td></tr>
+<tr><td><code>/api/nlp/intent</code></td><td>POST</td><td>Classification d'intention isolee</td></tr>
+<tr><td><code>/api/nlp/entities</code></td><td>POST</td><td>Extraction d'entites isolee</td></tr>
+<tr><td><code>/api/pathfinding/route</code></td><td>POST</td><td>Recherche d'itineraire seule</td></tr>
+<tr><td><code>/api/speech/transcribe</code></td><td>POST</td><td>Transcription audio (Whisper)</td></tr>
+<tr><td><code>/api/monitoring/metrics</code></td><td>GET</td><td>Metriques de performance</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<!-- 3. PROCESSUS D'ENTRAINEMENT                                    -->
+<!-- ============================================================ -->
+<h2 id="s3">3. Processus d'entrainement et jeux de donnees</h2>
+
+<h3>3.1 Generation du jeu de donnees</h3>
+<p>Aucun jeu de donnees existant ne correspondant au probleme specifique de commandes de voyage ferroviaire en francais, nous avons genere un corpus synthetique de <strong>100 000 phrases</strong> a l'aide du script <code>datasets/scripts/generate_base.py</code>.</p>
+
+<h4>3.1.1 Methodologie de generation</h4>
+<p>La generation repose sur plus de 200 gabarits de phrases par categorie, couvrant une grande diversite de structures grammaticales :</p>
+<ul>
+  <li><strong>Phrases formelles</strong> : &laquo; Je souhaite me rendre de {depart} a {destination} &raquo;</li>
+  <li><strong>Phrases informelles</strong> : &laquo; Faut que j'aille a {destination} depuis {depart} &raquo;</li>
+  <li><strong>Hesitations</strong> : &laquo; Euh ben train {depart} {destination} &raquo;</li>
+  <li><strong>Patterns minimaux</strong> : &laquo; {depart} {destination} &raquo;, &laquo; Vers {destination} &raquo;</li>
+  <li><strong>Gabarits multilingues</strong> : anglais (10 gabarits), espagnol, allemand, italien (5 chacun)</li>
+  <li><strong>Etapes intermediaires</strong> (15 % des TRIP) : &laquo; en passant par &raquo;, &laquo; via &raquo;, &laquo; puis... puis &raquo;</li>
+</ul>
+
+<h4>3.1.2 Distribution du jeu de donnees</h4>
+<table>
+<tr><th>Intention</th><th>Nombre</th><th>Pourcentage</th></tr>
+<tr><td>TRIP</td><td>74 000</td><td>74 %</td></tr>
+<tr><td>NOT_TRIP</td><td>25 000</td><td>25 %</td></tr>
+<tr><td>UNKNOWN</td><td>1 000</td><td>1 %</td></tr>
+</table>
+
+<table>
+<tr><th>Langue</th><th>Nombre</th><th>Pourcentage</th><th>Justification</th></tr>
+<tr><td>Francais</td><td>89 100</td><td>89,1 %</td><td>Service SNCF principal</td></tr>
+<tr><td>Anglais</td><td>6 440</td><td>6,4 %</td><td>Touristes, lingua franca</td></tr>
+<tr><td>Espagnol</td><td>865</td><td>0,9 %</td><td>Utilisateurs minoritaires</td></tr>
+<tr><td>Allemand</td><td>865</td><td>0,9 %</td><td>Utilisateurs minoritaires</td></tr>
+<tr><td>Italien</td><td>620</td><td>0,6 %</td><td>Utilisateurs minoritaires</td></tr>
+<tr><td>Inconnu</td><td>2 110</td><td>2,1 %</td><td>Bruit, charabia</td></tr>
+</table>
+
+<h4>3.1.3 Format des donnees</h4>
+<pre>sentence_id,sentence,intent,language,departure,destination,intermediate
+BASE023456,De Paris a Marseille en passant par Lyon,TRIP,FRENCH,Paris,Marseille,Lyon</pre>
+
+<h3>3.2 Augmentation STT (Speech-to-Text)</h3>
+<p>Le script <code>datasets/scripts/augment_stt.py</code> applique des erreurs realistes simulant le comportement de Whisper au jeu de donnees propre. L'architecture a deux niveaux (<code>datasets/base/</code> et <code>datasets/augmented/</code>) permet des etudes d'ablation.</p>
+
+<h4>3.2.1 Profils d'intensite d'erreur</h4>
+<table>
+<tr><th>Profil</th><th>Proportion</th><th>Types d'erreur</th></tr>
+<tr><td>Propre</td><td>20 %</td><td>0 erreur</td></tr>
+<tr><td>Leger</td><td>40 %</td><td>1-2 types d'erreur</td></tr>
+<tr><td>Modere</td><td>30 %</td><td>2-4 types d'erreur</td></tr>
+<tr><td>Intense</td><td>10 %</td><td>4+ types d'erreur</td></tr>
+</table>
+
+<h4>3.2.2 Les 14 types d'erreur simules</h4>
+<table>
+<tr><th>#</th><th>Type d'erreur</th><th>Probabilite</th><th>Exemple</th></tr>
+<tr><td>1</td><td>Mots de remplissage</td><td>15 %</td><td>&laquo; euh &raquo;, &laquo; hum &raquo;, &laquo; ben &raquo;</td></tr>
+<tr><td>2</td><td>Faux departs</td><td>8 %</td><td>&laquo; Je veux... enfin je voudrais &raquo;</td></tr>
+<tr><td>3</td><td>Repetitions</td><td>5 %</td><td>&laquo; Je je voudrais &raquo;</td></tr>
+<tr><td>4</td><td>Phrases incompletes</td><td>3 %</td><td>Troncature (desactive pour TRIP)</td></tr>
+<tr><td>5</td><td>Confusion phonetique</td><td>10 %</td><td>&laquo; trin &raquo; pour &laquo; train &raquo;</td></tr>
+<tr><td>6</td><td>Fautes sur les gares</td><td>12 %</td><td>&laquo; Monparnasse &raquo;, &laquo; Lion &raquo;</td></tr>
+<tr><td>7</td><td>Erreurs de ponctuation</td><td>20 %</td><td>Ponctuation manquante ou erronee</td></tr>
+<tr><td>8</td><td>Erreurs de capitalisation</td><td>25 %</td><td>Casse aleatoire, tout en minuscules</td></tr>
+<tr><td>9</td><td>Format des nombres</td><td>8 %</td><td>&laquo; 8 heures &raquo; vs &laquo; huit heures &raquo;</td></tr>
+<tr><td>10</td><td>Alternance de code</td><td>2 %</td><td>Melange francais-anglais</td></tr>
+<tr><td>11</td><td>Hallucinations</td><td>1,5 %</td><td>&laquo; Merci d'avoir regarde... &raquo;</td></tr>
+<tr><td>12</td><td>Artefacts de bruit</td><td>5 %</td><td><code>[inaudible]</code>, <code>[music]</code></td></tr>
+<tr><td>13</td><td>Variations d'accent</td><td>6 %</td><td>Transcriptions phonetiques regionales</td></tr>
+<tr><td>14</td><td>Homophones</td><td>8 %</td><td>&laquo; a/a &raquo;, &laquo; ou/ou &raquo;, &laquo; vers/vert &raquo;</td></tr>
+</table>
+<p class="note"><strong>Augmentation TRIP-safe</strong> : la troncature est desactivee pour les entrees TRIP afin de preserver les noms de gares dans la verite terrain.</p>
+
+<h3>3.3 Decoupage entrainement / validation / test</h3>
+<p>Le jeu de donnees est divise selon un ratio stratifie <strong>70 / 15 / 15</strong> :</p>
+<table>
+<tr><th>Partition</th><th>Taille (base)</th><th>Taille (augmente)</th></tr>
+<tr><td>Entrainement</td><td>70 000</td><td>69 998</td></tr>
+<tr><td>Validation</td><td>15 000</td><td>14 998</td></tr>
+<tr><td>Test</td><td>15 000</td><td>15 005</td></tr>
+</table>
+<p>La graine aleatoire est fixee a 42 pour la reproductibilite.</p>
+
+<h3>3.4 Fine-tuning de CamemBERT</h3>
+
+<h4>3.4.1 Classification d'intention</h4>
+<p>Le modele <code>camembert-base</code> (110M parametres) est charge depuis HuggingFace avec une tete de classification a 3 classes (<code>CamembertForSequenceClassification</code>). Le fine-tuning est effectue sur Google Colab (GPU Tesla T4).</p>
+<pre>Modele de base     : camembert-base (almanach)
+Architecture       : CamembertForSequenceClassification
+Classes            : TRIP, NOT_TRIP, UNKNOWN (3)
+Donnees            : 69 954 train / 14 985 val / 14 998 test
+Epochs             : 5 (avec EarlyStopping, patience = 2)
+Batch size         : 32
+Learning rate      : 2e-5
+Warmup ratio       : 0.1
+Weight decay       : 0.01
+Max sequence length: 128
+FP16               : Oui (CUDA)
+Optimiseur         : AdamW (defaut HuggingFace)
+Metrique de selection : F1 (weighted)</pre>
+
+<h4>3.4.2 Extraction d'entites (NER)</h4>
+<p>Deux modeles de base ont ete compares : <code>camembert-base</code> et <code>Jean-Baptiste/camembert-ner</code> (pre-entraine pour le NER generique). L'architecture est <code>CamembertForTokenClassification</code> avec 7 labels BIO.</p>
+<pre>Labels NER         : O, B-DEP, I-DEP, B-DEST, I-DEST, B-INTER, I-INTER (7)
+Donnees NER        : 51 800 train / 11 099 val / 11 101 test (TRIP uniquement)
+Epochs             : 5 (avec EarlyStopping, patience = 2)
+Batch size         : 12
+Learning rate      : 3e-5
+Warmup ratio       : 0.1
+Weight decay       : 0.01
+Max sequence length: 128
+FP16               : Oui (CUDA)
+Metrique de selection : F1 (seqeval)</pre>
+
+<h4>3.4.3 Alignement des sous-tokens</h4>
+<p>CamemBERT utilise un tokenizer SentencePiece qui decoupe les mots en sous-tokens. L'alignement des labels est crucial :</p>
+<ul>
+  <li>Tokens speciaux (<code>&lt;s&gt;</code>, <code>&lt;/s&gt;</code>, <code>&lt;pad&gt;</code>) : label = <strong>-100</strong> (ignore dans le calcul de la perte)</li>
+  <li>Premier sous-token d'un mot : recoit le label du mot</li>
+  <li>Sous-tokens suivants du meme mot : label = <strong>-100</strong> (ignore)</li>
+</ul>
+<p>Cette strategie evite que les sous-tokens arbitraires influencent l'entrainement tout en preservant les labels au niveau des mots.</p>
+
+<h4>3.4.4 Conversion a la volee</h4>
+<p>Le dataset augmente (format CSV) est converti a la volee en annotations NER par la fonction <code>convert_augmented_sample()</code>. Pour chaque phrase TRIP, les noms de gares de la verite terrain sont recherches dans les tokens par matching normalise (minuscules, sans tirets ni apostrophes). Les labels B-DEP/I-DEP et B-DEST/I-DEST sont assignes aux tokens correspondants.</p>
+
+<!-- ============================================================ -->
+<!-- 4. PARAMETRES FINAUX                                           -->
+<!-- ============================================================ -->
+<h2 id="s4">4. Parametres finaux des modeles</h2>
+
+<h3>4.1 Architecture CamemBERT</h3>
+<p>Configuration du modele fine-tune (issue de <code>models/camembert-ner-retrain/config.json</code>) :</p>
+<table>
+<tr><th>Parametre</th><th>Valeur</th></tr>
+<tr><td>Type de modele</td><td>CamemBERT (RoBERTa)</td></tr>
+<tr><td>Taille du vocabulaire</td><td>32 005</td></tr>
+<tr><td>Dimension cachee</td><td>768</td></tr>
+<tr><td>Nombre de couches</td><td>12</td></tr>
+<tr><td>Nombre de tetes d'attention</td><td>12</td></tr>
+<tr><td>Taille intermediaire (FFN)</td><td>3 072</td></tr>
+<tr><td>Fonction d'activation</td><td>GELU</td></tr>
+<tr><td>Dropout (attention + couche cachee)</td><td>0,1</td></tr>
+<tr><td>Positions maximales</td><td>514</td></tr>
+<tr><td>Normalisation de couche (epsilon)</td><td>1e-5</td></tr>
+<tr><td>Nombre total de parametres</td><td>~110 millions</td></tr>
+</table>
+
+<h3>4.2 Hyperparametres d'entrainement finaux</h3>
+
+<table>
+<tr><th>Parametre</th><th>Classification</th><th>NER</th></tr>
+<tr><td>Epochs</td><td>5</td><td>5</td></tr>
+<tr><td>Batch size</td><td>32</td><td>12</td></tr>
+<tr><td>Learning rate</td><td>2e-5</td><td>3e-5</td></tr>
+<tr><td>Warmup ratio</td><td>0,1</td><td>0,1</td></tr>
+<tr><td>Weight decay</td><td>0,01</td><td>0,01</td></tr>
+<tr><td>Max sequence length</td><td>128</td><td>128</td></tr>
+<tr><td>FP16</td><td>Oui</td><td>Oui</td></tr>
+<tr><td>EarlyStopping patience</td><td>2</td><td>2</td></tr>
+<tr><td>Optimiseur</td><td>AdamW</td><td>AdamW</td></tr>
+<tr><td>Fonction de perte</td><td>CrossEntropyLoss</td><td>CrossEntropyLoss</td></tr>
+<tr><td>Metrique de selection</td><td>F1 (weighted)</td><td>F1 (seqeval)</td></tr>
+</table>
+
+<h3>4.3 Parametres du matching fuzzy</h3>
+<table>
+<tr><th>Parametre</th><th>Valeur</th></tr>
+<tr><td>Algorithme</td><td>RapidFuzz (Levenshtein optimise)</td></tr>
+<tr><td>Scorer</td><td>WRatio</td></tr>
+<tr><td>Seuil de similarite</td><td>80 / 100</td></tr>
+<tr><td>Boost premier mot</td><td>+20 points</td></tr>
+<tr><td>Base de donnees</td><td>6 101 gares SNCF</td></tr>
+<tr><td>Cache</td><td>LRU en memoire</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<!-- 5. EXEMPLE DETAILLE                                            -->
+<!-- ============================================================ -->
+<h2 id="s5">5. Exemple detaille de traitement d'une phrase</h2>
+
+<h3>5.1 Exemple 1 : Commande de voyage valide</h3>
+<p>Phrase d'entree : <em>&laquo; Je voudrais aller de Paris a Lyon en passant par Dijon &raquo;</em></p>
+
+<div class="step-box">
+<div class="step-title">Etape 1 : STTArtifactFilter</div>
+Aucun artefact detecte ([...], *...*, etc.). Le texte passe tel quel.<br>
+Sortie : <code>"Je voudrais aller de Paris a Lyon en passant par Dijon"</code> &mdash; est_bruit = False
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 2 : Preprocessor</div>
+Normalisation Unicode (NFC), normalisation des apostrophes et tirets. Le texte ne contient ni apostrophes speciales ni tirets a normaliser. Les espaces sont deja normaux.<br>
+Sortie : <code>"Je voudrais aller de Paris a Lyon en passant par Dijon"</code> (inchange)
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 3 : Detection de langue (Langdetect)</div>
+La bibliotheque langdetect analyse les n-grammes et detecte le francais avec haute confiance.<br>
+Sortie : <code>("FRENCH", 0.9999)</code>
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 4 : Classification d'intention (SpaCy)</div>
+Le modele SpaCy NER detecte 3 entites de type LOC/GPE : &laquo; Paris &raquo;, &laquo; Lyon &raquo;, &laquo; Dijon &raquo;. Confiance = min(0.5 + 3 &times; 0.1, 0.8) = 0.8.<br>
+Sortie : <code>("TRIP", 0.8)</code>
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 5 : Extraction d'entites (Regex)</div>
+Le motif <code>de/depuis X vers/a Y</code> capture : depart = &laquo; Paris &raquo;, destination = &laquo; Lyon &raquo;.<br>
+Le motif <code>en passant par X</code> capture l'intermediaire : &laquo; Dijon &raquo;.<br>
+Sortie : <code>{"departure": "Paris", "destination": "Lyon", "intermediate": ["Dijon"]}</code>
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 6 : Post-traitement fuzzy</div>
+StationMatcher verifie chaque nom contre la base SNCF (6 101 gares) :<br>
+&bull; &laquo; Paris &raquo; &rarr; correspondance exacte &rarr; &laquo; Paris &raquo; (score 100)<br>
+&bull; &laquo; Lyon &raquo; &rarr; correspondance exacte &rarr; &laquo; Lyon &raquo; (score 100)<br>
+&bull; &laquo; Dijon &raquo; &rarr; correspondance exacte &rarr; &laquo; Dijon &raquo; (score 100)<br>
+Sortie : entites inchangees (noms deja corrects)
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 7 : Construction du PredictionResult</div>
+<pre>PredictionResult(
+  intent=TRIP, intent_confidence=0.8,
+  language=FRENCH, language_confidence=0.9999,
+  departure="Paris", destination="Lyon",
+  intermediates=["Dijon"],
+  is_valid_trip=True,
+  model_name="pipeline(Regex)"
+)</pre>
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 8 : Recherche d'itineraire (A*)</div>
+Le graphe SNCF est interroge avec A* pour Paris &rarr; Dijon, puis Dijon &rarr; Lyon.<br>
+L'heuristique geodesique / 3 guide la recherche vers les LGV.<br>
+Sortie : <code>1,Paris,Dijon,Lyon</code>
+</div>
+
+<h3>5.2 Exemple 2 : Phrase avec erreurs STT</h3>
+<p>Phrase d'entree : <em>&laquo; euh ben [bruit] de monparnasse a lion svp &raquo;</em></p>
+
+<div class="step-box">
+<div class="step-title">Etape 1 : STTArtifactFilter</div>
+Le marqueur <code>[bruit]</code> est supprime.<br>
+Sortie : <code>"euh ben de monparnasse a lion svp"</code>
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 2 : Preprocessor</div>
+Normalisation des espaces (doubles espaces collapses).<br>
+Sortie : <code>"euh ben de monparnasse a lion svp"</code>
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 3 : Detection de langue</div>
+<code>("FRENCH", 0.85)</code> &mdash; &laquo; de &raquo;, &laquo; a &raquo;, &laquo; svp &raquo; sont des indicateurs francais.
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 4 : Classification d'intention</div>
+<code>("TRIP", 0.8)</code> &mdash; le mot &laquo; de... a &raquo; declenche le motif de voyage.
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 5 : Extraction d'entites</div>
+Le motif <code>de X a Y</code> capture : depart = &laquo; monparnasse &raquo;, destination = &laquo; lion svp &raquo;.<br>
+Apres nettoyage des mots temporels (&laquo; svp &raquo; supprime) : destination = &laquo; lion &raquo;.
+</div>
+
+<div class="step-box">
+<div class="step-title">Etape 6 : Post-traitement fuzzy</div>
+&bull; &laquo; monparnasse &raquo; &rarr; fuzzy match &rarr; &laquo; Paris Montparnasse &raquo; (score 88)<br>
+&bull; &laquo; lion &raquo; &rarr; fuzzy match &rarr; &laquo; Lyon &raquo; (score 86)<br>
+Le matching corrige les fautes d'orthographe et les noms informels.
+</div>
+
+<div class="step-box">
+<div class="step-title">Sortie finale</div>
+<code>2,Paris Montparnasse,Lyon</code>
+</div>
+
+<h3>5.3 Exemple 3 : Phrase non-voyage</h3>
+<p>Phrase d'entree : <em>&laquo; Quel temps fait-il demain a Paris ? &raquo;</em></p>
+
+<div class="step-box">
+<div class="step-title">Traitement</div>
+&bull; Langue : FRENCH (confiance 0,95)<br>
+&bull; Intention : NOT_TRIP (aucun motif de voyage detecte malgre la presence de &laquo; Paris &raquo;)<br>
+&bull; Le pipeline s'arrete a la classification.<br>
+Sortie : <code>3,NOT_TRIP</code>
+</div>
+
+<!-- ============================================================ -->
+<!-- 6. EXPERIENCES ET RESULTATS                                    -->
+<!-- ============================================================ -->
+<h2 id="s6">6. Experiences et resultats comparatifs</h2>
+
+<p>Toutes les evaluations ont ete effectuees sur le jeu de test augmente (<code>datasets/augmented/test.csv</code>, 15 005 echantillons avec erreurs STT simulees), sauf mention contraire. Le materiel utilise est un GPU NVIDIA GeForce RTX 2060 pour l'evaluation des modeles zero-shot/regle, et un GPU NVIDIA Tesla T4 (Google Colab) pour le fine-tuning.</p>
+
+<h3>6.1 Experience 1 : Impact du pre-traitement</h3>
+<p>Evaluation de l'impact du filtre STT et de la normalisation textuelle sur chaque composant.</p>
+<table>
+<tr><th>Composant</th><th>Modele</th><th>Brut</th><th>Pre-traite</th><th>Delta</th></tr>
+<tr><td>Detection langue</td><td>Regex</td><td>67,5 %</td><td>67,5 %</td><td>+0,0 %</td></tr>
+<tr><td>Detection langue</td><td>Langdetect</td><td>77,9 %</td><td>77,9 %</td><td>+0,0 %</td></tr>
+<tr><td>Classification</td><td>Regex</td><td>65,8 %</td><td>65,8 %</td><td>+0,0 %</td></tr>
+<tr><td>Classification</td><td>CamemBERT (zero-shot)</td><td>32,2 %</td><td>32,4 %</td><td>+0,2 %</td></tr>
+<tr><td>Classification</td><td>SpaCy</td><td>78,7 %</td><td>79,1 %</td><td>+0,4 %</td></tr>
+<tr><td>Extraction</td><td>Regex</td><td>33,1 %</td><td>33,3 %</td><td>+0,2 %</td></tr>
+<tr><td>Extraction</td><td>SpaCy</td><td>27,6 %</td><td>27,8 %</td><td>+0,2 %</td></tr>
+<tr><td>Extraction</td><td>CamemBERT (zero-shot)</td><td>16,1 %</td><td>16,3 %</td><td>+0,2 %</td></tr>
+</table>
+<p><strong>Conclusion</strong> : le pre-traitement apporte une amelioration marginale (+0,2 % en moyenne). Le classificateur SpaCy en beneficie le plus (+0,4 %).</p>
+
+<h3>6.2 Experience 2 : Comparaison des approches sans fine-tuning</h3>
+<p>Cette experience compare les performances des differentes approches <strong>sans entrainement specifique</strong> sur notre jeu de donnees : regles manuelles (Regex), modeles pre-entraines generiques (SpaCy, Langdetect) et inference zero-shot (CamemBERT).</p>
+
+<h4>Detection de langue</h4>
+<table>
+<tr><th>Modele</th><th>Precision globale</th><th>FR Precision</th><th>FR Rappel</th><th>FR F1</th><th>Latence</th></tr>
+<tr><td>Regex</td><td>67,5 %</td><td>0,89</td><td>0,72</td><td>0,80</td><td>&lt; 0,1 ms</td></tr>
+<tr class="highlight-row"><td>Langdetect</td><td>77,9 %</td><td>0,96</td><td>0,80</td><td>0,87</td><td>6,1 ms</td></tr>
+</table>
+
+<div class="confusion-wrap">
+<div class="cm-title">Matrice de confusion &mdash; Langdetect (normalisee, 15 005 echantillons)</div>
+<table class="confusion">
+<tr><th class="corner"></th><th class="corner"></th><th colspan="3" style="background:#eef1f5; text-align:center; font-style:italic; font-size:0.85em; border:1px solid #c0c8d0;">Prediction</th></tr>
+<tr><th class="corner"></th><th class="corner"></th><th>FRENCH</th><th>ENGLISH</th><th>UNKNOWN</th></tr>
+<tr><th class="axis-label" rowspan="3" style="writing-mode:vertical-lr; transform:rotate(180deg);">Reel</th><th>FRENCH</th><td class="cm-80">79,9 %</td><td class="cm-5">3,7 %</td><td class="cm-10">16,3 %</td></tr>
+<tr><th>ENGLISH</th><td class="cm-30">29,8 %</td><td class="cm-60">65,9 %</td><td class="cm-5">4,2 %</td></tr>
+<tr><th>UNKNOWN</th><td class="cm-10">15,6 %</td><td class="cm-30">29,3 %</td><td class="cm-50">55,1 %</td></tr>
+</table>
+<p style="font-size:0.85em; color:#666; text-align:center;">Langdetect classifie correctement 79,9 % des phrases francaises. Les erreurs principales sont des phrases francaises courtes classees en UNKNOWN (16,3 %).</p>
+</div>
+
+<h4>Classification d'intention</h4>
+<table>
+<tr><th>Modele</th><th>Precision globale</th><th>TRIP F1</th><th>NOT_TRIP F1</th><th>UNKNOWN F1</th><th>Latence</th></tr>
+<tr><td>Regex</td><td>65,8 %</td><td>0,78</td><td>0,34</td><td>0,14</td><td>&lt; 0,1 ms</td></tr>
+<tr class="highlight-row"><td>SpaCy</td><td>79,1 %</td><td>0,87</td><td>0,51</td><td>0,00</td><td>0,8 ms</td></tr>
+<tr><td>CamemBERT (zero-shot)</td><td>32,4 %</td><td>0,41</td><td>0,15</td><td>0,02</td><td>0,7 ms</td></tr>
+</table>
+
+<div class="confusion-wrap">
+<div class="cm-title">Matrices de confusion &mdash; Classification d'intention (normalisees, 15 005 echantillons)</div>
+
+<p style="font-size:0.9em; font-weight:bold; color:#2a4a6c; margin-top:12px;">SpaCy (Precision globale : 79,1 %)</p>
+<table class="confusion">
+<tr><th class="corner"></th><th class="corner"></th><th colspan="3" style="background:#eef1f5; text-align:center; font-style:italic; font-size:0.85em; border:1px solid #c0c8d0;">Prediction</th></tr>
+<tr><th class="corner"></th><th class="corner"></th><th>TRIP</th><th>NOT_TRIP</th><th>UNKNOWN</th></tr>
+<tr><th class="axis-label" rowspan="3" style="writing-mode:vertical-lr; transform:rotate(180deg);">Reel</th><th>TRIP</th><td class="cm-80">78,2 %</td><td class="cm-20">21,8 %</td><td class="cm-0">0,0 %</td></tr>
+<tr><th>NOT_TRIP</th><td class="cm-10">14,9 %</td><td class="cm-80">85,1 %</td><td class="cm-0">0,0 %</td></tr>
+<tr><th>UNKNOWN</th><td class="cm-10">9,3 %</td><td class="cm-90">90,7 %</td><td class="cm-0">0,0 %</td></tr>
+</table>
+<p style="font-size:0.85em; color:#666; text-align:center; margin-bottom:12px;">SpaCy ne predit jamais UNKNOWN. Les phrases UNKNOWN sont majoritairement classees NOT_TRIP (90,7 %).</p>
+
+<p style="font-size:0.9em; font-weight:bold; color:#2a4a6c; margin-top:12px;">Regex (Precision globale : 65,8 %)</p>
+<table class="confusion">
+<tr><th class="corner"></th><th class="corner"></th><th colspan="3" style="background:#eef1f5; text-align:center; font-style:italic; font-size:0.85em; border:1px solid #c0c8d0;">Prediction</th></tr>
+<tr><th class="corner"></th><th class="corner"></th><th>TRIP</th><th>NOT_TRIP</th><th>UNKNOWN</th></tr>
+<tr><th class="axis-label" rowspan="3" style="writing-mode:vertical-lr; transform:rotate(180deg);">Reel</th><th>TRIP</th><td class="cm-80">79,9 %</td><td class="cm-20">20,1 %</td><td class="cm-0">0,1 %</td></tr>
+<tr><th>NOT_TRIP</th><td class="cm-70">74,5 %</td><td class="cm-20">25,2 %</td><td class="cm-0">0,3 %</td></tr>
+<tr><th>UNKNOWN</th><td class="cm-10">10,7 %</td><td class="cm-40">47,3 %</td><td class="cm-40">42,0 %</td></tr>
+</table>
+<p style="font-size:0.85em; color:#666; text-align:center; margin-bottom:12px;">Regex classe 74,5 % des NOT_TRIP comme TRIP (sur-detection massive). La detection d'UNKNOWN est partielle (42 %).</p>
+
+<p style="font-size:0.9em; font-weight:bold; color:#2a4a6c; margin-top:12px;">CamemBERT zero-shot (Precision globale : 64,2 %)</p>
+<table class="confusion">
+<tr><th class="corner"></th><th class="corner"></th><th colspan="3" style="background:#eef1f5; text-align:center; font-style:italic; font-size:0.85em; border:1px solid #c0c8d0;">Prediction</th></tr>
+<tr><th class="corner"></th><th class="corner"></th><th>TRIP</th><th>NOT_TRIP</th><th>UNKNOWN</th></tr>
+<tr><th class="axis-label" rowspan="3" style="writing-mode:vertical-lr; transform:rotate(180deg);">Reel</th><th>TRIP</th><td class="cm-80">85,3 %</td><td class="cm-10">14,6 %</td><td class="cm-0">0,1 %</td></tr>
+<tr><th>NOT_TRIP</th><td class="cm-90">97,0 %</td><td class="cm-5">2,7 %</td><td class="cm-0">0,3 %</td></tr>
+<tr><th>UNKNOWN</th><td class="cm-50">50,7 %</td><td class="cm-5">7,3 %</td><td class="cm-40">42,0 %</td></tr>
+</table>
+<p style="font-size:0.85em; color:#666; text-align:center; margin-bottom:12px;">Le CamemBERT zero-shot classe 97 % des NOT_TRIP comme TRIP, rendant la distinction impossible. Le modele n'a pas appris la tache specifique.</p>
+</div>
+
+<div class="chart-container">
+<div class="chart-title">Precision globale &mdash; Classification d'intention (toutes approches)</div>
+<svg width="620" height="220" viewBox="0 0 620 220" xmlns="http://www.w3.org/2000/svg">
+  <!-- Axes -->
+  <line x1="180" y1="25" x2="180" y2="185" stroke="#999" stroke-width="1"/>
+  <line x1="180" y1="185" x2="610" y2="185" stroke="#999" stroke-width="1"/>
+  <!-- Grid lines -->
+  <line x1="180" y1="185" x2="180" y2="25" stroke="#eee" stroke-width="0.5"/>
+  <line x1="310" y1="185" x2="310" y2="25" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="440" y1="185" x2="440" y2="25" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="570" y1="185" x2="570" y2="25" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <!-- Tick labels -->
+  <text x="180" y="200" font-size="11" fill="#777" text-anchor="middle" font-family="Georgia, serif">0 %</text>
+  <text x="310" y="200" font-size="11" fill="#777" text-anchor="middle" font-family="Georgia, serif">33 %</text>
+  <text x="440" y="200" font-size="11" fill="#777" text-anchor="middle" font-family="Georgia, serif">66 %</text>
+  <text x="570" y="200" font-size="11" fill="#777" text-anchor="middle" font-family="Georgia, serif">100 %</text>
+  <!-- Bar: CamemBERT ZS - 32.4% -->
+  <rect x="180" y="30" width="126" height="30" fill="#c8d6e5" rx="2"/>
+  <text x="170" y="50" font-size="12" fill="#333" text-anchor="end" font-family="Georgia, serif">CamemBERT (ZS)</text>
+  <text x="312" y="50" font-size="11" fill="#333" font-family="Consolas, monospace">32,4 %</text>
+  <!-- Bar: Regex - 65.8% -->
+  <rect x="180" y="70" width="256" height="30" fill="#89a4c3" rx="2"/>
+  <text x="170" y="90" font-size="12" fill="#333" text-anchor="end" font-family="Georgia, serif">Regex</text>
+  <text x="442" y="90" font-size="11" fill="#333" font-family="Consolas, monospace">65,8 %</text>
+  <!-- Bar: SpaCy - 79.1% -->
+  <rect x="180" y="110" width="308" height="30" fill="#3d6190" rx="2"/>
+  <text x="170" y="130" font-size="12" fill="#333" text-anchor="end" font-family="Georgia, serif">SpaCy</text>
+  <text x="494" y="130" font-size="11" fill="#333" font-family="Consolas, monospace">79,1 %</text>
+  <!-- Bar: CamemBERT FT - 99.95% -->
+  <rect x="180" y="150" width="389" height="30" fill="#1a3a5c" rx="2"/>
+  <text x="170" y="170" font-size="12" fill="#333" text-anchor="end" font-family="Georgia, serif">CamemBERT (FT)</text>
+  <text x="420" y="170" font-size="11" fill="#fff" font-weight="bold" font-family="Consolas, monospace">99,95 %</text>
+</svg>
+<div class="chart-note">ZS = zero-shot, FT = fine-tune. Evaluation sur 15 005 echantillons (test augmente).</div>
+</div>
+
+<h4>Extraction d'entites (sans post-traitement fuzzy)</h4>
+<table>
+<tr><th>Modele</th><th>Precision globale</th><th>Depart F1</th><th>Destination F1</th><th>Latence</th></tr>
+<tr class="highlight-row"><td>Regex</td><td>33,3 %</td><td>0,53</td><td>0,54</td><td>&lt; 0,1 ms</td></tr>
+<tr><td>SpaCy</td><td>27,8 %</td><td>0,45</td><td>0,49</td><td>0,9 ms</td></tr>
+<tr><td>CamemBERT (zero-shot)</td><td>16,3 %</td><td>0,33</td><td>0,33</td><td>0,7 ms</td></tr>
+</table>
+
+<p><strong>Observations</strong> : sans fine-tuning, les approches par regles (Regex) et modeles pre-entraines generiques (SpaCy) surpassent largement le CamemBERT zero-shot. Cela s'explique par le fait que CamemBERT n'a pas ete entraine pour la tache specifique de detection de voyages ferroviaires.</p>
+
+<h3>6.3 Experience 3 : Impact du post-traitement fuzzy</h3>
+<table>
+<tr><th>Modele</th><th>Sans fuzzy</th><th>Avec fuzzy</th><th>Delta</th><th>Latence (sans)</th><th>Latence (avec)</th></tr>
+<tr class="highlight-row"><td>Regex</td><td>33,3 %</td><td><strong>57,1 %</strong></td><td><strong>+23,7 %</strong></td><td>&lt; 0,1 ms</td><td>9,8 ms</td></tr>
+<tr><td>SpaCy</td><td>27,8 %</td><td>34,2 %</td><td>+6,4 %</td><td>0,9 ms</td><td>2,5 ms</td></tr>
+<tr><td>CamemBERT (zero-shot)</td><td>16,3 %</td><td>31,2 %</td><td>+15,0 %</td><td>0,7 ms</td><td>0,8 ms</td></tr>
+</table>
+<p><strong>Conclusion</strong> : le post-traitement fuzzy ameliore considerablement la precision de tous les modeles, avec un gain maximal de +23,7 % pour le Regex. C'est la composante ayant le plus grand impact sur la precision globale du pipeline.</p>
+
+<div class="chart-container">
+<div class="chart-title">Extraction d'entites &mdash; Impact du post-traitement fuzzy</div>
+<svg width="620" height="260" viewBox="0 0 620 260" xmlns="http://www.w3.org/2000/svg">
+  <!-- Axes -->
+  <line x1="100" y1="20" x2="100" y2="210" stroke="#999" stroke-width="1"/>
+  <line x1="100" y1="210" x2="600" y2="210" stroke="#999" stroke-width="1"/>
+  <!-- Grid lines -->
+  <line x1="100" y1="210" x2="600" y2="210" stroke="#ddd" stroke-width="0.5"/>
+  <line x1="100" y1="160" x2="600" y2="160" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="100" y1="110" x2="600" y2="110" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="100" y1="60" x2="600" y2="60" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="100" y1="10" x2="600" y2="10" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <!-- Y axis labels -->
+  <text x="95" y="214" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">0 %</text>
+  <text x="95" y="164" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">25 %</text>
+  <text x="95" y="114" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">50 %</text>
+  <text x="95" y="64" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">75 %</text>
+  <text x="95" y="14" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">100 %</text>
+  <!-- Regex group -->
+  <rect x="140" y="144" width="55" height="66" fill="#c8d6e5" rx="2"/>
+  <text x="167" y="138" font-size="10" fill="#333" text-anchor="middle" font-family="Consolas, monospace">33,3 %</text>
+  <rect x="200" y="96" width="55" height="114" fill="#1a3a5c" rx="2"/>
+  <text x="227" y="90" font-size="10" fill="#333" text-anchor="middle" font-weight="bold" font-family="Consolas, monospace">57,1 %</text>
+  <text x="197" y="232" font-size="11" fill="#333" text-anchor="middle" font-family="Georgia, serif">Regex</text>
+  <!-- SpaCy group -->
+  <rect x="310" y="154" width="55" height="56" fill="#c8d6e5" rx="2"/>
+  <text x="337" y="148" font-size="10" fill="#333" text-anchor="middle" font-family="Consolas, monospace">27,8 %</text>
+  <rect x="370" y="142" width="55" height="68" fill="#3d6190" rx="2"/>
+  <text x="397" y="136" font-size="10" fill="#333" text-anchor="middle" font-family="Consolas, monospace">34,2 %</text>
+  <text x="367" y="232" font-size="11" fill="#333" text-anchor="middle" font-family="Georgia, serif">SpaCy</text>
+  <!-- CamemBERT ZS group -->
+  <rect x="470" y="178" width="55" height="32" fill="#c8d6e5" rx="2"/>
+  <text x="497" y="172" font-size="10" fill="#333" text-anchor="middle" font-family="Consolas, monospace">16,3 %</text>
+  <rect x="530" y="148" width="55" height="62" fill="#5276a0" rx="2"/>
+  <text x="557" y="142" font-size="10" fill="#333" text-anchor="middle" font-family="Consolas, monospace">31,2 %</text>
+  <text x="527" y="232" font-size="11" fill="#333" text-anchor="middle" font-family="Georgia, serif">CamemBERT (ZS)</text>
+  <!-- Legend -->
+  <rect x="160" y="248" width="14" height="10" fill="#c8d6e5" rx="1"/>
+  <text x="180" y="257" font-size="10" fill="#555" font-family="Georgia, serif">Sans fuzzy</text>
+  <rect x="280" y="248" width="14" height="10" fill="#1a3a5c" rx="1"/>
+  <text x="300" y="257" font-size="10" fill="#555" font-family="Georgia, serif">Avec fuzzy</text>
+</svg>
+</div>
+
+<h3>6.4 Experience 4 : Performance par langue source</h3>
+
+<h4>Classification d'intention par langue</h4>
+<table>
+<tr><th>Modele</th><th>FR (13 366)</th><th>EN (966)</th><th>Inconnu (673)</th></tr>
+<tr><td>Regex</td><td>65,3 %</td><td>70,9 %</td><td>69,1 %</td></tr>
+<tr><td>CamemBERT (zero-shot)</td><td>26,5 %</td><td>23,7 %</td><td>25,7 %</td></tr>
+<tr class="highlight-row"><td>SpaCy</td><td><strong>82,2 %</strong></td><td>57,1 %</td><td>50,5 %</td></tr>
+</table>
+<p><strong>Observation</strong> : SpaCy excelle sur le francais (82,2 %) mais ses performances degradent fortement sur l'anglais (57,1 %) et les langues inconnues (50,5 %). Le Regex est plus homogene entre les langues.</p>
+
+<h4>Extraction d'entites par langue (TRIP uniquement, avec fuzzy)</h4>
+<table>
+<tr><th>Modele (+Fuzzy)</th><th>FR (9 990)</th><th>EN (666)</th><th>Inconnu (445)</th></tr>
+<tr class="highlight-row"><td>Regex + Fuzzy</td><td><strong>59,2 %</strong></td><td>32,1 %</td><td>52,4 %</td></tr>
+<tr><td>SpaCy + Fuzzy</td><td>35,7 %</td><td>20,1 %</td><td>29,0 %</td></tr>
+<tr><td>CamemBERT + Fuzzy</td><td>31,3 %</td><td>28,5 %</td><td>33,3 %</td></tr>
+</table>
+
+<h3>6.5 Experience 5 : Valeur du filtrage par detection de langue</h3>
+<p>Evaluation de l'impact d'un filtrage prealable par la detection de langue (Langdetect) sur les composants en aval.</p>
+
+<h4>Classification d'intention</h4>
+<table>
+<tr><th>Modele</th><th>Complet (15 005)</th><th>Filtre LD (11 077)</th><th>Delta</th></tr>
+<tr><td>Regex</td><td>65,8 %</td><td>67,2 %</td><td>+1,4 %</td></tr>
+<tr><td>CamemBERT (zero-shot)</td><td>32,4 %</td><td>48,8 %</td><td><strong>+16,4 %</strong></td></tr>
+<tr><td>SpaCy</td><td>79,1 %</td><td>81,6 %</td><td>+2,5 %</td></tr>
+</table>
+<p><strong>Observation</strong> : le CamemBERT beneficie massivement du filtrage LD (+16,4 %), car il est fondamentalement un modele de langue francaise.</p>
+
+<h3>6.6 Experience 6 : Fine-tuning de CamemBERT &mdash; Comparaison des approches</h3>
+
+<p>Cette experience represente le resultat le plus significatif du projet. Nous comparons les performances des approches zero-shot/regles (section 6.2) avec les modeles CamemBERT fine-tunes sur notre dataset specifique.</p>
+
+<h4>Classification d'intention : avant vs apres fine-tuning</h4>
+<table>
+<tr><th>Approche</th><th>Modele</th><th>Precision</th><th>F1 (weighted)</th><th>Latence</th></tr>
+<tr><td>Regles manuelles</td><td>Regex</td><td>65,8 %</td><td>0,42</td><td>&lt; 0,1 ms</td></tr>
+<tr><td>NER pre-entraine</td><td>SpaCy</td><td>79,1 %</td><td>0,46</td><td>0,8 ms</td></tr>
+<tr><td>Zero-shot</td><td>CamemBERT (zero-shot)</td><td>32,4 %</td><td>0,19</td><td>0,7 ms</td></tr>
+<tr class="highlight-row"><td>Fine-tune</td><td>camembert-base (fine-tune)</td><td><strong>99,95 %</strong></td><td><strong>0,9995</strong></td><td>~1 ms</td></tr>
+<tr class="highlight-row"><td>Fine-tune</td><td>camembert-ner (fine-tune)</td><td>99,94 %</td><td>0,9994</td><td>~1 ms</td></tr>
+</table>
+
+<p class="note">Le gain entre l'approche zero-shot CamemBERT (32,4 %) et le meme modele fine-tune (99,95 %) est de <strong>+67,5 points de pourcentage</strong>. Cela illustre de facon spectaculaire l'importance du fine-tuning sur un dataset specifique au domaine.</p>
+
+<div class="confusion-wrap">
+<div class="cm-title">Matrice de confusion &mdash; CamemBERT fine-tune, classification (14 998 echantillons de test)</div>
+<table class="confusion">
+<tr><th class="corner"></th><th class="corner"></th><th colspan="3" style="background:#eef1f5; text-align:center; font-style:italic; font-size:0.85em; border:1px solid #c0c8d0;">Prediction</th></tr>
+<tr><th class="corner"></th><th class="corner"></th><th>TRIP</th><th>NOT_TRIP</th><th>UNKNOWN</th></tr>
+<tr><th class="axis-label" rowspan="3" style="writing-mode:vertical-lr; transform:rotate(180deg);">Reel</th><th>TRIP</th><td class="cm-100">99,97 %</td><td class="cm-0">0,02 %</td><td class="cm-0">0,01 %</td></tr>
+<tr><th>NOT_TRIP</th><td class="cm-0">0,05 %</td><td class="cm-100">99,92 %</td><td class="cm-0">0,03 %</td></tr>
+<tr><th>UNKNOWN</th><td class="cm-0">0,7 %</td><td class="cm-0">0,0 %</td><td class="cm-100">99,3 %</td></tr>
+</table>
+<p style="font-size:0.85em; color:#666; text-align:center;">La matrice est quasi diagonale : seulement ~7 erreurs sur 14 998 echantillons. Le modele fine-tune distingue parfaitement les trois classes.</p>
+</div>
+
+<h4>Extraction d'entites (NER) : avant vs apres fine-tuning</h4>
+<table>
+<tr><th>Approche</th><th>Modele</th><th>Precision (entity-level)</th><th>Rappel</th><th>F1 (seqeval)</th></tr>
+<tr><td>Regles manuelles</td><td>Regex (sans fuzzy)</td><td colspan="3">Accuracy 33,3 % (Depart F1 0,53 / Destination F1 0,54)</td></tr>
+<tr><td>Regles + post-traitement</td><td>Regex + Fuzzy</td><td colspan="3">Accuracy 57,1 % (meilleur resultat sans fine-tuning)</td></tr>
+<tr><td>NER pre-entraine</td><td>SpaCy</td><td colspan="3">Accuracy 27,8 % (Depart F1 0,45 / Destination F1 0,49)</td></tr>
+<tr><td>Zero-shot</td><td>CamemBERT (zero-shot)</td><td colspan="3">Accuracy 16,3 % (Depart F1 0,33 / Destination F1 0,33)</td></tr>
+<tr class="highlight-row"><td>Fine-tune</td><td>camembert-base (fine-tune)</td><td>98,33 %</td><td>98,58 %</td><td><strong>98,45 %</strong></td></tr>
+<tr class="highlight-row"><td>Fine-tune</td><td>camembert-ner (fine-tune)</td><td>98,21 %</td><td>98,51 %</td><td>98,36 %</td></tr>
+</table>
+
+<p class="note">Le passage de CamemBERT zero-shot (16,3 %) a CamemBERT fine-tune (F1 98,45 %) represente un gain de <strong>+82 points</strong>. Meme par rapport au meilleur systeme a base de regles (Regex + Fuzzy, 57,1 %), le modele fine-tune apporte un gain de plus de 40 points.</p>
+
+<div class="confusion-wrap">
+<div class="cm-title">Matrice de confusion &mdash; CamemBERT fine-tune, NER (11 101 phrases TRIP, niveau entite)</div>
+<table class="confusion">
+<tr><th class="corner"></th><th class="corner"></th><th colspan="4" style="background:#eef1f5; text-align:center; font-style:italic; font-size:0.85em; border:1px solid #c0c8d0;">Prediction</th></tr>
+<tr><th class="corner"></th><th class="corner"></th><th>DEP</th><th>DEST</th><th>INTER</th><th>O</th></tr>
+<tr><th class="axis-label" rowspan="4" style="writing-mode:vertical-lr; transform:rotate(180deg);">Reel</th><th>DEP</th><td class="cm-100">98,5 %</td><td class="cm-0">0,5 %</td><td class="cm-0">0,1 %</td><td class="cm-0">0,9 %</td></tr>
+<tr><th>DEST</th><td class="cm-0">0,6 %</td><td class="cm-100">96,5 %</td><td class="cm-0">0,2 %</td><td class="cm-5">2,7 %</td></tr>
+<tr><th>INTER</th><td class="cm-0">0,6 %</td><td class="cm-0">0,9 %</td><td class="cm-100">92,6 %</td><td class="cm-5">5,9 %</td></tr>
+<tr><th>O</th><td class="cm-0">0,02 %</td><td class="cm-0">0,03 %</td><td class="cm-0">0,01 %</td><td class="cm-100">99,9 %</td></tr>
+</table>
+<p style="font-size:0.85em; color:#666; text-align:center;">Les confusions entre DEP et DEST sont rares (0,5-0,6 %). Les erreurs principales concernent les entites INTER, souvent confondues avec O (5,9 %), ce qui est coherent avec la plus faible representation des intermediaires dans le dataset (14,8 % des TRIP).</p>
+</div>
+
+<h4>Comparaison des modeles de base pour le fine-tuning</h4>
+<p>Deux modeles de base ont ete compares pour le fine-tuning NER :</p>
+<table>
+<tr><th>Tache</th><th>Modele de base</th><th>Precision</th><th>F1</th><th>Rappel</th></tr>
+<tr><td>Classification</td><td>camembert-base</td><td>99,95 %</td><td>0,9995</td><td>99,95 %</td></tr>
+<tr><td>Classification</td><td>camembert-ner</td><td>99,94 %</td><td>0,9994</td><td>99,94 %</td></tr>
+<tr><td>NER</td><td>camembert-base</td><td>98,33 %</td><td>0,9845</td><td>98,58 %</td></tr>
+<tr><td>NER</td><td>camembert-ner</td><td>98,21 %</td><td>0,9836</td><td>98,51 %</td></tr>
+</table>
+<p><strong>Conclusion</strong> : les deux modeles de base atteignent des performances quasi identiques apres fine-tuning. Le modele <code>camembert-base</code> est legerement meilleur en classification, tandis que <code>camembert-ner</code> (pre-entraine pour le NER generique) offre un avantage marginal en NER. L'ecart est negligeable (&lt; 0,1 %), suggerant que la qualite et le volume des donnees d'entrainement dominent le choix du modele de base.</p>
+
+<div class="chart-container">
+<div class="chart-title">CamemBERT : zero-shot vs fine-tune &mdash; Comparaison avant/apres</div>
+<svg width="620" height="210" viewBox="0 0 620 210" xmlns="http://www.w3.org/2000/svg">
+  <!-- Axes -->
+  <line x1="100" y1="20" x2="100" y2="160" stroke="#999" stroke-width="1"/>
+  <line x1="100" y1="160" x2="600" y2="160" stroke="#999" stroke-width="1"/>
+  <!-- Grid lines -->
+  <line x1="100" y1="160" x2="600" y2="160" stroke="#eee" stroke-width="0.5"/>
+  <line x1="100" y1="120" x2="600" y2="120" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="100" y1="80" x2="600" y2="80" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="100" y1="40" x2="600" y2="40" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <!-- Y axis labels -->
+  <text x="95" y="164" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">0 %</text>
+  <text x="95" y="124" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">25 %</text>
+  <text x="95" y="84" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">50 %</text>
+  <text x="95" y="44" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">75 %</text>
+  <text x="95" y="12" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">100 %</text>
+  <!-- Intent Classification group -->
+  <!-- ZS: 32.4% -->
+  <rect x="170" y="114" width="80" height="46" fill="#c8d6e5" rx="2"/>
+  <text x="210" y="108" font-size="10" fill="#333" text-anchor="middle" font-family="Consolas, monospace">32,4 %</text>
+  <!-- FT: 99.95% -->
+  <rect x="260" y="20" width="80" height="140" fill="#1a3a5c" rx="2"/>
+  <text x="300" y="38" font-size="10" fill="#fff" text-anchor="middle" font-weight="bold" font-family="Consolas, monospace">99,95 %</text>
+  <text x="255" y="178" font-size="11" fill="#333" text-anchor="middle" font-family="Georgia, serif">Classification</text>
+  <!-- Arrow showing gain -->
+  <text x="340" y="80" font-size="12" fill="#1a7a3c" font-weight="bold" font-family="Georgia, serif">+67,5 pp</text>
+  <!-- Entity Extraction group -->
+  <!-- ZS: 16.3% -->
+  <rect x="420" y="137" width="80" height="23" fill="#c8d6e5" rx="2"/>
+  <text x="460" y="131" font-size="10" fill="#333" text-anchor="middle" font-family="Consolas, monospace">16,3 %</text>
+  <!-- FT: 98.45% -->
+  <rect x="510" y="22" width="80" height="138" fill="#1a3a5c" rx="2"/>
+  <text x="550" y="40" font-size="10" fill="#fff" text-anchor="middle" font-weight="bold" font-family="Consolas, monospace">98,45 %</text>
+  <text x="505" y="178" font-size="11" fill="#333" text-anchor="middle" font-family="Georgia, serif">Extraction NER</text>
+  <!-- Arrow showing gain -->
+  <text x="590" y="80" font-size="12" fill="#1a7a3c" font-weight="bold" font-family="Georgia, serif">+82,1 pp</text>
+  <!-- Legend -->
+  <rect x="170" y="195" width="14" height="10" fill="#c8d6e5" rx="1"/>
+  <text x="190" y="204" font-size="10" fill="#555" font-family="Georgia, serif">Zero-shot</text>
+  <rect x="300" y="195" width="14" height="10" fill="#1a3a5c" rx="1"/>
+  <text x="320" y="204" font-size="10" fill="#555" font-family="Georgia, serif">Fine-tune</text>
+  <text x="450" y="204" font-size="10" fill="#555" font-style="italic" font-family="Georgia, serif">pp = points de pourcentage</text>
+</svg>
+</div>
+
+<h4>Tests d'inference qualitatifs</h4>
+<p>Exemples de predictions du modele fine-tune sur des phrases variees :</p>
+<table>
+<tr><th>Phrase</th><th>Intent</th><th>Confiance</th><th>Depart</th><th>Destination</th><th>Via</th></tr>
+<tr><td>&laquo; Je voudrais un billet de Paris a Lyon &raquo;</td><td>TRIP</td><td>99,85 %</td><td>Paris</td><td>Lyon</td><td>&mdash;</td></tr>
+<tr><td>&laquo; Quelle heure est-il ? &raquo;</td><td>NOT_TRIP</td><td>99,73 %</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr><td>&laquo; euh ben train marseille toulouse &raquo;</td><td>TRIP</td><td>99,76 %</td><td>marseille</td><td>toulouse</td><td>&mdash;</td></tr>
+<tr><td>&laquo; Direction Nice au depart de Bordeaux via Montpellier &raquo;</td><td>TRIP</td><td>99,87 %</td><td>Bordeaux</td><td>Nice</td><td>Montpellier</td></tr>
+<tr><td>&laquo; De Paris a Marseille en passant par Lyon &raquo;</td><td>TRIP</td><td>99,85 %</td><td>Paris</td><td>Marseille</td><td>Lyon</td></tr>
+<tr><td>&laquo; I need a ticket from Nancy to Montbarrey &raquo;</td><td>TRIP</td><td>99,88 %</td><td>Nancy</td><td>Montbarrey</td><td>&mdash;</td></tr>
+<tr><td>&laquo; puis... [coupure] &raquo;</td><td>UNKNOWN</td><td>98,83 %</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr><td>&laquo; Ben euh Aubigny-en-Artois vers Harfleur &raquo;</td><td>TRIP</td><td>99,88 %</td><td>Aubigny-en-Artois</td><td>Harfleur</td><td>&mdash;</td></tr>
+<tr><td>&laquo; Bordel je dois aller de Illfurth a Digoin &raquo;</td><td>TRIP</td><td>99,88 %</td><td>Illfurth</td><td>Digoin</td><td>&mdash;</td></tr>
+</table>
+<p>Le modele fine-tune gere correctement les hesitations, le langage familier, les langues etrangeres, les artefacts de transcription et les structures grammaticales variees.</p>
+
+<h3>6.7 Experience 7 : Latence du pipeline complet</h3>
+<table>
+<tr><th>Etape</th><th>Meilleur modele</th><th>Precision</th><th>Latence</th></tr>
+<tr><td>Pre-traitement</td><td>STT Filter + Normaliseur</td><td>&mdash;</td><td>&lt; 1 ms</td></tr>
+<tr><td>Detection de langue</td><td>Langdetect</td><td>77,9 %</td><td>6,1 ms</td></tr>
+<tr><td>Classification d'intention</td><td>SpaCy (zero-shot) / CamemBERT (fine-tune)</td><td>79,1 % / 99,95 %</td><td>0,8 ms / ~1 ms</td></tr>
+<tr><td>Extraction d'entites</td><td>Regex + Fuzzy (zero-shot) / CamemBERT (fine-tune)</td><td>57,1 % / 98,45 %</td><td>9,8 ms / ~1 ms</td></tr>
+<tr><td colspan="2"><strong>Total pipeline (configuration recommandee)</strong></td><td>&mdash;</td><td><strong>~10-17 ms</strong></td></tr>
+</table>
+
+<h3>6.8 Synthese : impact de chaque composant</h3>
+<table>
+<tr><th>Composant</th><th>Impact moyen sur la precision</th></tr>
+<tr><td>Pre-traitement</td><td>+0,2 %</td></tr>
+<tr><td>Filtrage par detection de langue</td><td>+3,7 %</td></tr>
+<tr><td>Post-traitement fuzzy</td><td>+15,0 %</td></tr>
+<tr class="highlight-row"><td>Fine-tuning CamemBERT</td><td><strong>+67 % (classification) / +82 % (NER)</strong></td></tr>
+</table>
+
+<div class="chart-container">
+<div class="chart-title">Impact de chaque composant sur la precision globale</div>
+<svg width="620" height="240" viewBox="0 0 620 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Axes -->
+  <line x1="200" y1="25" x2="200" y2="195" stroke="#999" stroke-width="1"/>
+  <line x1="200" y1="195" x2="610" y2="195" stroke="#999" stroke-width="1"/>
+  <!-- Grid lines -->
+  <line x1="200" y1="195" x2="610" y2="195" stroke="#eee" stroke-width="0.5"/>
+  <line x1="300" y1="195" x2="300" y2="25" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="400" y1="195" x2="400" y2="25" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="500" y1="195" x2="500" y2="25" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="600" y1="195" x2="600" y2="25" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <!-- Tick labels -->
+  <text x="200" y="212" font-size="10" fill="#777" text-anchor="middle" font-family="Georgia, serif">0 %</text>
+  <text x="300" y="212" font-size="10" fill="#777" text-anchor="middle" font-family="Georgia, serif">+20 %</text>
+  <text x="400" y="212" font-size="10" fill="#777" text-anchor="middle" font-family="Georgia, serif">+40 %</text>
+  <text x="500" y="212" font-size="10" fill="#777" text-anchor="middle" font-family="Georgia, serif">+60 %</text>
+  <text x="600" y="212" font-size="10" fill="#777" text-anchor="middle" font-family="Georgia, serif">+80 %</text>
+  <!-- Bar: Pre-traitement +0.2% -->
+  <rect x="200" y="30" width="1" height="28" fill="#c8d6e5" rx="1"/>
+  <text x="190" y="49" font-size="11" fill="#333" text-anchor="end" font-family="Georgia, serif">Pre-traitement</text>
+  <text x="210" y="49" font-size="10" fill="#333" font-family="Consolas, monospace">+0,2 %</text>
+  <!-- Bar: LD Filtering +3.7% -->
+  <rect x="200" y="70" width="19" height="28" fill="#89a4c3" rx="2"/>
+  <text x="190" y="89" font-size="11" fill="#333" text-anchor="end" font-family="Georgia, serif">Filtrage LD</text>
+  <text x="225" y="89" font-size="10" fill="#333" font-family="Consolas, monospace">+3,7 %</text>
+  <!-- Bar: Fuzzy +15.0% -->
+  <rect x="200" y="110" width="75" height="28" fill="#3d6190" rx="2"/>
+  <text x="190" y="129" font-size="11" fill="#333" text-anchor="end" font-family="Georgia, serif">Post-trait. fuzzy</text>
+  <text x="281" y="129" font-size="10" fill="#333" font-family="Consolas, monospace">+15,0 %</text>
+  <!-- Bar: Fine-tuning Intent +67% -->
+  <rect x="200" y="150" width="335" height="13" fill="#1a3a5c" rx="2"/>
+  <text x="190" y="168" font-size="11" fill="#333" text-anchor="end" font-family="Georgia, serif">Fine-tuning</text>
+  <text x="541" y="161" font-size="10" fill="#333" font-family="Consolas, monospace">+67,5 % (intent)</text>
+  <!-- Bar: Fine-tuning NER +82% -->
+  <rect x="200" y="168" width="410" height="13" fill="#0f2640" rx="2"/>
+  <text x="616" y="179" font-size="10" fill="#333" font-family="Consolas, monospace">+82,1 % (NER)</text>
+</svg>
+<div class="chart-note">Impact moyen mesure sur le jeu de test augmente (15 005 echantillons).</div>
+</div>
+
+<p><strong>Le fine-tuning est de loin l'amelioration la plus impactante.</strong> Les approches par regles securisent une premiere livraison fonctionnelle, mais le fine-tuning sur un dataset specifique au domaine permet d'atteindre des performances quasi parfaites.</p>
+
+<!-- ============================================================ -->
+<!-- 7. CADRE D'EVALUATION                                          -->
+<!-- ============================================================ -->
+<h2 id="s7">7. Cadre d'evaluation et metriques</h2>
+
+<h3>7.1 Module d'evaluation</h3>
+<p>L'evaluation est geree par un module dedie (<code>src/evaluation/</code>) comprenant :</p>
+<pre>src/evaluation/
+  cli.py              # Point d'entree CLI (python -m src.evaluation)
+  data_loader.py      # Chargement et normalisation des datasets
+  metrics.py          # Dataclasses : IntentResults, EntityResults, etc.
+  reporting.py        # Affichage de tables et export JSON
+  formatting.py       # Rapports au format sklearn (330+ lignes)
+  confusion.py        # Matrices de confusion
+  evaluators/
+    intent.py         # Evaluateur de classification d'intention
+    entity.py         # Evaluateur d'extraction d'entites
+    language.py       # Evaluateur de detection de langue
+    combined.py       # Evaluateur de combinaisons pipeline</pre>
+
+<h3>7.2 Metriques utilisees</h3>
+<p>Les metriques principales sont calculees pour chaque classe :</p>
+<table>
+<tr><th>Metrique</th><th>Formule</th><th>Interpretation</th></tr>
+<tr><td>Precision</td><td>TP / (TP + FP)</td><td>Proportion de predictions positives correctes</td></tr>
+<tr><td>Rappel</td><td>TP / (TP + FN)</td><td>Proportion d'echantillons positifs correctement identifies</td></tr>
+<tr><td>F1-Score</td><td>2 &times; (P &times; R) / (P + R)</td><td>Moyenne harmonique de la precision et du rappel</td></tr>
+<tr><td>Precision globale</td><td>Corrects / Total</td><td>Taux de predictions correctes</td></tr>
+<tr><td>Macro F1</td><td>Moyenne des F1 par classe</td><td>Performance equilibree entre les classes</td></tr>
+<tr><td>Latence</td><td>Temps moyen par echantillon (ms)</td><td>Performance en temps reel</td></tr>
+</table>
+
+<p>Pour le NER, les metriques sont calculees avec <code>seqeval</code> qui utilise l'evaluation au niveau entite (un B-DEP suivi de I-DEP forme une seule entite evaluee).</p>
+
+<h3>7.3 Utilisation du CLI</h3>
+<pre>poetry run python -m src.evaluation --eval-type all
+poetry run python -m src.evaluation --intent-model regex camembert --entity-model spacy --fuzzy
+poetry run python -m src.evaluation --language-model langdetect --device cuda</pre>
+
+<h3>7.4 Format des rapports</h3>
+<p>Les rapports d'evaluation suivent le format <code>classification_report</code> de sklearn :</p>
+<pre>========================================================================
+INTENT CLASSIFICATION: SpaCy
+========================================================================
+                Precision     Recall         F1    Support
+
+TRIP                 0.87       0.87       0.87      11101
+NOT_TRIP             0.51       0.55       0.53       3754
+UNKNOWN              0.00       0.00       0.00        150
+
+accuracy                                   0.79      15005
+macro avg            0.46       0.47       0.47      15005
+latency                                              0.8ms
+========================================================================</pre>
+
+<p>Les resultats sont egalement exportes en JSON dans <code>src/evaluation/reports/</code> (plus de 16 rapports historiques).</p>
+
+<!-- ============================================================ -->
+<!-- 8. PROGRESSION                                                 -->
+<!-- ============================================================ -->
+<h2 id="s8">8. Progression et historique du projet</h2>
+
+<h3>8.1 Chronologie des versions</h3>
+<table>
+<tr><th>Version</th><th>Date</th><th>Jalon principal</th></tr>
+<tr><td>0.1.1</td><td>Jan. 2025</td><td>Structure initiale, StationDatabase (6 101 gares), BaselineRegexModel, 63 tests</td></tr>
+<tr><td>0.1.2</td><td>Jan. 2025</td><td>Integration SpaCy NER + FuzzyMatcher (RapidFuzz)</td></tr>
+<tr><td>0.1.3</td><td>Jan. 2025</td><td>Pathfinding (Dijkstra), CamemBERT NER fine-tune, visualisation Folium</td></tr>
+<tr><td>0.1.4</td><td>Jan. 2025</td><td>Script d'evaluation unifie, premiers benchmarks (Regex 17,8 %, SpaCy 6,6 %)</td></tr>
+<tr><td>0.1.5</td><td>Jan. 2025</td><td>CamemBERT zero-shot (6,7 %), etablissement de la baseline</td></tr>
+<tr><td>0.2.0</td><td>Jan. 2025</td><td>Architecture modulaire (ABCs, injection de dependances), batching GPU</td></tr>
+<tr><td>0.2.1</td><td>Jan. 2025</td><td>Dataset 100k avec erreurs STT (14 types), arrets intermediaires</td></tr>
+<tr><td>0.2.2</td><td>Jan. 2025</td><td>Architecture dataset a deux niveaux (base/augmente)</td></tr>
+<tr><td>0.3.0</td><td>Jan. 2025</td><td>Module d'evaluation modulaire, nettoyage du depot</td></tr>
+<tr><td>0.3.1</td><td>Jan. 2025</td><td>Suppression du code legacy, types.py, refactoring pipeline</td></tr>
+<tr><td>0.3.2</td><td>Jan. 2025</td><td>Support multilingue, Langdetect (+10,4 %)</td></tr>
+<tr><td>0.3.3</td><td>Jan. 2025</td><td>Support GPU (CUDA), Docker GPU, refactoring post/</td></tr>
+<tr><td>0.3.4</td><td>Jan. 2025</td><td>CLI granulaire, batching HuggingFace, metriques par classe</td></tr>
+<tr><td>0.3.5</td><td>Jan. 2025</td><td>Rapports sklearn, 3 classes d'intention, SpaCy intent classifier</td></tr>
+<tr><td>0.3.6</td><td>Jan. 2026</td><td>STTArtifactFilter, corrections du dataset</td></tr>
+<tr><td>0.3.7</td><td>Jan. 2026</td><td>Consolidation du module pre-traitement</td></tr>
+<tr><td>0.3.8</td><td>Jan. 2026</td><td>Distribution realiste du dataset (89 % francais)</td></tr>
+<tr><td>0.3.9</td><td>Jan. 2026</td><td>Matrices de confusion, formatage sklearn, split des notebooks</td></tr>
+</table>
+
+<h3>8.2 Evolution des performances</h3>
+<table>
+<tr><th>Version</th><th>Meilleure precision entites</th><th>Meilleure precision intention</th></tr>
+<tr><td>0.1.4</td><td>17,8 % (Regex)</td><td>69,3 % (Regex)</td></tr>
+<tr><td>0.1.5</td><td>6,7 % (CamemBERT zero-shot)</td><td>69,3 % (Regex)</td></tr>
+<tr><td>0.2.0</td><td>28,6 % (CamemBERT + Fuzzy, 1,5k samples)</td><td>71,9 % (Regex)</td></tr>
+<tr><td>0.3.2</td><td>56,8 % (Regex + Fuzzy, +EN patterns)</td><td>79,1 % (SpaCy)</td></tr>
+<tr><td>0.3.8</td><td>57,1 % (Regex + Fuzzy)</td><td>79,1 % (SpaCy)</td></tr>
+<tr class="highlight-row"><td>Fine-tune</td><td><strong>98,45 % (CamemBERT F1)</strong></td><td><strong>99,95 % (CamemBERT)</strong></td></tr>
+</table>
+
+<div class="chart-container">
+<div class="chart-title">Evolution des performances au fil des versions</div>
+<svg width="620" height="300" viewBox="0 0 620 300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Axes -->
+  <line x1="70" y1="20" x2="70" y2="240" stroke="#999" stroke-width="1"/>
+  <line x1="70" y1="240" x2="600" y2="240" stroke="#999" stroke-width="1"/>
+  <!-- Grid lines -->
+  <line x1="70" y1="240" x2="600" y2="240" stroke="#eee" stroke-width="0.5"/>
+  <line x1="70" y1="195" x2="600" y2="195" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="70" y1="150" x2="600" y2="150" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="70" y1="105" x2="600" y2="105" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="70" y1="60" x2="600" y2="60" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <line x1="70" y1="18" x2="600" y2="18" stroke="#eee" stroke-width="0.5" stroke-dasharray="4"/>
+  <!-- Y axis labels -->
+  <text x="65" y="244" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">0 %</text>
+  <text x="65" y="199" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">20 %</text>
+  <text x="65" y="154" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">40 %</text>
+  <text x="65" y="109" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">60 %</text>
+  <text x="65" y="64" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">80 %</text>
+  <text x="65" y="22" font-size="10" fill="#777" text-anchor="end" font-family="Georgia, serif">100 %</text>
+  <!-- X axis: version labels -->
+  <text x="120" y="258" font-size="9" fill="#555" text-anchor="middle" font-family="Consolas, monospace">v0.1.4</text>
+  <text x="210" y="258" font-size="9" fill="#555" text-anchor="middle" font-family="Consolas, monospace">v0.1.5</text>
+  <text x="300" y="258" font-size="9" fill="#555" text-anchor="middle" font-family="Consolas, monospace">v0.2.0</text>
+  <text x="390" y="258" font-size="9" fill="#555" text-anchor="middle" font-family="Consolas, monospace">v0.3.2</text>
+  <text x="480" y="258" font-size="9" fill="#555" text-anchor="middle" font-family="Consolas, monospace">v0.3.8</text>
+  <text x="560" y="258" font-size="9" fill="#555" text-anchor="middle" font-family="Consolas, monospace">FT</text>
+  <!-- Line: Entity extraction -->
+  <!-- v0.1.4: 17.8% = y240 - 17.8*2.2 = 201 -->
+  <!-- v0.1.5: 6.7% = 225 -->
+  <!-- v0.2.0: 28.6% = 177 -->
+  <!-- v0.3.2: 56.8% = 115 -->
+  <!-- v0.3.8: 57.1% = 114 -->
+  <!-- FT: 98.45% = 23 -->
+  <polyline points="120,201 210,225 300,177 390,115 480,114 560,23" fill="none" stroke="#3d6190" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="120" cy="201" r="4" fill="#3d6190"/>
+  <circle cx="210" cy="225" r="4" fill="#3d6190"/>
+  <circle cx="300" cy="177" r="4" fill="#3d6190"/>
+  <circle cx="390" cy="115" r="4" fill="#3d6190"/>
+  <circle cx="480" cy="114" r="4" fill="#3d6190"/>
+  <circle cx="560" cy="23" r="5" fill="#1a3a5c" stroke="#fff" stroke-width="2"/>
+  <!-- Data labels for entity -->
+  <text x="120" y="195" font-size="9" fill="#3d6190" text-anchor="middle" font-family="Consolas, monospace">17,8</text>
+  <text x="210" y="237" font-size="9" fill="#3d6190" text-anchor="middle" font-family="Consolas, monospace">6,7</text>
+  <text x="300" y="171" font-size="9" fill="#3d6190" text-anchor="middle" font-family="Consolas, monospace">28,6</text>
+  <text x="390" y="109" font-size="9" fill="#3d6190" text-anchor="middle" font-family="Consolas, monospace">56,8</text>
+  <text x="480" y="108" font-size="9" fill="#3d6190" text-anchor="middle" font-family="Consolas, monospace">57,1</text>
+  <text x="560" y="17" font-size="9" fill="#1a3a5c" text-anchor="middle" font-weight="bold" font-family="Consolas, monospace">98,5</text>
+  <!-- Line: Intent classification -->
+  <!-- v0.1.4: 69.3% = 88 -->
+  <!-- v0.1.5: 69.3% = 88 -->
+  <!-- v0.2.0: 71.9% = 82 -->
+  <!-- v0.3.2: 79.1% = 66 -->
+  <!-- v0.3.8: 79.1% = 66 -->
+  <!-- FT: 99.95% = 20 -->
+  <polyline points="120,88 210,88 300,82 390,66 480,66 560,20" fill="none" stroke="#89a4c3" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8,4"/>
+  <circle cx="120" cy="88" r="4" fill="#89a4c3"/>
+  <circle cx="210" cy="88" r="4" fill="#89a4c3"/>
+  <circle cx="300" cy="82" r="4" fill="#89a4c3"/>
+  <circle cx="390" cy="66" r="4" fill="#89a4c3"/>
+  <circle cx="480" cy="66" r="4" fill="#89a4c3"/>
+  <circle cx="560" cy="20" r="5" fill="#1a3a5c" stroke="#fff" stroke-width="2"/>
+  <!-- Data labels for intent -->
+  <text x="120" y="82" font-size="9" fill="#89a4c3" text-anchor="middle" font-family="Consolas, monospace">69,3</text>
+  <text x="300" y="76" font-size="9" fill="#89a4c3" text-anchor="middle" font-family="Consolas, monospace">71,9</text>
+  <text x="390" y="60" font-size="9" fill="#89a4c3" text-anchor="middle" font-family="Consolas, monospace">79,1</text>
+  <text x="560" y="37" font-size="9" fill="#1a3a5c" text-anchor="middle" font-weight="bold" font-family="Consolas, monospace">99,95</text>
+  <!-- Legend -->
+  <line x1="130" y1="280" x2="160" y2="280" stroke="#3d6190" stroke-width="2.5"/>
+  <circle cx="145" cy="280" r="3" fill="#3d6190"/>
+  <text x="168" y="284" font-size="10" fill="#555" font-family="Georgia, serif">Extraction d'entites (meilleur modele, %)</text>
+  <line x1="400" y1="280" x2="430" y2="280" stroke="#89a4c3" stroke-width="2.5" stroke-dasharray="8,4"/>
+  <circle cx="415" cy="280" r="3" fill="#89a4c3"/>
+  <text x="438" y="284" font-size="10" fill="#555" font-family="Georgia, serif">Classification d'intention (%)</text>
+</svg>
+<div class="chart-note">FT = Fine-tune CamemBERT. Les valeurs avant FT representent le meilleur modele a chaque version.</div>
+</div>
+
+<p>L'evolution montre une progression methodique : d'abord securiser une livraison avec des regles simples, puis ameliorer progressivement (support multilingue, fuzzy matching), et enfin franchir un palier decisif avec le fine-tuning.</p>
+
+<!-- ============================================================ -->
+<!-- 9. BONUS                                                       -->
+<!-- ============================================================ -->
+<h2 id="s9">9. Fonctionnalites bonus</h2>
+
+<h3>9.1 Transcription vocale (Speech-to-Text)</h3>
+<p>Module <code>src/speech/whisper_model.py</code> integrant OpenAI Whisper en mode hors-ligne. Modeles disponibles : tiny, base, small, medium, large-v3. Inference en FP16 sur GPU. Expose via <code>POST /api/speech/transcribe</code>.</p>
+
+<h3>9.2 Recherche d'itineraire multi-objectif (MOA*)</h3>
+<p>Algorithme A* multi-objectif produisant jusqu'a 3 itineraires Pareto-optimaux equilibrant temps, distance et nombre de correspondances. Visualisation interactive avec Folium/Leaflet.</p>
+
+<h3>9.3 Suivi de l'empreinte carbone</h3>
+<p>Integration de CodeCarbon pour estimer les emissions de CO2 de chaque requete et de l'entrainement. Prise en compte du mix energetique francais.</p>
+
+<h3>9.4 Monitoring d'infrastructure</h3>
+<p>Pile complete : Prometheus (collecte de metriques), Grafana (tableaux de bord), Node Exporter (metriques systeme), cAdvisor (metriques conteneurs), Gatus (verification de sante).</p>
+
+<h3>9.5 Visualisation cartographique</h3>
+<p>Module <code>src/visualization/map_visualizer.py</code> generant des cartes interactives HTML avec Folium. Affichage des itineraires avec segments colores par type de ligne (LGV, TER), correspondances pietonnes en pointilles, legende interactive.</p>
+
+<h3>9.6 Backend API + Frontend Web</h3>
+<p>Backend FastAPI avec endpoints RESTful. Frontend Vue 3 + TypeScript + Tailwind CSS avec chat interactif, carte Leaflet, page d'evaluation et monitoring.</p>
+
+<h3>9.7 Support multilingue</h3>
+<p>Le pipeline gere le francais, l'anglais, l'espagnol, l'allemand et l'italien pour la classification d'intention et l'extraction d'entites. Le CamemBERT fine-tune gere egalement les phrases en anglais grace a la diversite du dataset d'entrainement.</p>
+
+<h3>9.8 Arrets intermediaires</h3>
+<p>Support complet des etapes intermediaires (&laquo; en passant par &raquo;, &laquo; via &raquo;). Les entites intermediaires sont extraites au niveau NER (labels B-INTER/I-INTER) et utilisees par le moteur de recherche d'itineraire pour generer des routes multi-segments.</p>
+
+<!-- ============================================================ -->
+<!-- 10. PILE TECHNOLOGIQUE                                         -->
+<!-- ============================================================ -->
+<h2 id="s10">10. Pile technologique et dependances</h2>
+
+<h3>10.1 Dependances principales</h3>
+<table>
+<tr><th>Categorie</th><th>Bibliotheque</th><th>Version</th><th>Usage</th></tr>
+<tr><td>NLP</td><td>spacy</td><td>^3.7</td><td>NER pre-entraine (fr_core_news_lg)</td></tr>
+<tr><td>NLP</td><td>transformers</td><td>^4.36</td><td>CamemBERT, Flan-T5, pipelines HuggingFace</td></tr>
+<tr><td>NLP</td><td>torch</td><td>^2.1</td><td>Backend de calcul GPU</td></tr>
+<tr><td>NLP</td><td>langdetect</td><td>^1.0.9</td><td>Detection de langue statistique</td></tr>
+<tr><td>NLP</td><td>sentencepiece</td><td>^0.2.0</td><td>Tokenization CamemBERT</td></tr>
+<tr><td>NLP</td><td>rapidfuzz</td><td>^3.5</td><td>Matching fuzzy des noms de gares</td></tr>
+<tr><td>Donnees</td><td>pandas</td><td>^2.1</td><td>Manipulation de datasets</td></tr>
+<tr><td>Donnees</td><td>numpy</td><td>^1.26</td><td>Calcul numerique</td></tr>
+<tr><td>Graphe</td><td>networkx</td><td>^3.0</td><td>Graphe ferroviaire, Dijkstra, A*</td></tr>
+<tr><td>Graphe</td><td>geopy</td><td>&mdash;</td><td>Distances geodesiques</td></tr>
+<tr><td>Visu</td><td>folium</td><td>&mdash;</td><td>Cartes interactives</td></tr>
+<tr><td>API</td><td>fastapi</td><td>^0.108</td><td>Backend REST</td></tr>
+<tr><td>Audio</td><td>openai-whisper</td><td>&mdash;</td><td>Transcription vocale (optionnel)</td></tr>
+<tr><td>Monitoring</td><td>codecarbon</td><td>^2.3</td><td>Empreinte carbone (optionnel)</td></tr>
+</table>
+
+<h3>10.2 Infrastructure Docker</h3>
+<p>Image de base : <code>pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime</code>. Services Docker Compose : frontend (Nginx, port 3000), backend (FastAPI, port 8000), evaluation, entrainement, MLflow (port 5000), et pile de monitoring (Prometheus, Grafana, Node Exporter, cAdvisor, Gatus).</p>
+
+<h3>10.3 Outillage de developpement</h3>
+<table>
+<tr><th>Outil</th><th>Usage</th></tr>
+<tr><td>Poetry</td><td>Gestion des dependances et environnements virtuels</td></tr>
+<tr><td>pytest + pytest-cov</td><td>Tests unitaires avec couverture de code</td></tr>
+<tr><td>black + isort</td><td>Formatage automatique du code</td></tr>
+<tr><td>flake8 + mypy</td><td>Analyse statique et verification de types</td></tr>
+<tr><td>pre-commit</td><td>Hooks de validation avant commit</td></tr>
+<tr><td>GitHub Actions</td><td>Integration continue</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<!-- 11. CONCLUSION                                                 -->
+<!-- ============================================================ -->
+<h2 id="s11">11. Conclusion</h2>
+
+<p>Le projet Travel Order Resolver demontre une approche methodique du traitement du langage naturel applique aux commandes de voyage ferroviaire. La strategie adoptee suit les recommandations du sujet : securiser une premiere livraison avec des solutions simples (Regex), mesurer la qualite avec des metriques rigoureuses, puis ameliorer progressivement avec des modeles plus complexes (SpaCy, CamemBERT).</p>
+
+<p>Les resultats principaux sont :</p>
+<ul>
+  <li><strong>Approches sans fine-tuning</strong> : le meilleur pipeline combine SpaCy pour l'intention (79,1 %) et Regex + Fuzzy pour les entites (57,1 %), avec une latence de ~17 ms par echantillon.</li>
+  <li><strong>Apres fine-tuning</strong> : CamemBERT fine-tune sur notre dataset de 100 000 phrases atteint 99,95 % en classification d'intention et 98,45 % en F1 pour l'extraction d'entites, surpassant massivement toutes les autres approches.</li>
+  <li><strong>Post-traitement fuzzy</strong> : composante la plus impactante parmi les ameliorations non-ML (+15 % en moyenne, +23,7 % pour le Regex).</li>
+  <li><strong>Dataset synthetique realiste</strong> : les 14 types d'erreurs STT simulees et l'architecture a deux niveaux (base/augmente) permettent une evaluation rigoureuse de la robustesse des modeles.</li>
+</ul>
+
+<p>Le systeme est complete par un moteur de recherche d'itineraire (Dijkstra, A*, MOA*), une transcription vocale (Whisper), un monitoring d'infrastructure, et une interface web, demontrant une integration de bout en bout.</p>
+
+<hr style="margin-top: 3em;">
+<p style="text-align: center; color: #888; font-size: 0.9em;">
+  Travel Order Resolver &mdash; Projet Epitech T9-AIA &mdash; Fevrier 2026<br>
+  Romain Bernier &middot; Victor Vattier &middot; Marine Gayet &middot; Camille Kerserho
+</p>
+
+</div><!-- .container -->
+</body>
+</html>

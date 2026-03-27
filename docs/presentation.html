@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Order Resolver &mdash; Presentation</title>
+<style>
+  /* ===== RESET & BASE ===== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; font-family: 'Segoe UI', Arial, Helvetica, sans-serif; color: #222; background: #f5f7fa; }
+
+  /* ===== SLIDES ===== */
+  .slide {
+    width: 100vw;
+    height: 100vh;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    position: relative;
+    background: #fff;
+  }
+  .slide.active { display: flex; }
+
+  /* ===== TITLE SLIDE ===== */
+  .slide.title-slide {
+    background: linear-gradient(135deg, #1a3a5c 0%, #2a5a8c 100%);
+    color: #fff;
+  }
+  .slide.title-slide h1 {
+    font-size: 3.2em;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 0.15em;
+  }
+  .slide.title-slide .subtitle {
+    font-size: 1.25em;
+    font-weight: 300;
+    opacity: 0.9;
+    margin-bottom: 2em;
+    text-align: center;
+    max-width: 700px;
+    line-height: 1.5;
+  }
+  .slide.title-slide .meta {
+    font-size: 0.95em;
+    opacity: 0.75;
+    text-align: center;
+    line-height: 1.8;
+  }
+  .slide.title-slide hr {
+    border: none;
+    border-top: 2px solid rgba(255,255,255,0.3);
+    width: 200px;
+    margin: 30px 0;
+  }
+
+  /* ===== SECTION SLIDE ===== */
+  .slide.section-slide {
+    background: linear-gradient(135deg, #1a3a5c 0%, #2a5a8c 100%);
+    color: #fff;
+  }
+  .slide.section-slide h2 {
+    font-size: 2.6em;
+    font-weight: 700;
+    border: none;
+    margin-bottom: 0.3em;
+  }
+  .slide.section-slide .section-number {
+    font-size: 5em;
+    font-weight: 700;
+    opacity: 0.15;
+    position: absolute;
+    top: 40px;
+    right: 80px;
+  }
+
+  /* ===== CONTENT SLIDES ===== */
+  .slide h2 {
+    font-size: 1.8em;
+    color: #1a3a5c;
+    border-bottom: 3px solid #1a3a5c;
+    padding-bottom: 8px;
+    margin-bottom: 0.8em;
+    align-self: flex-start;
+    width: 100%;
+  }
+  .slide h3 {
+    font-size: 1.15em;
+    color: #2a5a8c;
+    margin-top: 0.8em;
+    margin-bottom: 0.3em;
+    align-self: flex-start;
+  }
+  .slide-content {
+    width: 100%;
+    max-width: 1100px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .slide-content p {
+    font-size: 1.05em;
+    line-height: 1.7;
+    margin-bottom: 0.5em;
+    color: #444;
+  }
+  .slide-content ul {
+    font-size: 1.05em;
+    line-height: 1.8;
+    padding-left: 1.5em;
+    color: #444;
+  }
+  .slide-content li { margin-bottom: 0.3em; }
+  .slide-content li strong { color: #1a3a5c; }
+
+  /* ===== TWO COLUMNS ===== */
+  .cols {
+    display: flex;
+    gap: 40px;
+    width: 100%;
+    align-items: flex-start;
+  }
+  .col { flex: 1; }
+  .col-60 { flex: 0 0 58%; }
+  .col-40 { flex: 0 0 38%; }
+
+  /* ===== TABLES ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88em;
+    margin: 0.8em 0;
+  }
+  th, td {
+    border: 1px solid #d0d5da;
+    padding: 7px 12px;
+    text-align: left;
+  }
+  th {
+    background: #eef1f5;
+    color: #1a3a5c;
+    font-weight: 600;
+    font-size: 0.92em;
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+  .highlight td { background: #e8eef5 !important; font-weight: 600; }
+  td.num, th.num { text-align: right; }
+
+  /* ===== DIAGRAM ===== */
+  .diagram {
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 0.72em;
+    background: #f8f9fa;
+    border: 1px solid #d0d5da;
+    padding: 14px 18px;
+    line-height: 1.35;
+    white-space: pre;
+    border-radius: 6px;
+    margin: 0.6em 0;
+  }
+
+  /* ===== KEY METRIC ===== */
+  .metric {
+    text-align: center;
+    padding: 15px 20px;
+    background: #f5f7fa;
+    border-radius: 8px;
+    margin: 6px 0;
+  }
+  .metric .value {
+    font-size: 2.2em;
+    font-weight: 700;
+    color: #1a3a5c;
+    line-height: 1.1;
+  }
+  .metric .label {
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 2px;
+  }
+  .metric.big .value { font-size: 3em; }
+  .metric.green .value { color: #1a7a3c; }
+
+  /* ===== PIPELINE BOXES ===== */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    justify-content: center;
+    margin: 1em 0;
+    flex-wrap: wrap;
+  }
+  .pipe-step {
+    background: #1a3a5c;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: 600;
+    text-align: center;
+    min-width: 100px;
+  }
+  .pipe-arrow {
+    font-size: 1.5em;
+    color: #89a4c3;
+    margin: 0 4px;
+  }
+  .pipe-step.accent {
+    background: #2a7a3c;
+  }
+  .pipe-step.light {
+    background: #5276a0;
+  }
+
+  /* ===== COMPARISON BLOCKS ===== */
+  .compare-row {
+    display: flex;
+    gap: 16px;
+    margin: 0.6em 0;
+  }
+  .compare-item {
+    flex: 1;
+    background: #f5f7fa;
+    border-radius: 8px;
+    padding: 14px 16px;
+    text-align: center;
+    border-left: 4px solid #c8d6e5;
+  }
+  .compare-item.best {
+    border-left-color: #1a3a5c;
+    background: #eef3f8;
+  }
+  .compare-item .model-name {
+    font-size: 0.85em;
+    color: #666;
+    margin-bottom: 4px;
+  }
+  .compare-item .model-value {
+    font-size: 1.6em;
+    font-weight: 700;
+    color: #1a3a5c;
+  }
+  .compare-item .model-detail {
+    font-size: 0.78em;
+    color: #888;
+    margin-top: 2px;
+  }
+
+  /* ===== CONFUSION MATRIX ===== */
+  table.confusion {
+    width: auto;
+    margin: 0.5em auto;
+    font-size: 0.82em;
+  }
+  table.confusion th, table.confusion td {
+    padding: 5px 12px;
+    text-align: center;
+    min-width: 60px;
+  }
+  table.confusion th { background: #eef1f5; font-size: 0.85em; }
+  table.confusion th.corner { background: #fff; border-color: #fff; }
+  .cm-high { background: #1a3a5c; color: #fff; font-weight: 700; }
+  .cm-med { background: #89a4c3; color: #fff; }
+  .cm-low { background: #e1e9f0; color: #333; }
+  .cm-zero { background: #fff; color: #aaa; }
+
+  /* ===== NAVIGATION ===== */
+  .nav {
+    position: fixed;
+    bottom: 20px;
+    right: 30px;
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .nav button {
+    background: #1a3a5c;
+    color: #fff;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 1.1em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+  }
+  .nav button:hover { opacity: 1; }
+
+  /* ===== SLIDE COUNTER ===== */
+  .counter {
+    position: fixed;
+    bottom: 25px;
+    left: 30px;
+    font-size: 0.82em;
+    color: #999;
+    z-index: 100;
+  }
+
+  /* ===== PROGRESS BAR ===== */
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: #1a3a5c;
+    z-index: 100;
+    transition: width 0.3s ease;
+  }
+
+  /* ===== NOTE ===== */
+  .note {
+    font-size: 0.82em;
+    color: #888;
+    font-style: italic;
+    margin-top: auto;
+    padding-top: 8px;
+  }
+
+  /* ===== TAG ===== */
+  .tag {
+    display: inline-block;
+    background: #eef1f5;
+    color: #1a3a5c;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin: 2px 3px;
+  }
+  .tag.green { background: #e6f4ea; color: #1a7a3c; }
+  .tag.blue { background: #e1e9f5; color: #1a3a5c; }
+
+  /* ===== PRINT ===== */
+  @media print {
+    .slide { display: flex !important; page-break-after: always; height: 100vh; }
+    .nav, .counter, .progress { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<!-- ================================================ -->
+<!-- SLIDE 1: TITLE                                    -->
+<!-- ================================================ -->
+<div class="slide title-slide active" data-slide="1">
+  <h1>Travel Order Resolver</h1>
+  <div class="subtitle">
+    Traitement du Langage Naturel pour la Resolution<br>
+    de Commandes de Voyage Ferroviaire SNCF
+  </div>
+  <hr>
+  <div class="meta">
+    Projet Epitech T9-AIA<br>
+    Romain Bernier &middot; Victor Vattier &middot; Marine Gayet &middot; Camille Kerserho<br>
+    Fevrier 2026
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 2: PROBLEMATIQUE                            -->
+<!-- ================================================ -->
+<div class="slide" data-slide="2">
+  <div class="slide-content">
+    <h2>Problematique</h2>
+    <div class="cols">
+      <div class="col-60">
+        <h3>Objectif</h3>
+        <p>Transformer une commande vocale ou textuelle en langage naturel en <strong>itineraire ferroviaire SNCF</strong>.</p>
+        <h3>Contraintes</h3>
+        <ul>
+          <li>Phrases en <strong>francais</strong> (+ langues etrangeres en bonus)</li>
+          <li>Gestion des <strong>erreurs de transcription</strong> (STT)</li>
+          <li>Distinguer les commandes de voyage des <strong>requetes non pertinentes</strong></li>
+          <li>Identifier <strong>depart, destination</strong> et etapes intermediaires</li>
+          <li>Matcher les noms approximatifs vers les <strong>6 101 gares SNCF</strong> officielles</li>
+        </ul>
+      </div>
+      <div class="col-40">
+        <div class="diagram" style="font-size:0.7em;">Entree:
+"euh ben [bruit] de
+ monparnasse a lion svp"
+
+       |
+       v
+
+Sortie:
+1,Paris Montparnasse,Lyon</div>
+        <div class="note" style="text-align:center;">Exemple de bout en bout</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 3: ARCHITECTURE PIPELINE                    -->
+<!-- ================================================ -->
+<div class="slide" data-slide="3">
+  <div class="slide-content">
+    <h2>Architecture du Pipeline NLP</h2>
+    <div class="pipeline" style="margin: 1.2em 0;">
+      <div class="pipe-step">PRE<br><span style="font-size:0.75em; font-weight:400;">Filtre STT +<br>Normalisation</span></div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-step light">LANGUE<br><span style="font-size:0.75em; font-weight:400;">Regex /<br>Langdetect</span></div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-step">INTENTION<br><span style="font-size:0.75em; font-weight:400;">TRIP / NOT_TRIP<br>/ UNKNOWN</span></div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-step light">ENTITES<br><span style="font-size:0.75em; font-weight:400;">Depart,<br>Destination</span></div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-step accent">POST<br><span style="font-size:0.75em; font-weight:400;">Fuzzy<br>Matching</span></div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-step" style="background:#5a3a1c;">ROUTE<br><span style="font-size:0.75em; font-weight:400;">Dijkstra /<br>A* / MOA*</span></div>
+    </div>
+    <div class="cols" style="margin-top: 1em;">
+      <div class="col">
+        <h3>Architecture modulaire</h3>
+        <ul>
+          <li>Chaque couche definie par une <strong>classe abstraite</strong> (ABC)</li>
+          <li><strong>Injection de dependances</strong> : interchangeable sans modifier le pipeline</li>
+          <li>3 implementations par couche : <span class="tag">Regex</span> <span class="tag">SpaCy</span> <span class="tag">CamemBERT</span></li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>Implementations</h3>
+        <table>
+          <tr><th>Couche</th><th>Approches</th></tr>
+          <tr><td>Langue</td><td>Regex, Langdetect</td></tr>
+          <tr><td>Intention</td><td>Regex, SpaCy, CamemBERT</td></tr>
+          <tr><td>Entites</td><td>Regex, SpaCy, CamemBERT</td></tr>
+          <tr><td>Post-trait.</td><td>FuzzyMatcher (RapidFuzz)</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 4: DATASET                                  -->
+<!-- ================================================ -->
+<div class="slide" data-slide="4">
+  <div class="slide-content">
+    <h2>Jeu de Donnees</h2>
+    <div class="cols">
+      <div class="col-60">
+        <h3>Generation synthetique</h3>
+        <ul>
+          <li><strong>100 000 phrases</strong> generees a partir de 200+ gabarits</li>
+          <li>Distribution : 74 % TRIP, 25 % NOT_TRIP, 1 % UNKNOWN</li>
+          <li>89 % francais, 6,4 % anglais, 4,6 % autres langues</li>
+          <li>Split stratifie <strong>70 / 15 / 15</strong> (graine = 42)</li>
+        </ul>
+        <h3>Augmentation STT (erreurs Whisper)</h3>
+        <ul>
+          <li><strong>14 types d'erreurs</strong> simulees (mots de remplissage, confusions phonetiques, fautes sur les gares, hallucinations...)</li>
+          <li>4 profils : propre 20 %, leger 40 %, modere 30 %, intense 10 %</li>
+          <li>Architecture a <strong>2 niveaux</strong> : base (propre) + augmente (STT)</li>
+        </ul>
+      </div>
+      <div class="col-40">
+        <div class="metric big">
+          <div class="value">100k</div>
+          <div class="label">phrases generees</div>
+        </div>
+        <div class="metric" style="margin-top: 12px;">
+          <div class="value">14</div>
+          <div class="label">types d'erreurs STT</div>
+        </div>
+        <div class="metric" style="margin-top: 12px;">
+          <div class="value">6 101</div>
+          <div class="label">gares SNCF couvertes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 5: APPROCHES ZERO-SHOT                      -->
+<!-- ================================================ -->
+<div class="slide" data-slide="5">
+  <div class="slide-content">
+    <h2>Approches sans Fine-tuning</h2>
+    <div class="cols">
+      <div class="col">
+        <h3>Classification d'intention</h3>
+        <div class="compare-row">
+          <div class="compare-item">
+            <div class="model-name">Regex</div>
+            <div class="model-value">65,8 %</div>
+            <div class="model-detail">50+ motifs regex</div>
+          </div>
+          <div class="compare-item best">
+            <div class="model-name">SpaCy</div>
+            <div class="model-value">79,1 %</div>
+            <div class="model-detail">fr_core_news_lg</div>
+          </div>
+          <div class="compare-item">
+            <div class="model-name">CamemBERT ZS</div>
+            <div class="model-value">32,4 %</div>
+            <div class="model-detail">zero-shot</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <h3>Extraction d'entites</h3>
+        <div class="compare-row">
+          <div class="compare-item best">
+            <div class="model-name">Regex</div>
+            <div class="model-value">33,3 %</div>
+            <div class="model-detail">motifs DE/A</div>
+          </div>
+          <div class="compare-item">
+            <div class="model-name">SpaCy</div>
+            <div class="model-value">27,8 %</div>
+            <div class="model-detail">LOC/GPE</div>
+          </div>
+          <div class="compare-item">
+            <div class="model-name">CamemBERT ZS</div>
+            <div class="model-value">16,3 %</div>
+            <div class="model-detail">matching exact</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <h3 style="margin-top: 1em;">Observations</h3>
+    <ul>
+      <li>Les approches par <strong>regles manuelles</strong> et <strong>modeles pre-entraines generiques</strong> surpassent le zero-shot CamemBERT</li>
+      <li>CamemBERT zero-shot classe 97 % des NOT_TRIP comme TRIP &rarr; distinction impossible</li>
+      <li>SpaCy ne predit jamais UNKNOWN (toutes les phrases UNKNOWN classees NOT_TRIP)</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 6: POST-TRAITEMENT FUZZY                    -->
+<!-- ================================================ -->
+<div class="slide" data-slide="6">
+  <div class="slide-content">
+    <h2>Impact du Post-traitement Fuzzy</h2>
+    <div class="cols">
+      <div class="col-60">
+        <p>Le <strong>StationMatcher</strong> (RapidFuzz, algorithme de Levenshtein) corrige les noms de gares approximatifs vers les noms SNCF officiels.</p>
+        <table>
+          <tr><th>Modele</th><th>Sans fuzzy</th><th>Avec fuzzy</th><th>Gain</th></tr>
+          <tr class="highlight"><td>Regex</td><td>33,3 %</td><td><strong>57,1 %</strong></td><td><strong>+23,7 %</strong></td></tr>
+          <tr><td>SpaCy</td><td>27,8 %</td><td>34,2 %</td><td>+6,4 %</td></tr>
+          <tr><td>CamemBERT ZS</td><td>16,3 %</td><td>31,2 %</td><td>+15,0 %</td></tr>
+        </table>
+        <h3>Parametres</h3>
+        <ul>
+          <li>Scorer : <strong>WRatio</strong>, seuil : 80/100</li>
+          <li>Boost premier mot : +20 points</li>
+          <li>Cache LRU pour les requetes repetees</li>
+        </ul>
+      </div>
+      <div class="col-40">
+        <div class="metric green" style="margin-top: 20px;">
+          <div class="value">+15 %</div>
+          <div class="label">amelioration moyenne</div>
+        </div>
+        <div style="margin-top: 20px; font-size: 0.9em; background:#f8f9fa; padding:12px 16px; border-radius:8px; border-left:4px solid #2a7a3c;">
+          <strong>Exemple :</strong><br>
+          &laquo; monparnasse &raquo; &rarr; Paris Montparnasse <span style="color:#888;">(score 88)</span><br>
+          &laquo; lion &raquo; &rarr; Lyon <span style="color:#888;">(score 86)</span><br>
+          &laquo; marseil &raquo; &rarr; Marseille <span style="color:#888;">(score 84)</span>
+        </div>
+      </div>
+    </div>
+    <p class="note">Composante ayant le plus grand impact sur la precision parmi les ameliorations non-ML.</p>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 7: FINE-TUNING                              -->
+<!-- ================================================ -->
+<div class="slide" data-slide="7">
+  <div class="slide-content">
+    <h2>Fine-tuning de CamemBERT</h2>
+    <div class="cols">
+      <div class="col">
+        <h3>Classification d'intention</h3>
+        <table>
+          <tr><th>Parametre</th><th>Valeur</th></tr>
+          <tr><td>Architecture</td><td>CamembertForSequenceClassification</td></tr>
+          <tr><td>Classes</td><td>TRIP, NOT_TRIP, UNKNOWN (3)</td></tr>
+          <tr><td>Donnees</td><td>~70k train / 15k val / 15k test</td></tr>
+          <tr><td>Epochs</td><td>5 (EarlyStopping, patience 2)</td></tr>
+          <tr><td>Batch / LR</td><td>32 / 2e-5</td></tr>
+          <tr><td>GPU</td><td>Tesla T4 (Colab), FP16</td></tr>
+        </table>
+      </div>
+      <div class="col">
+        <h3>Extraction d'entites (NER)</h3>
+        <table>
+          <tr><th>Parametre</th><th>Valeur</th></tr>
+          <tr><td>Architecture</td><td>CamembertForTokenClassification</td></tr>
+          <tr><td>Labels</td><td>O, B-DEP, I-DEP, B-DEST, I-DEST, B-INTER, I-INTER (7)</td></tr>
+          <tr><td>Donnees</td><td>~52k train / 11k val / 11k test</td></tr>
+          <tr><td>Epochs</td><td>5 (EarlyStopping, patience 2)</td></tr>
+          <tr><td>Batch / LR</td><td>12 / 3e-5</td></tr>
+          <tr><td>GPU</td><td>Tesla T4 (Colab), FP16</td></tr>
+        </table>
+      </div>
+    </div>
+    <h3>Modele de base : <code style="font-size:0.95em;">camembert-base</code> (110M parametres)</h3>
+    <ul>
+      <li>Optimiseur AdamW, warmup 10 %, weight decay 0,01, max seq length 128</li>
+      <li>Alignement des sous-tokens : labels assignes au premier sous-token de chaque mot uniquement</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 8: RESULTATS FINE-TUNING                    -->
+<!-- ================================================ -->
+<div class="slide" data-slide="8">
+  <div class="slide-content">
+    <h2>Resultats : Zero-shot vs Fine-tune</h2>
+    <div class="cols">
+      <div class="col">
+        <h3>Classification d'intention</h3>
+        <div class="compare-row">
+          <div class="compare-item">
+            <div class="model-name">CamemBERT ZS</div>
+            <div class="model-value" style="color:#c44;">32,4 %</div>
+          </div>
+          <div class="compare-item best" style="border-left-color:#2a7a3c;">
+            <div class="model-name">CamemBERT FT</div>
+            <div class="model-value" style="color:#1a7a3c;">99,95 %</div>
+            <div class="model-detail" style="color:#2a7a3c; font-weight:600;">+67,5 pp</div>
+          </div>
+        </div>
+        <table class="confusion" style="margin-top:8px;">
+          <tr><th class="corner"></th><th>TRIP</th><th>NOT_TRIP</th><th>UNK</th></tr>
+          <tr><th>TRIP</th><td class="cm-high">99,97 %</td><td class="cm-zero">0,02 %</td><td class="cm-zero">0,01 %</td></tr>
+          <tr><th>NOT_TRIP</th><td class="cm-zero">0,05 %</td><td class="cm-high">99,92 %</td><td class="cm-zero">0,03 %</td></tr>
+          <tr><th>UNKNOWN</th><td class="cm-zero">0,7 %</td><td class="cm-zero">0,0 %</td><td class="cm-high">99,3 %</td></tr>
+        </table>
+      </div>
+      <div class="col">
+        <h3>Extraction d'entites (NER)</h3>
+        <div class="compare-row">
+          <div class="compare-item">
+            <div class="model-name">CamemBERT ZS</div>
+            <div class="model-value" style="color:#c44;">16,3 %</div>
+          </div>
+          <div class="compare-item best" style="border-left-color:#2a7a3c;">
+            <div class="model-name">CamemBERT FT</div>
+            <div class="model-value" style="color:#1a7a3c;">F1 98,45 %</div>
+            <div class="model-detail" style="color:#2a7a3c; font-weight:600;">+82,1 pp</div>
+          </div>
+        </div>
+        <table class="confusion" style="margin-top:8px;">
+          <tr><th class="corner"></th><th>DEP</th><th>DEST</th><th>INTER</th><th>O</th></tr>
+          <tr><th>DEP</th><td class="cm-high">98,5 %</td><td class="cm-zero">0,5 %</td><td class="cm-zero">0,1 %</td><td class="cm-zero">0,9 %</td></tr>
+          <tr><th>DEST</th><td class="cm-zero">0,6 %</td><td class="cm-high">96,5 %</td><td class="cm-zero">0,2 %</td><td class="cm-low">2,7 %</td></tr>
+          <tr><th>INTER</th><td class="cm-zero">0,6 %</td><td class="cm-zero">0,9 %</td><td class="cm-high">92,6 %</td><td class="cm-low">5,9 %</td></tr>
+          <tr><th>O</th><td class="cm-zero">0,02 %</td><td class="cm-zero">0,03 %</td><td class="cm-zero">0,01 %</td><td class="cm-high">99,9 %</td></tr>
+        </table>
+      </div>
+    </div>
+    <p class="note">~7 erreurs sur 14 998 echantillons en classification. Matrices quasi diagonales.</p>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 9: IMPACT DE CHAQUE COMPOSANT               -->
+<!-- ================================================ -->
+<div class="slide" data-slide="9">
+  <div class="slide-content">
+    <h2>Synthese : Impact de Chaque Composant</h2>
+    <div class="cols">
+      <div class="col-60">
+        <table>
+          <tr><th>Composant</th><th>Impact</th></tr>
+          <tr><td>Pre-traitement (STT Filter + Normalisation)</td><td>+0,2 %</td></tr>
+          <tr><td>Filtrage par detection de langue</td><td>+3,7 %</td></tr>
+          <tr><td>Post-traitement fuzzy (RapidFuzz)</td><td>+15,0 %</td></tr>
+          <tr class="highlight"><td>Fine-tuning CamemBERT (Classification)</td><td><strong>+67,5 %</strong></td></tr>
+          <tr class="highlight"><td>Fine-tuning CamemBERT (NER)</td><td><strong>+82,1 %</strong></td></tr>
+        </table>
+        <h3 style="margin-top:1em;">Approche iterative</h3>
+        <ul>
+          <li><strong>Phase 1</strong> : regles simples (Regex) &rarr; livraison fonctionnelle</li>
+          <li><strong>Phase 2</strong> : modeles pre-entraines (SpaCy, Langdetect) &rarr; +13 %</li>
+          <li><strong>Phase 3</strong> : fuzzy matching &rarr; +15 %</li>
+          <li><strong>Phase 4</strong> : fine-tuning &rarr; performances quasi parfaites</li>
+        </ul>
+      </div>
+      <div class="col-40">
+        <h3>Evolution des performances</h3>
+        <div class="metric" style="margin-top:8px;">
+          <div class="label">v0.1.4 &mdash; Baseline</div>
+          <div class="value" style="font-size:1.4em; color:#c44;">17,8 % <span style="font-size:0.6em; color:#888;">(entites)</span></div>
+        </div>
+        <div style="text-align:center; color:#89a4c3; font-size:1.5em;">&darr;</div>
+        <div class="metric">
+          <div class="label">v0.3.8 &mdash; Regex + Fuzzy</div>
+          <div class="value" style="font-size:1.4em; color:#3d6190;">57,1 % <span style="font-size:0.6em; color:#888;">(entites)</span></div>
+        </div>
+        <div style="text-align:center; color:#89a4c3; font-size:1.5em;">&darr;</div>
+        <div class="metric green">
+          <div class="label">Fine-tune CamemBERT</div>
+          <div class="value" style="font-size:1.4em;">98,45 % <span style="font-size:0.6em; color:#888;">(F1 NER)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 10: PATHFINDING                             -->
+<!-- ================================================ -->
+<div class="slide" data-slide="10">
+  <div class="slide-content">
+    <h2>Moteur de Recherche d'Itineraire</h2>
+    <div class="cols">
+      <div class="col-60">
+        <h3>Graphe ferroviaire SNCF</h3>
+        <ul>
+          <li><strong>6 101 noeuds</strong> (gares avec coordonnees GPS)</li>
+          <li>Donnees SNCF open data (gares, lignes, horaires)</li>
+          <li>MultiGraph NetworkX : aretes TRAIN + correspondances pietonnes (8 km)</li>
+          <li>Poids LGV divises par 3 (280 km/h vs 80 km/h)</li>
+        </ul>
+        <h3>Trois algorithmes</h3>
+        <table>
+          <tr><th>Algorithme</th><th>Objectif</th><th>Complexite</th></tr>
+          <tr><td><strong>Dijkstra</strong></td><td>Chemin le plus court (mono-objectif)</td><td>O((V+E) log V)</td></tr>
+          <tr><td><strong>A*</strong></td><td>Idem, avec heuristique geodesique/3</td><td>50-70 % noeuds en moins</td></tr>
+          <tr><td><strong>MOA*</strong></td><td>Multi-objectif (temps, distance, correspondances)</td><td>Jusqu'a 3 routes Pareto-optimales</td></tr>
+        </table>
+      </div>
+      <div class="col-40">
+        <div class="diagram" style="font-size:0.68em;">  Depart: Paris Montparnasse
+       |
+  [A* avec h = dist_geo / 3]
+       |
+  Paris &rarr; Tours &rarr; Bordeaux
+       |
+  Distance: 568 km
+  Temps estimee: 3h12
+  Correspondances: 0</div>
+        <div style="margin-top:16px; font-size:0.88em; background:#f5f7fa; padding:10px 14px; border-radius:8px;">
+          <strong>MOA*</strong> : 3 objectifs simultanes
+          <ul style="font-size:0.95em; margin-top:4px;">
+            <li>Minimiser le temps</li>
+            <li>Minimiser la distance</li>
+            <li>Minimiser les correspondances</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 11: BONUS                                   -->
+<!-- ================================================ -->
+<div class="slide" data-slide="11">
+  <div class="slide-content">
+    <h2>Fonctionnalites Bonus</h2>
+    <div class="cols">
+      <div class="col">
+        <div style="background:#f5f7fa; padding:16px 20px; border-radius:8px; margin-bottom:14px; border-left:4px solid #1a3a5c;">
+          <strong>Speech-to-Text (Whisper)</strong><br>
+          <span style="font-size:0.9em; color:#555;">Transcription audio hors-ligne (tiny &rarr; large-v3), inference FP16 sur GPU</span>
+        </div>
+        <div style="background:#f5f7fa; padding:16px 20px; border-radius:8px; margin-bottom:14px; border-left:4px solid #3d6190;">
+          <strong>API Backend FastAPI</strong><br>
+          <span style="font-size:0.9em; color:#555;">7 endpoints RESTful (resolve, NLP, pathfinding, speech, monitoring)</span>
+        </div>
+        <div style="background:#f5f7fa; padding:16px 20px; border-radius:8px; margin-bottom:14px; border-left:4px solid #5276a0;">
+          <strong>Frontend Vue 3 + TypeScript</strong><br>
+          <span style="font-size:0.9em; color:#555;">Chat interactif, carte Leaflet, evaluation et monitoring</span>
+        </div>
+      </div>
+      <div class="col">
+        <div style="background:#f5f7fa; padding:16px 20px; border-radius:8px; margin-bottom:14px; border-left:4px solid #2a7a3c;">
+          <strong>Empreinte carbone (CodeCarbon)</strong><br>
+          <span style="font-size:0.9em; color:#555;">Estimation CO2 par requete et entrainement, mix energetique francais</span>
+        </div>
+        <div style="background:#f5f7fa; padding:16px 20px; border-radius:8px; margin-bottom:14px; border-left:4px solid #89a4c3;">
+          <strong>Monitoring complet</strong><br>
+          <span style="font-size:0.9em; color:#555;">Prometheus, Grafana, Node Exporter, cAdvisor, Gatus</span>
+        </div>
+        <div style="background:#f5f7fa; padding:16px 20px; border-radius:8px; margin-bottom:14px; border-left:4px solid #c8a030;">
+          <strong>Visualisation cartographique</strong><br>
+          <span style="font-size:0.9em; color:#555;">Cartes Folium interactives, segments LGV/TER, correspondances pietonnes</span>
+        </div>
+        <div style="background:#f5f7fa; padding:16px 20px; border-radius:8px; border-left:4px solid #8a5a3c;">
+          <strong>Support multilingue</strong><br>
+          <span style="font-size:0.9em; color:#555;">FR, EN, ES, DE, IT &mdash; pour l'intention et l'extraction</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 12: PILE TECHNOLOGIQUE                      -->
+<!-- ================================================ -->
+<div class="slide" data-slide="12">
+  <div class="slide-content">
+    <h2>Pile Technologique</h2>
+    <div class="cols">
+      <div class="col">
+        <h3>NLP &amp; Machine Learning</h3>
+        <ul>
+          <li><span class="tag blue">PyTorch</span> Backend de calcul GPU</li>
+          <li><span class="tag blue">Transformers</span> CamemBERT, pipelines HuggingFace</li>
+          <li><span class="tag blue">SpaCy</span> NER pre-entraine (fr_core_news_lg)</li>
+          <li><span class="tag blue">RapidFuzz</span> Matching fuzzy</li>
+          <li><span class="tag blue">langdetect</span> Detection de langue</li>
+        </ul>
+        <h3>Infrastructure</h3>
+        <ul>
+          <li><span class="tag">Docker</span> pytorch/pytorch + CUDA 12.1</li>
+          <li><span class="tag">Docker Compose</span> Frontend + Backend + Monitoring</li>
+          <li><span class="tag">GitHub Actions</span> CI/CD</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>Backend &amp; Frontend</h3>
+        <ul>
+          <li><span class="tag blue">FastAPI</span> API REST</li>
+          <li><span class="tag blue">Vue 3</span> + TypeScript + Tailwind</li>
+          <li><span class="tag blue">Leaflet</span> Cartographie</li>
+        </ul>
+        <h3>Donnees &amp; Graphe</h3>
+        <ul>
+          <li><span class="tag">NetworkX</span> Graphe ferroviaire</li>
+          <li><span class="tag">Pandas</span> Manipulation de datasets</li>
+          <li><span class="tag">Folium</span> Visualisation</li>
+        </ul>
+        <h3>Qualite</h3>
+        <ul>
+          <li><span class="tag green">pytest</span> Tests + couverture</li>
+          <li><span class="tag green">black + isort</span> Formatage</li>
+          <li><span class="tag green">flake8 + mypy</span> Analyse statique</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================ -->
+<!-- SLIDE 13: CONCLUSION                              -->
+<!-- ================================================ -->
+<div class="slide section-slide" data-slide="13">
+  <div class="section-number">13</div>
+  <h2 style="border:none; margin-bottom:0.6em;">Conclusion</h2>
+  <div style="max-width:900px; text-align:left;">
+    <div class="compare-row" style="margin-bottom:1.2em;">
+      <div class="compare-item" style="background:rgba(255,255,255,0.1); border-left-color:rgba(255,255,255,0.3);">
+        <div class="model-name" style="color:rgba(255,255,255,0.7);">Intent (FT)</div>
+        <div class="model-value" style="color:#fff;">99,95 %</div>
+      </div>
+      <div class="compare-item" style="background:rgba(255,255,255,0.1); border-left-color:rgba(255,255,255,0.3);">
+        <div class="model-name" style="color:rgba(255,255,255,0.7);">NER F1 (FT)</div>
+        <div class="model-value" style="color:#fff;">98,45 %</div>
+      </div>
+      <div class="compare-item" style="background:rgba(255,255,255,0.1); border-left-color:rgba(255,255,255,0.3);">
+        <div class="model-name" style="color:rgba(255,255,255,0.7);">Latence pipeline</div>
+        <div class="model-value" style="color:#fff;">~10 ms</div>
+      </div>
+      <div class="compare-item" style="background:rgba(255,255,255,0.1); border-left-color:rgba(255,255,255,0.3);">
+        <div class="model-name" style="color:rgba(255,255,255,0.7);">Gares couvertes</div>
+        <div class="model-value" style="color:#fff;">6 101</div>
+      </div>
+    </div>
+    <ul style="color:rgba(255,255,255,0.9); font-size:1.05em; line-height:2;">
+      <li>Approche <strong>iterative et methodique</strong> : regles &rarr; pre-entraine &rarr; fine-tune</li>
+      <li>Le <strong>fine-tuning sur donnees specifiques</strong> au domaine est l'amelioration la plus impactante</li>
+      <li>Le <strong>fuzzy matching</strong> est le composant non-ML le plus efficace (+15 %)</li>
+      <li>Pipeline complet de bout en bout : <strong>texte &rarr; NLP &rarr; itineraire</strong></li>
+      <li>Nombreuses fonctionnalites bonus : STT, API, monitoring, cartographie, multilingue</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== NAVIGATION ===== -->
+<div class="nav">
+  <button onclick="prevSlide()" title="Precedent (&#8592;)">&larr;</button>
+  <button onclick="nextSlide()" title="Suivant (&#8594;)">&rarr;</button>
+</div>
+<div class="counter" id="counter"></div>
+
+<script>
+(function() {
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
+
+  function showSlide(n) {
+    if (n < 0 || n >= total) return;
+    slides[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    document.getElementById('counter').textContent = (current + 1) + ' / ' + total;
+    document.getElementById('progress').style.width = ((current + 1) / total * 100) + '%';
+  }
+
+  window.nextSlide = function() { showSlide(current + 1); };
+  window.prevSlide = function() { showSlide(current - 1); };
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault();
+      showSlide(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      showSlide(current - 1);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      showSlide(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      showSlide(total - 1);
+    }
+  });
+
+  showSlide(0);
+})();
+</script>
+
+</body>
+</html>

@@ -1,6 +1,4 @@
-"""
-Entity extractor evaluation.
-"""
+"""Entity extractor evaluation."""
 
 from __future__ import annotations
 
@@ -33,7 +31,7 @@ EntityPredictionsDict = dict[str, EntityPredictions]
 
 
 @overload
-def evaluate_entity_extractors(
+def evaluate_entity_extractors(  # type: ignore[overload-overlap]
     extractors: list[tuple[str, Any]],
     data: list[dict[str, Any]],
     fuzzy_post: Any = ...,
@@ -42,6 +40,7 @@ def evaluate_entity_extractors(
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[False] = ...,
 ) -> dict[str, EntityResults]:
+    """Evaluate entity extractors (return_predictions=False)."""
     ...
 
 
@@ -55,6 +54,7 @@ def evaluate_entity_extractors(
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[True] = ...,
 ) -> tuple[dict[str, EntityResults], EntityPredictionsDict]:
+    """Evaluate entity extractors (return_predictions=True)."""
     ...
 
 

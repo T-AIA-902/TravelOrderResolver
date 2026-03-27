@@ -1,6 +1,4 @@
-"""
-Intent classifier evaluation.
-"""
+"""Intent classifier evaluation."""
 
 from __future__ import annotations
 
@@ -15,13 +13,14 @@ PredictionsDict = dict[str, tuple[list[str], list[str]]]
 
 
 @overload
-def evaluate_intent_classifiers(
+def evaluate_intent_classifiers(  # type: ignore[overload-overlap]
     classifiers: list[tuple[str, Any]],
     data: list[dict[str, Any]],
     batch_size: int = ...,
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[False] = ...,
 ) -> dict[str, IntentResults]:
+    """Evaluate intent classifiers (return_predictions=False)."""
     ...
 
 
@@ -33,6 +32,7 @@ def evaluate_intent_classifiers(
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[True] = ...,
 ) -> tuple[dict[str, IntentResults], PredictionsDict]:
+    """Evaluate intent classifiers (return_predictions=True)."""
     ...
 
 

@@ -33,7 +33,7 @@ poetry install
 
 # Download spaCy model
 echo "Downloading spaCy French model..."
-poetry run python -m spacy download fr_dep_news_trf
+poetry run python -m spacy download fr_core_news_lg
 
 # Setup pre-commit hooks
 echo "Setting up pre-commit hooks..."

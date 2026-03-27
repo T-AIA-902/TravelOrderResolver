@@ -11,8 +11,8 @@ mkdir -p "$MODELS_DIR"
 echo "Downloading pre-trained models..."
 
 # Download spaCy French transformer model
-echo "Downloading spaCy fr_dep_news_trf..."
-python -m spacy download fr_dep_news_trf
+echo "Downloading spaCy fr_core_news_lg..."
+python -m spacy download fr_core_news_lg
 
 # Modèles CamemBERT fine-tunés (hébergés sur HuggingFace)
 echo "Downloading CamemBERT fine-tuned models..."

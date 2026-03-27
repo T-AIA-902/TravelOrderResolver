@@ -37,6 +37,7 @@ class FlanT5ModelLoader:
     _device: str = "cpu"
 
     def __new__(cls, model_name: Optional[str] = None) -> "FlanT5ModelLoader":
+        """Create or return singleton Flan-T5 model loader instance."""
         # Use local model by default if available
         if model_name is None:
             if os.path.exists(DEFAULT_MODEL_PATH):
@@ -121,4 +122,4 @@ class FlanT5ModelLoader:
                 num_beams=1,
             )
 
-        return tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return str(tokenizer.decode(outputs[0], skip_special_tokens=True))

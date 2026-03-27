@@ -1,6 +1,4 @@
-"""
-Language detector evaluation.
-"""
+"""Language detector evaluation."""
 
 from __future__ import annotations
 
@@ -15,13 +13,14 @@ PredictionsDict = dict[str, tuple[list[str], list[str]]]
 
 
 @overload
-def evaluate_language_detectors(
+def evaluate_language_detectors(  # type: ignore[overload-overlap]
     detectors: list[tuple[str, Any]],
     data: list[dict[str, Any]],
     batch_size: int = ...,
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[False] = ...,
 ) -> dict[str, LanguageResults]:
+    """Evaluate language detectors (return_predictions=False)."""
     ...
 
 
@@ -33,6 +32,7 @@ def evaluate_language_detectors(
     progress_callback: Callable[[int, int], None] | None = ...,
     return_predictions: Literal[True] = ...,
 ) -> tuple[dict[str, LanguageResults], PredictionsDict]:
+    """Evaluate language detectors (return_predictions=True)."""
     ...
 
 

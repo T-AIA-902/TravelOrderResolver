@@ -6,7 +6,8 @@ This module provides model creation functions that can be imported by:
 - Dataset scripts (datasets/scripts/)
 """
 
-from typing import Any, Literal
+from pathlib import Path
+from typing import Any, Literal, Tuple
 
 DeviceType = Literal["auto", "cuda", "cpu"]
 
@@ -36,7 +37,9 @@ def create_language_detectors(models: list[str]) -> list[tuple[str, Any]]:
 
 
 def create_intent_classifiers(
-    models: list[str], device: DeviceType = "auto"
+    models: list[str],
+    device: DeviceType = "auto",
+    ner_model: Any | None = None,
 ) -> list[tuple[str, Any]]:
     """Create intent classifiers based on model list.
 
@@ -57,7 +60,9 @@ def create_intent_classifiers(
     if "camembert" in models or "all" in models:
         from src.nlp.intent import CamembertIntentClassifier
 
-        classifiers.append(("CamemBERT", CamembertIntentClassifier(device=device)))
+        classifiers.append(
+            ("CamemBERT", CamembertIntentClassifier(device=device, ner_model=ner_model))
+        )
 
     if "spacy" in models or "all" in models:
         from src.nlp.intent import SpacyIntentClassifier
@@ -73,7 +78,9 @@ def create_intent_classifiers(
 
 
 def create_entity_extractors(
-    models: list[str], device: DeviceType = "auto"
+    models: list[str],
+    device: DeviceType = "auto",
+    ner_model: Any | None = None,
 ) -> list[tuple[str, Any]]:
     """Create entity extractors based on model list.
 
@@ -99,7 +106,9 @@ def create_entity_extractors(
     if "camembert" in models or "all" in models:
         from src.nlp.entity import CamembertEntityExtractor
 
-        extractors.append(("CamemBERT", CamembertEntityExtractor(device=device)))
+        extractors.append(
+            ("CamemBERT", CamembertEntityExtractor(device=device, ner_model=ner_model))
+        )
 
     if "flant5" in models or "all" in models:
         from src.nlp.entity import FlanT5EntityExtractor
@@ -107,6 +116,32 @@ def create_entity_extractors(
         extractors.append(("Flan-T5", FlanT5EntityExtractor()))
 
     return extractors
+
+
+def create_camembert_components(
+    device: DeviceType = "auto",
+    model_path: str | Path | None = None,
+) -> Tuple[Any, Any]:
+    """Create CamemBERT entity extractor and intent classifier sharing one model.
+
+    Avoids loading the 420 MB model twice by creating a single
+    CamembertNERModel and passing it to both components.
+
+    Args:
+        device: Device for the model ("auto", "cuda", "cpu").
+        model_path: Path to the fine-tuned model directory.
+
+    Returns:
+        Tuple of (CamembertEntityExtractor, CamembertIntentClassifier).
+    """
+    from src.nlp.camembert_ner_model import CamembertNERModel
+    from src.nlp.entity import CamembertEntityExtractor
+    from src.nlp.intent import CamembertIntentClassifier
+
+    ner_model = CamembertNERModel(model_path=model_path, device=device)
+    extractor = CamembertEntityExtractor(ner_model=ner_model)
+    classifier = CamembertIntentClassifier(ner_model=ner_model)
+    return extractor, classifier
 
 
 def create_fuzzy_post_processor() -> Any:

@@ -1,11 +1,16 @@
 """
-CamemBERT-based zero-shot intent classifier.
+CamemBERT NER-derived intent classifier.
 
-Uses the transformers zero-shot-classification pipeline to classify
-travel intent without fine-tuning.
+Derives intent from fine-tuned NER results: if DEP/DEST entities
+are found the sentence is classified as TRIP, otherwise NOT_TRIP.
+Shares the NER model with CamembertEntityExtractor to avoid
+loading the 420 MB model twice.
 """
 
-from typing import Callable, List, Literal, Tuple
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Callable, List, Literal, Tuple
 
 from ..interfaces import IntentClassifier
 
@@ -13,70 +18,64 @@ DeviceType = Literal["auto", "cuda", "cpu"]
 
 
 class CamembertIntentClassifier(IntentClassifier):
-    """
-    Zero-shot intent classifier using CamemBERT.
+    """NER-derived intent classifier using fine-tuned CamemBERT.
 
-    Uses hypothesis templates to classify text as travel request or not.
+    Derives intent from NER results:
+    - DEP + DEST found  -> TRIP  (confidence 0.9)
+    - DEP or DEST found -> TRIP  (confidence 0.7)
+    - Nothing found     -> NOT_TRIP (confidence 0.8)
     """
 
     def __init__(
         self,
-        model_name: str = "almanach/camembert-base",
+        model_path: str | Path | None = None,
         device: DeviceType = "auto",
+        ner_model: Any | None = None,
     ) -> None:
-        """
-        Initialize the CamemBERT intent classifier.
+        """Initialize the CamemBERT intent classifier.
 
         Args:
-            model_name: HuggingFace model name (default: almanach/camembert-base)
-            device: Device to use - "auto", "cuda", or "cpu" (default: auto)
+            model_path: Path to the fine-tuned model directory.
+                Defaults to models/camembert-ner-retrain/.
+            device: Device to use - "auto", "cuda", or "cpu".
+            ner_model: Optional shared CamembertNERModel instance.
+                If provided, reuses this model instead of loading a new one.
         """
-        try:
-            from transformers import pipeline
-        except ImportError:
-            raise ImportError("transformers not available. Install with: pip install transformers")
+        if ner_model is not None:
+            self.ner_model = ner_model
+        else:
+            from src.nlp.camembert_ner_model import CamembertNERModel
 
-        from src.utils.device import get_torch_device
-
-        self.device = get_torch_device(device)
-
-        print(f"Loading CamemBERT for zero-shot classification: {model_name}...")
-        self.classifier = pipeline(
-            "zero-shot-classification",
-            model=model_name,
-            device=self.device,
-        )
-        self.labels = ["demande de voyage en train", "autre question"]
-        print(f"CamemBERT intent classifier ready (device: {self.device})")
+            self.ner_model = CamembertNERModel(model_path=model_path, device=device)
 
     @property
     def name(self) -> str:
+        """Return the classifier name."""
         return "CamemBERT"
 
     def classify(self, text: str) -> Tuple[str, float]:
-        """
-        Classify the intent of the input text using zero-shot classification.
+        """Classify the intent of the input text via NER.
 
         Args:
-            text: Input text to classify
+            text: Input text to classify.
 
         Returns:
             Tuple of (intent_label, confidence) where:
-            - intent_label: "TRIP" or "NOT_TRIP"
+            - intent_label: "TRIP", "NOT_TRIP", or "UNKNOWN"
             - confidence: Float between 0.0 and 1.0
         """
-        # Handle empty or very short text
         if len(text.strip()) < 3:
             return ("UNKNOWN", 0.5)
 
-        # Run zero-shot classification
-        result = self.classifier(text, self.labels)
+        entities = self.ner_model.predict_and_extract(text)
+        has_dep = entities.get("departure") is not None
+        has_dest = entities.get("destination") is not None
 
-        # Determine intent based on top label
-        is_trip = result["labels"][0] == "demande de voyage en train"
-        confidence = result["scores"][0]
-
-        return ("TRIP" if is_trip else "NOT_TRIP", confidence)
+        if has_dep and has_dest:
+            return ("TRIP", 0.9)
+        if has_dep or has_dest:
+            return ("TRIP", 0.7)
+        return ("NOT_TRIP", 0.8)
 
     def classify_batch(
         self,
@@ -84,48 +83,35 @@ class CamembertIntentClassifier(IntentClassifier):
         batch_size: int = 32,
         progress_callback: Callable[[int, int], None] | None = None,
     ) -> List[Tuple[str, float]]:
-        """
-        Classify multiple texts efficiently using HuggingFace Dataset.
-
-        Uses Dataset-based batching for optimal GPU throughput.
+        """Classify multiple texts via batched NER.
 
         Args:
-            texts: List of input texts to classify
-            batch_size: Batch size for GPU processing (default: 32)
-            progress_callback: Optional callback(current, total) for progress updates
+            texts: List of input texts to classify.
+            batch_size: Batch size for processing.
+            progress_callback: Optional callback(current, total).
 
         Returns:
-            List of (intent_label, confidence) tuples
+            List of (intent_label, confidence) tuples.
         """
-        from src.nlp.utils.hf_batching import run_pipeline_batched
-
         total = len(texts)
+        all_results: List[Tuple[str, float]] = []
 
-        # Filter invalid texts, track indices
-        valid_texts = []
-        valid_indices = []
-        for i, text in enumerate(texts):
-            if len(text.strip()) >= 3:
-                valid_texts.append(text)
-                valid_indices.append(i)
+        entity_results = self.ner_model.predict_batch(texts, batch_size=batch_size)
 
-        # Initialize all results as UNKNOWN
-        all_results: List[Tuple[str, float]] = [("UNKNOWN", 0.5)] * total
+        for text, entities in zip(texts, entity_results):
+            if len(text.strip()) < 3:
+                all_results.append(("UNKNOWN", 0.5))
+                continue
 
-        if valid_texts:
-            # Single batched call with Dataset optimization
-            outputs = run_pipeline_batched(
-                self.classifier,
-                valid_texts,
-                batch_size=batch_size,
-                candidate_labels=self.labels,
-            )
+            has_dep = entities.get("departure") is not None
+            has_dest = entities.get("destination") is not None
 
-            # Map results back to original indices
-            for idx, output in zip(valid_indices, outputs):
-                is_trip = output["labels"][0] == "demande de voyage en train"
-                confidence = output["scores"][0]
-                all_results[idx] = ("TRIP" if is_trip else "NOT_TRIP", confidence)
+            if has_dep and has_dest:
+                all_results.append(("TRIP", 0.9))
+            elif has_dep or has_dest:
+                all_results.append(("TRIP", 0.7))
+            else:
+                all_results.append(("NOT_TRIP", 0.8))
 
         if progress_callback:
             progress_callback(total, total)

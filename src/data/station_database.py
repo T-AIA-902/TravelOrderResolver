@@ -89,7 +89,7 @@ def normalize_name(name: str) -> str:
         return ""
 
     # Remove accents using unidecode (more robust than unicodedata)
-    result = unidecode(name)
+    result: str = unidecode(name)
 
     # Convert to lowercase
     result = result.lower()

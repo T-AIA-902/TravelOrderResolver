@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] Fine-tuned CamemBERT NER Integration - 2026-02-26
+
+### Changed
+- **CamemBERT Entity Extractor** (`src/nlp/entity/camembert_entity.py`):
+  Replaced zero-shot string matching with fine-tuned `CamembertForTokenClassification`
+  NER model (7 BIO labels: O, B-DEP, I-DEP, B-DEST, I-DEST, B-STEP, I-STEP).
+- **CamemBERT Intent Classifier** (`src/nlp/intent/camembert_intent.py`):
+  Replaced zero-shot classification pipeline with NER-derived intent
+  (entities found → TRIP, otherwise NOT_TRIP).
+- **Model Factory** (`src/evaluation/model_factory.py`):
+  Added `create_camembert_components()` for shared model loading and
+  `ner_model` parameter to avoid loading the 420MB model twice.
+- **API startup** (`src/api/main.py`):
+  Uses shared `CamembertNERModel` instance across extractor and classifier.
+- **Tokenizer config** (`models/camembert-ner-retrain/tokenizer_config.json`):
+  Fixed `extra_special_tokens` format for transformers 4.57+ compatibility.
+
+### Added
+- **Shared NER wrapper** (`src/nlp/camembert_ner_model.py`):
+  `CamembertNERModel` class ported from `models/camembert-ner-retrain/inference.py`
+  with dynamic label loading and B-STEP/I-STEP support.
+- **Unit tests** (`tests/unit/test_camembert_ner.py`):
+  9 pure logic tests + 5 integration tests for the fine-tuned model.
+
 ## [0.3.9] Evaluation Module Refactor & Notebook Split - 2026-01-23
 
 ### Added

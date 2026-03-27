@@ -9,20 +9,20 @@
 
 install: ## Install production dependencies
 	poetry install --only main
-	poetry run python -m spacy download fr_dep_news_trf
+	poetry run python -m spacy download fr_core_news_lg
 
 install-dev: ## Install development dependencies
 	poetry install
-	poetry run python -m spacy download fr_dep_news_trf
+	poetry run python -m spacy download fr_core_news_lg
 	poetry run pre-commit install
 
 install-ml: ## Install ML/training dependencies
 	poetry install --with ml
-	poetry run python -m spacy download fr_dep_news_trf
+	poetry run python -m spacy download fr_core_news_lg
 
 install-all: ## Install all dependencies (dev + ml + notebooks)
 	poetry install --with dev,ml,notebooks
-	poetry run python -m spacy download fr_dep_news_trf
+	poetry run python -m spacy download fr_core_news_lg
 	poetry run pre-commit install
 
 # =============================================================================
