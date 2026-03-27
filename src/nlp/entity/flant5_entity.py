@@ -30,9 +30,9 @@ class FlanT5EntityExtractor(EntityExtractor):
             model_name: Model path or HuggingFace model name.
                        Defaults to local fine-tuned model.
         """
-        from ..models.flan_t5_model import FlanT5ModelLoader
+        from ..models.flan_t5_model import get_flan_t5_loader
 
-        self.model_loader = FlanT5ModelLoader(model_name)
+        self.model_loader = get_flan_t5_loader(model_name)
         self._model_name = self.model_loader._model_name
         self.model_loader.load()
         print("Flan-T5 entity extractor ready")

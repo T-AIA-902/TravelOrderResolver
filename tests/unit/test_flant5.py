@@ -149,22 +149,31 @@ class TestFlanT5EntityExtractor:
 
 
 class TestFlanT5ModelLoader:
-    """Tests for FlanT5ModelLoader singleton."""
+    """Tests for FlanT5ModelLoader caching."""
 
-    def test_singleton_pattern(self):
-        """Test that loader uses singleton pattern."""
-        from src.nlp.models.flan_t5_model import FlanT5ModelLoader
+    def test_cache_returns_same_instance(self):
+        """Test that get_flan_t5_loader returns the same instance for same path."""
+        from src.nlp.models.flan_t5_model import get_flan_t5_loader
 
-        loader1 = FlanT5ModelLoader("google/flan-t5-small")
-        loader2 = FlanT5ModelLoader("google/flan-t5-small")
+        loader1 = get_flan_t5_loader("google/flan-t5-small")
+        loader2 = get_flan_t5_loader("google/flan-t5-small")
 
         assert loader1 is loader2
 
+    def test_cache_different_paths(self):
+        """Test that different model paths get different loader instances."""
+        from src.nlp.models.flan_t5_model import get_flan_t5_loader
+
+        loader1 = get_flan_t5_loader("google/flan-t5-small")
+        loader2 = get_flan_t5_loader("google/flan-t5-base")
+
+        assert loader1 is not loader2
+
     def test_generate(self):
         """Test text generation."""
-        from src.nlp.models.flan_t5_model import FlanT5ModelLoader
+        from src.nlp.models.flan_t5_model import get_flan_t5_loader
 
-        loader = FlanT5ModelLoader("google/flan-t5-small")
+        loader = get_flan_t5_loader("google/flan-t5-small")
         output = loader.generate("Translate to French: Hello")
 
         assert isinstance(output, str)

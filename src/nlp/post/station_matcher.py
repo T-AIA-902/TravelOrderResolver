@@ -115,13 +115,18 @@ class StationMatcher:
         if normalized_query in self._match_cache:
             return self._match_cache[normalized_query]
 
-        # Step 1: Check for exact prefix match (e.g., "paris" -> "paris gare de lyon")
+        # Step 1a: Check for exact match (e.g., "dijon" -> "Dijon")
+        if normalized_query in self.search_index:
+            original_name = self.search_index[normalized_query]
+            result = (original_name, 100.0)
+            self._match_cache[normalized_query] = result
+            return result
+
+        # Step 1b: Check for exact prefix match (e.g., "paris" -> "Paris Austerlitz")
         # This handles cases where user says "Paris" but stations are "Paris-Est", etc.
         # Note: normalize_name() converts hyphens to spaces
         for normalized_name in self.normalized_names:
             if normalized_name.startswith(normalized_query + " "):
-                # Found a station that starts with query
-                # Return with high confidence (95%) since it's a prefix match
                 original_name = self.search_index[normalized_name]
                 result = (original_name, 95.0)
                 self._match_cache[normalized_query] = result

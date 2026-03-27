@@ -1,12 +1,18 @@
 """
 Flan-T5 model loader and utilities.
 
-Provides shared model loading and generation utilities for
+Provides model loading and generation utilities for
 both intent classification and entity extraction.
+
+Two separate instances are expected:
+- Entity extractor: uses the local fine-tuned model (models/flan-t5-travel/)
+- Intent classifier: uses the base model (google/flan-t5-base)
+
+A per-path cache avoids reloading the same model twice.
 """
 
 import os
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import torch
 from transformers import T5ForConditionalGeneration, T5Tokenizer
@@ -18,39 +24,49 @@ DEFAULT_MODEL_PATH = os.path.join(
     "flan-t5-travel",
 )
 
+# Per-path cache: allows one loader per model path without reloading
+_loader_cache: Dict[str, "FlanT5ModelLoader"] = {}
+
+
+def get_flan_t5_loader(model_name: Optional[str] = None) -> "FlanT5ModelLoader":
+    """Return a cached FlanT5ModelLoader for the given model path.
+
+    Different model paths get independent loaders so that the fine-tuned
+    entity model and the base intent model can coexist.
+    """
+    if model_name is None:
+        if os.path.exists(DEFAULT_MODEL_PATH):
+            model_name = DEFAULT_MODEL_PATH
+        else:
+            model_name = "google/flan-t5-base"
+
+    if model_name not in _loader_cache:
+        _loader_cache[model_name] = FlanT5ModelLoader(model_name)
+    return _loader_cache[model_name]
+
+
+def _select_device() -> str:
+    """Select the best available device, avoiding MPS for T5 compatibility."""
+    if torch.cuda.is_available():
+        return "cuda"
+    # MPS causes RuntimeError with T5 safetensors ("Placeholder storage has
+    # not been allocated on MPS device"), so we fall back to CPU on Apple Silicon.
+    return "cpu"
+
 
 class FlanT5ModelLoader:
     """
-    Shared Flan-T5 model loader with caching.
+    Flan-T5 model loader with per-path caching.
 
-    Ensures the model is loaded only once and shared between
-    intent classifier and entity extractor (Singleton pattern).
-
-    By default, uses the locally fine-tuned model at models/flan-t5-travel/.
-    Falls back to HuggingFace model if local model not found.
+    Each distinct model path gets its own loader instance so that the
+    fine-tuned entity model and the base intent model can coexist.
     """
 
-    _instance: Optional["FlanT5ModelLoader"] = None
-    _model: Optional[T5ForConditionalGeneration] = None
-    _tokenizer: Optional[T5Tokenizer] = None
-    _model_name: Optional[str] = None
-    _device: str = "cpu"
-
-    def __new__(cls, model_name: Optional[str] = None) -> "FlanT5ModelLoader":
-        """Create or return singleton Flan-T5 model loader instance."""
-        # Use local model by default if available
-        if model_name is None:
-            if os.path.exists(DEFAULT_MODEL_PATH):
-                model_name = DEFAULT_MODEL_PATH
-            else:
-                model_name = "google/flan-t5-base"
-        """Singleton pattern to avoid loading model multiple times."""
-        if cls._instance is None or cls._model_name != model_name:
-            cls._instance = super().__new__(cls)
-            cls._model_name = model_name
-            cls._model = None
-            cls._tokenizer = None
-        return cls._instance
+    def __init__(self, model_name: str) -> None:
+        self._model_name = model_name
+        self._model: Optional[T5ForConditionalGeneration] = None
+        self._tokenizer: Optional[T5Tokenizer] = None
+        self._device: str = "cpu"
 
     def load(self) -> Tuple[T5ForConditionalGeneration, T5Tokenizer]:
         """
@@ -62,25 +78,19 @@ class FlanT5ModelLoader:
         if self._model is None or self._tokenizer is None:
             print(f"Loading Flan-T5 model: {self._model_name}...")
 
-            self.__class__._tokenizer = T5Tokenizer.from_pretrained(self._model_name)
-            self.__class__._model = T5ForConditionalGeneration.from_pretrained(
+            self._tokenizer = T5Tokenizer.from_pretrained(self._model_name)
+            self._model = T5ForConditionalGeneration.from_pretrained(
                 self._model_name,
-                torch_dtype=torch.float32,
+                dtype=torch.float32,
             )
-            self.__class__._model.eval()
+            self._model.eval()
 
-            # Determine device (CUDA > MPS > CPU)
-            if torch.cuda.is_available():
-                self.__class__._device = "cuda"
-            elif torch.backends.mps.is_available():
-                self.__class__._device = "mps"
-            else:
-                self.__class__._device = "cpu"
-            self.__class__._model.to(self._device)
+            self._device = _select_device()
+            self._model.to(self._device)
 
             print(f"Flan-T5 loaded on {self._device}")
 
-        return self._model, self._tokenizer  # type: ignore[return-value]
+        return self._model, self._tokenizer
 
     @property
     def device(self) -> str:

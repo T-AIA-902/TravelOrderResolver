@@ -29,9 +29,9 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    # Interactive mode by default
-    stdin_open: true
-    tty: true
+    command: ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
 
   # Evaluation service (run evaluations on GPU)
   evaluate:

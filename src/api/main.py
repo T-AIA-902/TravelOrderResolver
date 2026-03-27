@@ -1,5 +1,6 @@
 """Main FastAPI application with lifespan and CORS."""
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -52,9 +53,16 @@ async def lifespan(app: FastAPI):  # type: ignore[arg-type]
 
 app = FastAPI(title="Travel Order Resolver API", version="1.0.0", lifespan=lifespan)
 
+_default_origins = "http://localhost:5173,http://localhost:3000"
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", _default_origins).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

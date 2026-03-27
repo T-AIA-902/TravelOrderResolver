@@ -28,12 +28,17 @@ class ResolveRequest(BaseModel):
     use_fuzzy: bool = True
 
 
+def _normalize_name(name: str) -> str:
+    """Normalize model name for comparison: lowercase, strip hyphens/underscores/spaces."""
+    return name.lower().replace("-", "").replace("_", "").replace(" ", "")
+
+
 def _find_component(name: str | None, components: list[tuple[str, object]]) -> tuple[str, object]:
-    """Find a component by name (case-insensitive) or return the first one."""
+    """Find a component by name (case-insensitive, ignoring hyphens) or return the first one."""
     if name:
-        lower = name.lower()
+        normalized = _normalize_name(name)
         for comp_name, comp in components:
-            if comp_name.lower() == lower:
+            if _normalize_name(comp_name) == normalized:
                 return comp_name, comp
         available = [n for n, _ in components]
         raise HTTPException(404, f"Model '{name}' not found. Available: {available}")

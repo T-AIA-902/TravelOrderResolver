@@ -44,11 +44,11 @@ Classification:"""
         Args:
             model_name: HuggingFace model name (e.g., "google/flan-t5-base")
         """
-        from ..models.flan_t5_model import FlanT5ModelLoader
+        from ..models.flan_t5_model import get_flan_t5_loader
 
         # Always use base model for intent - our fine-tuned model is for entities only
         self._model_name = model_name
-        self.model_loader = FlanT5ModelLoader(model_name)
+        self.model_loader = get_flan_t5_loader(model_name)
         self.model_loader.load()
         print("Flan-T5 intent classifier ready")
 

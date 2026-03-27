@@ -170,11 +170,11 @@
 - [x] Tests et metriques CamemBERT (fine-tuned NER)
 
 ### 3.10 Modele Flan-T5 / Seq2Seq [P1]
-- [ ] Chargement Flan-T5 (base ou small)
-- [ ] Prompt engineering pour extraction
-- [ ] Fine-tuning seq2seq
-- [ ] Pipeline d'inference
-- [ ] Tests et metriques Flan-T5
+- [x] Chargement Flan-T5 (base pour intent, fine-tune pour entity)
+- [x] Prompt engineering pour extraction
+- [x] Fine-tuning seq2seq (Google Colab)
+- [x] Pipeline d'inference (cache par chemin, CPU force)
+- [x] Tests et metriques Flan-T5
 
 ### 3.11 Fine-tuning LoRA/QLoRA [P2]
 - [ ] Setup PEFT pour fine-tuning efficient
@@ -199,16 +199,16 @@
 ## 4. MODULE SPEECH-TO-TEXT (BONUS)
 
 ### 4.1 Integration Whisper [P2]
-- [ ] Chargement modele Whisper (small/base)
-- [ ] Transcription audio -> texte
-- [ ] Mode offline obligatoire
-- [ ] Gestion formats audio (wav, mp3, etc.)
-- [ ] Tests unitaires transcription
+- [x] Chargement modele Whisper (base) — lazy loading
+- [x] Transcription audio -> texte — `POST /api/speech/transcribe`
+- [x] Mode offline obligatoire
+- [x] Gestion formats audio (wav, mp3, webm, etc.)
+- [x] Tests unitaires transcription (~50 tests)
 
 ### 4.2 Pipeline Audio Complet [P2]
-- [ ] Audio -> Texte -> NLP -> Route
-- [ ] Gestion erreurs transcription
-- [ ] Feedback de confiance
+- [x] Audio -> Texte -> NLP -> Route — integre dans le frontend
+- [x] Gestion erreurs transcription
+- [x] Feedback de confiance
 
 ### 4.3 Ameliorations Audio [P3]
 - [ ] Reduction de bruit
@@ -227,21 +227,21 @@
 
 ### 5.2 Algorithme Dijkstra [P0]
 - [x] Implementation via NetworkX (production-ready)
-- [ ] Implementation from scratch (pas de librairie) - pour comprendre
+- [x] Implementation from scratch (heapq) — `algorithms/dijkstra.py`
 - [x] Comprendre et documenter la complexite
 - [x] Retourner chemin + distance totale
-- [ ] Tests unitaires Dijkstra
+- [x] Tests unitaires Dijkstra
 
 ### 5.3 Algorithme A* [P1]
-- [ ] Implementation from scratch
-- [ ] Heuristique basee sur distance geographique
-- [ ] Comparaison avec Dijkstra
-- [ ] Tests unitaires A*
+- [x] Implementation from scratch — `algorithms/astar.py`
+- [x] Heuristique basee sur distance geographique (geodesic / 3)
+- [x] Comparaison avec Dijkstra (meme resultat optimal)
+- [x] Tests unitaires A*
 
 ### 5.4 Gestion Intermediaires [P2]
-- [ ] Route avec contrainte de passage
-- [ ] Optimisation multi-etapes
-- [ ] Tests unitaires intermediaires
+- [x] Route avec contrainte de passage (chainage A*)
+- [x] Optimisation multi-etapes
+- [x] MOA* multi-objectif — `algorithms/moa_star.py`
 
 ### 5.5 Temps d'Attente [P2]
 - [ ] Integration temps d'attente en correspondance
@@ -272,19 +272,18 @@
 - [ ] Tests e2e CLI
 
 ### 6.2 API REST [P2]
-- [ ] FastAPI application
-- [ ] Endpoint /parse pour NLP
-- [ ] Endpoint /route pour pathfinding
-- [ ] Endpoint /full pour pipeline complet
-- [ ] Schemas Pydantic
-- [ ] Documentation OpenAPI auto-generee
-- [ ] Tests API
+- [x] FastAPI application — 7 routers
+- [x] Endpoints NLP, pathfinding, speech, evaluation, monitoring
+- [x] Endpoint pipeline complet (`/api/resolve`)
+- [x] Schemas Pydantic
+- [x] Documentation OpenAPI auto-generee (`/docs`)
 
 ### 6.3 Interface Web Demo [P3]
-- [ ] Interface Gradio ou Streamlit
-- [ ] Input texte et audio
-- [ ] Visualisation des resultats
-- [ ] Affichage de la route sur carte
+- [x] Frontend Vue 3 + TypeScript + Tailwind CSS
+- [x] Input texte et audio (micro navigateur → Whisper)
+- [x] Visualisation des resultats NLP
+- [x] Affichage de la route sur carte Leaflet
+- [x] Pages: Dashboard, Chat, Evaluation, Monitoring, Rapports
 
 ---
 
@@ -298,18 +297,18 @@
 - [x] Export metriques JSON/CSV
 
 ### 7.2 Monitoring Ressources [P2]
-- [ ] Tracking CPU par requete
-- [ ] Tracking RAM par requete
-- [ ] Tracking GPU utilization par requete
-- [x] Tracking temps d'execution
-- [ ] Tracking empreinte carbone par requete
+- [x] Tracking CPU par requete — psutil
+- [x] Tracking RAM par requete
+- [x] Tracking GPU utilization par requete
+- [x] Tracking temps d'execution — MetricsLogger
+- [x] Tracking empreinte carbone par requete — CodeCarbon
 
 
 ### 7.3 Empreinte Carbone [P2]
-- [ ] Estimation CO2 par requete
+- [x] Estimation CO2 par requete
 - [ ] Estimation CO2 pour l'entrainement
-- [ ] Integration codecarbon ou equivalent
-- [ ] Rapport d'impact environnemental
+- [x] Integration codecarbon
+- [x] Endpoint `/api/monitoring/carbon`
 
 ### 7.4 Experiment Tracking [P1]
 - [ ] Integration MLflow ou Weights & Biases
@@ -535,4 +534,4 @@
 
 ---
 
-*Derniere mise a jour: 2026-01-23 (v0.3.8 - Realistic Dataset Distribution)*
+*Derniere mise a jour: 2026-03-27 (v0.5.0 - Demo cleanup: fix Flan-T5, SpaCy, Docker, API, fuzzy matching)*

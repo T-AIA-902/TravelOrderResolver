@@ -2,6 +2,10 @@
 SpaCy-based entity extractor.
 
 Uses spaCy NER to identify location entities in travel text.
+SpaCy's fr_core_news_lg model detects LOC/GPE entities but has no notion
+of departure, destination, or intermediate stops — role assignment relies
+on positional heuristics (first = departure, last = destination).
+This is a known limitation compared to fine-tuned models (CamemBERT, Flan-T5).
 """
 
 from typing import Any, Callable, Dict, List, Literal, Optional
@@ -16,8 +20,13 @@ class SpacyEntityExtractor(EntityExtractor):
     Extract travel entities using spaCy NER.
 
     Uses spaCy's French model to identify location entities (LOC, GPE),
-    then applies heuristics to classify them as departure, destination,
-    or intermediate stops.
+    then assigns roles based on position only:
+    - First location = departure
+    - Last location = destination
+    - Everything in between = intermediate stops
+
+    This approach has no understanding of linguistic cues like "via" or
+    "en passant par", which is a limitation that fine-tuned models address.
     """
 
     def __init__(
@@ -55,14 +64,33 @@ class SpacyEntityExtractor(EntityExtractor):
     def name(self) -> str:
         return "SpaCy"
 
+    @staticmethod
+    def _assign_roles(locations: List[str]) -> Dict[str, Any]:
+        """Assign departure/destination/intermediate based on position only."""
+        result: Dict[str, Any] = {
+            "departure": None,
+            "destination": None,
+            "intermediate": [],
+        }
+        if len(locations) == 0:
+            pass
+        elif len(locations) == 1:
+            result["destination"] = locations[0]
+        elif len(locations) == 2:
+            result["departure"] = locations[0]
+            result["destination"] = locations[1]
+        else:
+            result["departure"] = locations[0]
+            result["destination"] = locations[-1]
+            result["intermediate"] = locations[1:-1]
+        return result
+
     def extract(self, text: str) -> Dict[str, Any]:
         """
         Extract travel entities from the input text.
 
-        Uses spaCy NER to find location entities, then applies heuristics:
-        - First location = departure
-        - Last location = destination
-        - Middle locations (with intermediate keywords) = intermediate
+        Uses spaCy NER to find location entities, then assigns roles
+        purely by position (first = departure, last = destination).
 
         Args:
             text: Input text to process
@@ -73,59 +101,9 @@ class SpacyEntityExtractor(EntityExtractor):
             - destination: Optional[str] - Ending location
             - intermediate: List[str] - Intermediate stops
         """
-        # Run spaCy NER pipeline
         doc = self.nlp(text)
-
-        # Extract all location entities with positions
-        location_entities: List[Dict[str, Any]] = [
-            {"text": ent.text, "start": ent.start_char, "end": ent.end_char}
-            for ent in doc.ents
-            if ent.label_ in ["LOC", "GPE"]
-        ]
-
-        # Identify intermediate keywords
-        intermediate_keywords = ["via", "par", "passant par", "en passant par", "arret"]
-        text_lower = text.lower()
-
-        # Find locations that appear after intermediate keywords
-        intermediate_locs: set[str] = set()
-        for keyword in intermediate_keywords:
-            if keyword in text_lower:
-                keyword_pos = text_lower.find(keyword)
-                for loc in location_entities:
-                    # Only consider locations within ~30 chars after keyword
-                    if keyword_pos < loc["start"] < keyword_pos + 30:
-                        intermediate_locs.add(loc["text"])
-
-        # Initialize result
-        result: Dict[str, Any] = {
-            "departure": None,
-            "destination": None,
-            "intermediate": [],
-        }
-
-        if len(location_entities) == 0:
-            return result
-        elif len(location_entities) == 1:
-            result["destination"] = location_entities[0]["text"]
-        elif len(location_entities) == 2:
-            result["departure"] = location_entities[0]["text"]
-            result["destination"] = location_entities[1]["text"]
-        else:
-            locations = [loc["text"] for loc in location_entities]
-
-            if intermediate_locs:
-                result["departure"] = locations[0]
-                result["destination"] = locations[-1]
-                result["intermediate"] = [
-                    loc for loc in locations[1:-1] if loc in intermediate_locs
-                ]
-            else:
-                result["departure"] = locations[0]
-                result["destination"] = locations[-1]
-                result["intermediate"] = locations[1:-1]
-
-        return result
+        locations = [ent.text for ent in doc.ents if ent.label_ in ["LOC", "GPE"]]
+        return self._assign_roles(locations)
 
     def extract_batch(
         self,
@@ -149,60 +127,13 @@ class SpacyEntityExtractor(EntityExtractor):
         results: List[Dict[str, Any]] = []
         total = len(texts)
 
-        # Process with nlp.pipe for efficiency
         for i, doc in enumerate(self.nlp.pipe(texts, batch_size=batch_size)):
-            # Report progress every batch_size items
             if progress_callback and i % batch_size == 0:
                 progress_callback(i, total)
-            # Extract location entities
-            location_entities: List[Dict[str, Any]] = [
-                {"text": ent.text, "start": ent.start_char, "end": ent.end_char}
-                for ent in doc.ents
-                if ent.label_ in ["LOC", "GPE"]
-            ]
 
-            # Identify intermediate keywords
-            text_lower = doc.text.lower()
-            intermediate_keywords = ["via", "par", "passant par", "en passant par", "arret"]
+            locations = [ent.text for ent in doc.ents if ent.label_ in ["LOC", "GPE"]]
+            results.append(self._assign_roles(locations))
 
-            intermediate_locs: set[str] = set()
-            for keyword in intermediate_keywords:
-                if keyword in text_lower:
-                    keyword_pos = text_lower.find(keyword)
-                    for loc in location_entities:
-                        if keyword_pos < loc["start"] < keyword_pos + 30:
-                            intermediate_locs.add(loc["text"])
-
-            # Build result
-            result: Dict[str, Any] = {
-                "departure": None,
-                "destination": None,
-                "intermediate": [],
-            }
-
-            if len(location_entities) == 0:
-                pass
-            elif len(location_entities) == 1:
-                result["destination"] = location_entities[0]["text"]
-            elif len(location_entities) == 2:
-                result["departure"] = location_entities[0]["text"]
-                result["destination"] = location_entities[1]["text"]
-            else:
-                locations = [loc["text"] for loc in location_entities]
-                if intermediate_locs:
-                    result["departure"] = locations[0]
-                    result["destination"] = locations[-1]
-                    result["intermediate"] = [
-                        loc for loc in locations[1:-1] if loc in intermediate_locs
-                    ]
-                else:
-                    result["departure"] = locations[0]
-                    result["destination"] = locations[-1]
-                    result["intermediate"] = locations[1:-1]
-
-            results.append(result)
-
-        # Final progress callback
         if progress_callback:
             progress_callback(total, total)
 
