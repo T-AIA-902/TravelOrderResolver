@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>Test micro</h2>
+<button id="btn" onclick="toggle()">Cliquer pour enregistrer</button>
+<p id="status"></p>
+<script>
+let rec, chunks=[], recording=false
+
+// Find a supported mimeType
+function getMimeType() {
+  const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4', '']
+  for (const t of types) {
+    if (t === '' || MediaRecorder.isTypeSupported(t)) {
+      document.getElementById('status').textContent = 'Format: ' + (t || 'default')
+      return t || undefined
+    }
+  }
+  return undefined
+}
+
+async function toggle() {
+  if (!recording) {
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true})
+    const mimeType = getMimeType()
+    const options = mimeType ? {mimeType} : {}
+    rec = new MediaRecorder(stream, options)
+    chunks = []
+    rec.ondataavailable = e => {
+      console.log('Chunk:', e.data.size, 'bytes')
+      chunks.push(e.data)
+    }
+    rec.onstop = async () => {
+      stream.getTracks().forEach(t=>t.stop())
+      const blob = new Blob(chunks, {type: rec.mimeType})
+      document.getElementById('status').textContent = 'Taille: '+blob.size+' bytes ('+rec.mimeType+'). Envoi...'
+
+      // Playback
+      const audio = new Audio(URL.createObjectURL(blob))
+      audio.play()
+
+      // Send to API
+      const fd = new FormData()
+      fd.append('audio', blob, 'test.webm')
+      try {
+        const r = await fetch('/api/speech/transcribe', {method:'POST', body:fd})
+        const d = await r.json()
+        document.getElementById('status').textContent += ' → Resultat: "'+d.text+'" ('+d.latency_ms+'ms)'
+      } catch(e) {
+        document.getElementById('status').textContent += ' → Erreur: '+e.message
+      }
+    }
+    // Request data every 250ms to avoid empty chunks
+    rec.start(250)
+    recording = true
+    document.getElementById('btn').textContent = 'STOP'
+    document.getElementById('status').textContent = 'Parlez...'
+  } else {
+    rec.stop()
+    recording = false
+    document.getElementById('btn').textContent = 'Cliquer pour enregistrer'
+  }
+}
+</script>
+</body>
+</html>
