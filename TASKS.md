@@ -405,8 +405,8 @@
 
 - [x] Architecture complete du systeme
 - [x] Description du pipeline NLP
-- [ ] Description des algorithmes de pathfinding
-- [ ] Diagrammes (Mermaid/PlantUML)
+- [x] Description des algorithmes de pathfinding
+- [x] Diagrammes (Mermaid/PlantUML)
 
 ### 9.2 Documentation Entrainement [P0]
 

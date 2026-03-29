@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { listReports, getReport, runEvaluation, getEvalStatus } from '../api/evaluation'
 import type {
   EvalReport,
@@ -7,6 +7,8 @@ import type {
   EvalRunResponse,
   EvalStatus,
 } from '../api/types'
+
+const TASK_ID_KEY = 'eval_task_id'
 
 export function useEvaluation() {
   const reports = ref<EvalReport[]>([])
@@ -61,6 +63,8 @@ export function useEvaluation() {
     evalStatus.value = null
     try {
       const response = await runEvaluation(request)
+      // Persist task_id so we can resume polling after page navigation
+      localStorage.setItem(TASK_ID_KEY, response.task_id)
       startPolling(response.task_id)
       return response
     } catch (e: unknown) {
@@ -78,6 +82,7 @@ export function useEvaluation() {
         evalStatus.value = await getEvalStatus(taskId)
         if (evalStatus.value.status === 'completed' || evalStatus.value.status === 'failed') {
           stopPolling()
+          localStorage.removeItem(TASK_ID_KEY)
           if (evalStatus.value.status === 'completed') {
             await loadReports()
             await loadLatestReport()
@@ -85,6 +90,7 @@ export function useEvaluation() {
         }
       } catch {
         stopPolling()
+        localStorage.removeItem(TASK_ID_KEY)
       }
     }, 2000)
   }
@@ -96,7 +102,36 @@ export function useEvaluation() {
     }
   }
 
+  /** Resume polling if an evaluation was running before page navigation. */
+  async function resumeIfRunning() {
+    const savedTaskId = localStorage.getItem(TASK_ID_KEY)
+    if (!savedTaskId) return
+
+    try {
+      const status = await getEvalStatus(savedTaskId)
+      evalStatus.value = status
+      if (status.status === 'running' || status.status === 'started') {
+        startPolling(savedTaskId)
+      } else {
+        // Task finished while we were away
+        localStorage.removeItem(TASK_ID_KEY)
+        if (status.status === 'completed') {
+          await loadReports()
+          await loadLatestReport()
+        }
+      }
+    } catch {
+      // Task ID no longer valid (server restarted, etc.)
+      localStorage.removeItem(TASK_ID_KEY)
+    }
+  }
+
+  onMounted(() => {
+    resumeIfRunning()
+  })
+
   onUnmounted(() => {
+    // Stop polling but DON'T clear the task_id — we want to resume later
     stopPolling()
   })
 

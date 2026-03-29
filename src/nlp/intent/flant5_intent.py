@@ -5,7 +5,7 @@ Uses prompted seq2seq generation for intent classification.
 Classifies French travel requests as TRIP, NOT_TRIP, NOT_FRENCH, or UNKNOWN.
 """
 
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 from ..interfaces import IntentClassifier
 
@@ -100,15 +100,28 @@ Classification:"""
 
         return self._parse_output(output)
 
-    def classify_batch(self, texts: List[str], batch_size: int = 16) -> List[Tuple[str, float]]:
+    def classify_batch(
+        self,
+        texts: List[str],
+        batch_size: int = 16,
+        progress_callback: Any = None,
+    ) -> List[Tuple[str, float]]:
         """
         Classify multiple texts.
 
         Args:
             texts: List of input texts
             batch_size: Batch size (for future optimization)
+            progress_callback: Optional callback(current, total) for progress updates
 
         Returns:
             List of (intent_label, confidence) tuples
         """
-        return [self.classify(text) for text in texts]
+        results = []
+        for i, text in enumerate(texts):
+            results.append(self.classify(text))
+            if progress_callback and (i + 1) % batch_size == 0:
+                progress_callback(i + 1, len(texts))
+        if progress_callback:
+            progress_callback(len(texts), len(texts))
+        return results

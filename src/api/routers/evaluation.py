@@ -132,17 +132,26 @@ def _run_evaluation(task_id: str, eval_tasks: dict, request: EvalRunRequest) -> 
 
     start_time = time.time()
 
-    def progress_callback(current: int, total: int) -> None:
-        percent = int(current / total * 100) if total else 0
+    def _update(step: str, step_num: int, total_steps: int, sub: int = 0, sub_total: int = 0):
+        """Update task progress with global step tracking."""
+        # Global percent: each step is an equal slice, sub-progress within the step
+        base = int((step_num / total_steps) * 100)
+        step_size = 100 / total_steps
+        sub_pct = int((sub / sub_total) * step_size) if sub_total > 0 else 0
+        percent = min(99, base + sub_pct)
         eval_tasks[task_id]["progress"] = {
             "percent": percent,
             "elapsed_seconds": round(time.time() - start_time, 1),
-            "current_step": f"Traitement {current}/{total}",
+            "current_step": f"[{step_num + 1}/{total_steps}] {step}" + (
+                f" ({sub}/{sub_total})" if sub_total > 0 else ""
+            ),
+            "steps_completed": step_num,
+            "steps_total": total_steps,
         }
 
     try:
         # Load dataset
-        eval_tasks[task_id]["progress"]["current_step"] = "Chargement du dataset..."
+        _update("Chargement du dataset...", 0, 1)
         data = load_dataset("datasets/augmented/test.csv")
 
         # Resolve model lists
@@ -158,8 +167,26 @@ def _run_evaluation(task_id: str, eval_tasks: dict, request: EvalRunRequest) -> 
         need_language = eval_type in ("language", "all")
         need_fuzzy = use_fuzzy and need_entity
 
+        # Build the list of steps to compute total_steps for progress
+        steps: list[str] = ["Chargement modèles"]
+        if need_language:
+            steps.append("Langue")
+        if need_intent:
+            steps.append("Intent")
+        if eval_type in ("entity", "all"):
+            steps.append("Entités")
+        if eval_type in ("entity_fuzzy", "all"):
+            steps.append("Entités + Fuzzy")
+        if eval_type in ("combined", "all"):
+            steps.append("Combiné")
+        if eval_type in ("combined_fuzzy", "all"):
+            steps.append("Combiné + Fuzzy")
+        steps.append("Export")
+        total_steps = len(steps)
+        step_idx = 0
+
         # Create models
-        eval_tasks[task_id]["progress"]["current_step"] = "Chargement des modèles..."
+        _update("Chargement des modèles...", step_idx, total_steps)
         classifiers = (
             create_intent_classifiers(intent_models, device=device)  # type: ignore[arg-type]
             if need_intent
@@ -172,6 +199,7 @@ def _run_evaluation(task_id: str, eval_tasks: dict, request: EvalRunRequest) -> 
         )
         fuzzy_post = create_fuzzy_post_processor() if need_fuzzy else None
         language_detectors = create_language_detectors(["all"]) if need_language else []
+        step_idx += 1
 
         # Run evaluations
         from src.evaluation.metrics import (
@@ -188,56 +216,66 @@ def _run_evaluation(task_id: str, eval_tasks: dict, request: EvalRunRequest) -> 
         combined_fuzzy_results: list[CombinedResults] = []
         language_results: dict[str, LanguageResults] = {}
 
-        if need_intent:
-            eval_tasks[task_id]["progress"]["current_step"] = "Évaluation intent..."
-            intent_results = evaluate_intent_classifiers(
-                classifiers, data, progress_callback=progress_callback
-            )
-
-        if eval_type in ("entity", "all"):
-            eval_tasks[task_id]["progress"]["current_step"] = "Évaluation entity..."
-            entity_results = evaluate_entity_extractors(
-                extractors, data, progress_callback=progress_callback
-            )
-
-        if eval_type in ("entity_fuzzy", "all"):
-            eval_tasks[task_id]["progress"]["current_step"] = "Évaluation entity + fuzzy..."
-            entity_fuzzy_results = evaluate_entity_extractors(
-                extractors,
-                data,
-                fuzzy_post=fuzzy_post,
-                normalize_fuzzy=True,
-                progress_callback=progress_callback,
-            )
-
-        if eval_type in ("combined", "all"):
-            eval_tasks[task_id]["progress"]["current_step"] = "Évaluation combinée..."
-            combined_results = evaluate_combined(
-                classifiers,
-                extractors,
-                data,
-                progress_callback=progress_callback,
-            )
-
-        if eval_type in ("combined_fuzzy", "all"):
-            eval_tasks[task_id]["progress"]["current_step"] = "Évaluation combinée + fuzzy..."
-            combined_fuzzy_results = evaluate_combined(
-                classifiers,
-                extractors,
-                data,
-                fuzzy_post=fuzzy_post,
-                normalize_fuzzy=True,
-                progress_callback=progress_callback,
-            )
+        def make_progress_cb(step_name: str, si: int):
+            """Create a progress callback bound to a specific step."""
+            def cb(current: int, total: int):
+                _update(step_name, si, total_steps, current, total)
+            return cb
 
         if need_language:
-            eval_tasks[task_id]["progress"]["current_step"] = "Évaluation language..."
+            _update("Évaluation langue...", step_idx, total_steps)
             language_results = evaluate_language_detectors(
-                language_detectors, data, progress_callback=progress_callback
+                language_detectors, data,
+                progress_callback=make_progress_cb("Évaluation langue", step_idx),
             )
+            step_idx += 1
+
+        if need_intent:
+            _update("Évaluation intent...", step_idx, total_steps)
+            intent_results = evaluate_intent_classifiers(
+                classifiers, data,
+                progress_callback=make_progress_cb("Évaluation intent", step_idx),
+            )
+            step_idx += 1
+
+        if eval_type in ("entity", "all"):
+            _update("Évaluation entités...", step_idx, total_steps)
+            entity_results = evaluate_entity_extractors(
+                extractors, data,
+                progress_callback=make_progress_cb("Évaluation entités", step_idx),
+            )
+            step_idx += 1
+
+        if eval_type in ("entity_fuzzy", "all"):
+            _update("Évaluation entités + fuzzy...", step_idx, total_steps)
+            entity_fuzzy_results = evaluate_entity_extractors(
+                extractors, data,
+                fuzzy_post=fuzzy_post,
+                normalize_fuzzy=True,
+                progress_callback=make_progress_cb("Évaluation entités + fuzzy", step_idx),
+            )
+            step_idx += 1
+
+        if eval_type in ("combined", "all"):
+            _update("Évaluation combinée...", step_idx, total_steps)
+            combined_results = evaluate_combined(
+                classifiers, extractors, data,
+                progress_callback=make_progress_cb("Évaluation combinée", step_idx),
+            )
+            step_idx += 1
+
+        if eval_type in ("combined_fuzzy", "all"):
+            _update("Évaluation combinée + fuzzy...", step_idx, total_steps)
+            combined_fuzzy_results = evaluate_combined(
+                classifiers, extractors, data,
+                fuzzy_post=fuzzy_post,
+                normalize_fuzzy=True,
+                progress_callback=make_progress_cb("Évaluation combinée + fuzzy", step_idx),
+            )
+            step_idx += 1
 
         # Export results
-        eval_tasks[task_id]["progress"]["current_step"] = "Export des résultats..."
+        _update("Export des résultats...", step_idx, total_steps)
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         output_path = REPORTS_DIR / f"evaluation_{timestamp}.json"
