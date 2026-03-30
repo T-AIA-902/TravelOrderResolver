@@ -158,10 +158,16 @@ const perClassData = computed(() => {
 
 // --- Run config ---
 const maxSamples = ref(2000)
+const includeExtras = ref(false)
 
 async function handleRun() {
+  const base = ['all']
+  const withExtras = ['all', 'mistral', 'flant5-base', 'camembert-base']
+  const models = includeExtras.value ? withExtras : base
   await startEvaluation({
     eval_type: 'all',
+    intent_models: models,
+    entity_models: models,
     max_samples: maxSamples.value || undefined,
   })
 }
@@ -361,6 +367,14 @@ onMounted(async () => {
               <option :value="0">Tout (15k, ~24h)</option>
             </select>
           </div>
+          <label class="flex items-center gap-1.5 text-xs text-gray-500">
+            <input
+              v-model="includeExtras"
+              type="checkbox"
+              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Inclure versions base (zero-shot) : Mistral, CamemBERT, Flan-T5 (comparaison fine-tuning, lent)
+          </label>
         </div>
 
         <ErrorAlert v-if="runError" :message="runError" class="mb-4" />

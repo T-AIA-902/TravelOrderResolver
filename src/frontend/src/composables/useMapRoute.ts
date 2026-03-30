@@ -45,9 +45,13 @@ export function useMapRoute() {
       }
     }
 
+    // Only show markers for transfer stations (line changes)
     for (let i = 0; i < details.length - 1; i++) {
       const seg = details[i]!
-      if (seg.geometry.length > 0) {
+      const nextSeg = details[i + 1]!
+      // Transfer = different line, or walk segment
+      const isTransfer = seg.line !== nextSeg.line || seg.type === 'WALK' || nextSeg.type === 'WALK'
+      if (isTransfer && seg.geometry.length > 0) {
         const point = seg.geometry[seg.geometry.length - 1]!
         intermediateStations.value.push({
           name: seg.to_station,

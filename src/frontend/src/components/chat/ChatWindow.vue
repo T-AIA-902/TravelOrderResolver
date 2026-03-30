@@ -16,6 +16,10 @@ const props = defineProps<{
   loading: boolean
 }>()
 
+const emit = defineEmits<{
+  selectRoute: [index: number]
+}>()
+
 const scrollContainer = ref<HTMLElement | null>(null)
 
 function scrollToBottom() {
@@ -51,6 +55,7 @@ watch(
         :text="msg.text"
         :nlp="msg.nlp"
         :pathfinding="msg.pathfinding"
+        @select-route="emit('selectRoute', $event)"
       />
 
       <!-- Typing indicator -->

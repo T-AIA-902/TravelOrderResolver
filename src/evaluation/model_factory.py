@@ -57,6 +57,11 @@ def create_intent_classifiers(
 
         classifiers.append(("Regex", RegexIntentClassifier()))
 
+    if "camembert-base" in models:
+        from src.nlp.intent.camembert_base_intent import CamembertBaseIntentClassifier
+
+        classifiers.append(("CamemBERT (base)", CamembertBaseIntentClassifier(device=device)))
+
     if "camembert" in models or "all" in models:
         from src.nlp.intent import CamembertIntentClassifier
 
@@ -73,6 +78,12 @@ def create_intent_classifiers(
         from src.nlp.intent import FlanT5IntentClassifier
 
         classifiers.append(("Flan-T5", FlanT5IntentClassifier()))
+
+    if "mistral" in models:
+        from src.nlp.intent import MistralIntentClassifier
+
+        classifiers.append(("Mistral (base)", MistralIntentClassifier(adapter_path=None)))
+        classifiers.append(("Mistral-LoRA", MistralIntentClassifier()))
 
     return classifiers
 
@@ -103,6 +114,11 @@ def create_entity_extractors(
 
         extractors.append(("SpaCy", SpacyEntityExtractor(device=device)))
 
+    if "camembert-base" in models:
+        from src.nlp.entity.camembert_base_entity import CamembertBaseEntityExtractor
+
+        extractors.append(("CamemBERT (base)", CamembertBaseEntityExtractor(device=device)))
+
     if "camembert" in models or "all" in models:
         from src.nlp.entity import CamembertEntityExtractor
 
@@ -114,6 +130,17 @@ def create_entity_extractors(
         from src.nlp.entity import FlanT5EntityExtractor
 
         extractors.append(("Flan-T5", FlanT5EntityExtractor()))
+
+    if "mistral" in models:
+        from src.nlp.entity import MistralEntityExtractor
+
+        extractors.append(("Mistral (base)", MistralEntityExtractor(adapter_path=None)))
+        extractors.append(("Mistral-LoRA", MistralEntityExtractor()))
+
+    if "flant5-base" in models:
+        from src.nlp.entity import FlanT5EntityExtractor
+
+        extractors.append(("Flan-T5 (base)", FlanT5EntityExtractor(model_name="google/flan-t5-base")))
 
     return extractors
 
@@ -144,12 +171,15 @@ def create_camembert_components(
     return extractor, classifier
 
 
-def create_fuzzy_post_processor() -> Any:
+def create_fuzzy_post_processor(graph: Any = None) -> Any:
     """Create fuzzy post-processor.
+
+    Args:
+        graph: Optional NetworkX graph for main station detection.
 
     Returns:
         FuzzyPostProcessor instance
     """
     from src.nlp.post import FuzzyPostProcessor
 
-    return FuzzyPostProcessor()
+    return FuzzyPostProcessor(graph=graph)

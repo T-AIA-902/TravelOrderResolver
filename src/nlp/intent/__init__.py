@@ -9,6 +9,7 @@ Note: Language detection is handled separately by the language module.
 
 from .camembert_intent import CamembertIntentClassifier
 from .flant5_intent import FlanT5IntentClassifier
+from .mistral_intent import MistralIntentClassifier
 from .regex_intent import RegexIntentClassifier
 from .spacy_intent import SpacyIntentClassifier
 
@@ -17,4 +18,5 @@ __all__ = [
     "CamembertIntentClassifier",
     "SpacyIntentClassifier",
     "FlanT5IntentClassifier",
+    "MistralIntentClassifier",
 ]

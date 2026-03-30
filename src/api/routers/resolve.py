@@ -26,6 +26,7 @@ class ResolveRequest(BaseModel):
     intent_model: str | None = None
     entity_model: str | None = None
     use_fuzzy: bool = True
+    algorithm: str = "astar"
 
 
 def _normalize_name(name: str) -> str:
@@ -33,13 +34,55 @@ def _normalize_name(name: str) -> str:
     return name.lower().replace("-", "").replace("_", "").replace(" ", "")
 
 
-def _find_component(name: str | None, components: list[tuple[str, object]]) -> tuple[str, object]:
-    """Find a component by name (case-insensitive, ignoring hyphens) or return the first one."""
+# Lazy-loaded Mistral instances (shared between intent and entity)
+_mistral_entity = None
+_mistral_intent = None
+
+
+def _get_mistral_entity():
+    global _mistral_entity
+    if _mistral_entity is None:
+        from src.nlp.entity import MistralEntityExtractor
+        _mistral_entity = MistralEntityExtractor()
+    return _mistral_entity
+
+
+def _get_mistral_intent():
+    global _mistral_intent
+    if _mistral_intent is None:
+        from src.nlp.intent import MistralIntentClassifier
+        _mistral_intent = MistralIntentClassifier(ner_model=_get_mistral_entity())
+    return _mistral_intent
+
+
+def _find_component(name: str | None, components: list[tuple[str, object]], kind: str = "") -> tuple[str, object]:
+    """Find a component by name (case-insensitive, ignoring hyphens) or return the first one.
+    Lazy-loads Mistral if requested but not in the preloaded list."""
     if name:
         normalized = _normalize_name(name)
         for comp_name, comp in components:
             if _normalize_name(comp_name) == normalized:
                 return comp_name, comp
+        # Lazy-load models on demand
+        if normalized == "mistrallora" or normalized == "mistral":
+            if kind == "intent":
+                return "Mistral-LoRA", _get_mistral_intent()
+            else:
+                return "Mistral-LoRA", _get_mistral_entity()
+        if normalized == "mistralbase" or normalized == "mistral(base)":
+            if kind == "intent":
+                from src.nlp.intent.mistral_intent import MistralIntentClassifier
+                return "Mistral (base)", MistralIntentClassifier(adapter_path=None)
+            else:
+                from src.nlp.entity.mistral_entity import MistralEntityExtractor
+                return "Mistral (base)", MistralEntityExtractor(adapter_path=None)
+        if normalized == "camembertbase" or normalized == "camembert(base)":
+            if kind == "intent":
+                from src.nlp.intent.camembert_base_intent import CamembertBaseIntentClassifier
+                return "CamemBERT (base)", CamembertBaseIntentClassifier()
+            else:
+                from src.nlp.entity.camembert_base_entity import CamembertBaseEntityExtractor
+                return "CamemBERT (base)", CamembertBaseEntityExtractor()
         available = [n for n, _ in components]
         raise HTTPException(404, f"Model '{name}' not found. Available: {available}")
     return components[0]
@@ -56,8 +99,8 @@ def resolve(
     language_detectors=Depends(get_language_detectors),
 ):
     # Select components
-    classifier_name, classifier = _find_component(body.intent_model, intent_classifiers)
-    extractor_name, extractor = _find_component(body.entity_model, entity_extractors)
+    classifier_name, classifier = _find_component(body.intent_model, intent_classifiers, kind="intent")
+    extractor_name, extractor = _find_component(body.entity_model, entity_extractors, kind="entity")
     detector_name, detector = language_detectors[0]
 
     # Build pipeline — disable built-in station matching, use fuzzy_post instead
@@ -130,13 +173,40 @@ def resolve(
         pathfinding_response = None
         intent_ok = result.intent.value != "NOT_TRIP"
         if intent_ok and departure_matched and destination_matched:
-            simplified, error, full_uic_path = graph.get_path(
-                departure_matched,
-                destination_matched,
-                intermediates=intermediates_matched or None,
-                algorithm="astar",
-            )
-            pathfinding_response = build_route_response(graph, simplified, error, full_uic_path)
+            algo = body.algorithm.lower()
+            if algo not in ("dijkstra", "astar", "moastar"):
+                algo = "astar"
+
+            if algo == "moastar":
+                from src.pathfinding.route_optimizer import Algorithm, RouteOptimizer
+                optimizer = RouteOptimizer(graph)
+                intermediate = intermediates_matched[0] if intermediates_matched else None
+                moa_result = optimizer.find_route(
+                    departure_matched, destination_matched,
+                    intermediate=intermediate,
+                    algorithm=Algorithm.MOASTAR,
+                )
+                pathfinding_response = build_route_response(graph, moa_result.simplified_path, moa_result.error, moa_result.full_uic_path)
+                pathfinding_response["algorithm"] = algo
+                if moa_result.pareto_paths:
+                    pareto_routes = []
+                    for p in moa_result.pareto_paths:
+                        p_response = build_route_response(graph, graph._simplify_path(p.uic_path), None, p.uic_path)
+                        pareto_routes.append({
+                            "path": graph._simplify_path(p.uic_path),
+                            "cost": {"time_h": round(p.cost.time, 2), "distance_km": round(p.cost.distance, 1), "transfers": p.cost.transfers},
+                            "route_details": p_response["route_details"],
+                        })
+                    pathfinding_response["pareto_routes"] = pareto_routes
+            else:
+                simplified, error, full_uic_path = graph.get_path(
+                    departure_matched,
+                    destination_matched,
+                    intermediates=intermediates_matched or None,
+                    algorithm=algo,
+                )
+                pathfinding_response = build_route_response(graph, simplified, error, full_uic_path)
+                pathfinding_response["algorithm"] = algo
 
         timer.set_output(result.to_dict())
 

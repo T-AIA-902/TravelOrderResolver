@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { NlpResult, PathfindingResult } from '../api/types'
+import type { NlpResult, PathfindingResult, ResolveResponse } from '../api/types'
 import { useResolve } from '../composables/useResolve'
 import { useMapRoute } from '../composables/useMapRoute'
 import { useEvaluation } from '../composables/useEvaluation'
@@ -21,12 +21,13 @@ interface ChatMessageItem {
 const messages = ref<ChatMessageItem[]>([])
 const { isLoading, error, resolveTrip } = useResolve()
 
-const intentModels = ['CamemBERT', 'SpaCy', 'Flan-T5', 'Regex'] as const
-const entityModels = ['Flan-T5', 'CamemBERT', 'SpaCy', 'Regex'] as const
+const intentModels = ['CamemBERT', 'CamemBERT (base)', 'SpaCy', 'Flan-T5', 'Regex', 'Mistral-LoRA', 'Mistral (base)'] as const
+const entityModels = ['Flan-T5', 'CamemBERT', 'CamemBERT (base)', 'SpaCy', 'Regex', 'Mistral-LoRA', 'Mistral (base)'] as const
 
 const selectedIntentModel = ref('CamemBERT')
 const selectedEntityModel = ref('Flan-T5')
 const useFuzzy = ref(true)
+const selectedAlgorithm = ref('astar')
 
 // Load best combo from latest evaluation
 const { reports, reportDetail, loadReports, loadReport } = useEvaluation()
@@ -34,20 +35,20 @@ const { reports, reportDetail, loadReports, loadReport } = useEvaluation()
 onMounted(async () => {
   await loadReports()
   if (reports.value.length > 0) {
-    await loadReport(reports.value[0].id)
+    await loadReport(reports.value[0]!.id)
     if (reportDetail.value) {
       const data = reportDetail.value as Record<string, unknown>
       const combined = data.combined_fuzzy as Array<Record<string, unknown>> | undefined
       if (combined && combined.length > 0) {
         // Find best combined pipeline
-        let best = combined[0]
+        let best = combined[0]!
         for (const entry of combined) {
           const score = (entry.intent_accuracy as number) + (entry.entity_accuracy as number)
           const bestScore = (best.intent_accuracy as number) + (best.entity_accuracy as number)
           if (score > bestScore) best = entry
         }
-        selectedIntentModel.value = best.intent as string
-        selectedEntityModel.value = best.entity as string
+        if (best.intent) selectedIntentModel.value = best.intent as string
+        if (best.entity) selectedEntityModel.value = best.entity as string
       }
     }
   }
@@ -60,6 +61,11 @@ const {
   intermediateStations,
   updateFromResponse,
 } = useMapRoute()
+
+// Multi-route support for MOA*
+import type { MapRoute } from '../components/map/RailwayMap.vue'
+const mapRoutes = ref<MapRoute[]>([])
+const selectedRouteIndex = ref(0)
 
 let msgCounter = 0
 function nextId() {
@@ -79,6 +85,7 @@ async function onSend(text: string) {
       intent_model: selectedIntentModel.value,
       entity_model: selectedEntityModel.value,
       use_fuzzy: useFuzzy.value,
+      algorithm: selectedAlgorithm.value,
     })
 
     const systemMsg: ChatMessageItem = {
@@ -90,8 +97,22 @@ async function onSend(text: string) {
     }
     messages.value.push(systemMsg)
 
+    lastResponse.value = response
+    mapRoutes.value = []
+    selectedRouteIndex.value = 0
     if (response.pathfinding?.found) {
       updateFromResponse(response)
+      // Build multi-routes for MOA*
+      if (response.pathfinding.pareto_routes && response.pathfinding.pareto_routes.length > 1) {
+        const colors = ['#ef4444', '#3b82f6', '#10b981']
+        mapRoutes.value = response.pathfinding.pareto_routes
+          .filter(p => p.route_details && p.route_details.length > 0)
+          .map((p, i) => ({
+            segments: p.route_details!,
+            color: colors[i % colors.length] as string,
+            label: `Route ${i + 1}: ${p.cost.time_h}h, ${p.cost.distance_km}km, ${p.cost.transfers} corresp.`,
+          }))
+      }
     }
   } catch {
     messages.value.push({
@@ -105,9 +126,15 @@ async function onSend(text: string) {
 const showDebug = ref(false)
 const showSettings = ref(true)
 const isEmpty = computed(() => messages.value.length === 0 && !isLoading.value)
+const lastResponse = ref<ResolveResponse | null>(null)
 
+function onSelectRoute(index: number) {
+  selectedRouteIndex.value = index
+}
+
+const algoLabels: Record<string, string> = { astar: 'A*', dijkstra: 'Dijkstra', moastar: 'MOA*' }
 const pipelineLabel = computed(() => {
-  return `${selectedIntentModel.value} + ${selectedEntityModel.value}${useFuzzy.value ? ' + Fuzzy' : ''}`
+  return `${selectedIntentModel.value} + ${selectedEntityModel.value}${useFuzzy.value ? ' + Fuzzy' : ''} | ${algoLabels[selectedAlgorithm.value] || selectedAlgorithm.value}`
 })
 </script>
 
@@ -130,7 +157,7 @@ const pipelineLabel = computed(() => {
 
       <!-- Conversation state: messages + input at bottom -->
       <template v-else>
-        <ChatWindow :messages="messages" :loading="isLoading" />
+        <ChatWindow :messages="messages" :loading="isLoading" @select-route="onSelectRoute" />
         <ChatInput :disabled="isLoading" @send="onSend" />
       </template>
 
@@ -170,6 +197,18 @@ const pipelineLabel = computed(() => {
             </select>
           </div>
 
+          <div class="flex items-center gap-1.5">
+            <label class="text-xs font-medium text-gray-500">Pathfinding :</label>
+            <select
+              v-model="selectedAlgorithm"
+              class="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            >
+              <option value="astar">A* (rapide, optimal)</option>
+              <option value="dijkstra">Dijkstra (optimal)</option>
+              <option value="moastar">MOA* (multi-objectif)</option>
+            </select>
+          </div>
+
           <label class="flex items-center gap-1.5 text-xs text-gray-500">
             <input
               v-model="useFuzzy"
@@ -187,6 +226,8 @@ const pipelineLabel = computed(() => {
       <div class="min-h-0 flex-1 p-4">
         <RailwayMap
           :route="routeSegments"
+          :routes="mapRoutes"
+          :selected-route-index="selectedRouteIndex"
           :departure-station="departureStation"
           :destination-station="destinationStation"
           :intermediate-stations="intermediateStations"

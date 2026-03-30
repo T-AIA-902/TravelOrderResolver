@@ -11,7 +11,7 @@ Performance optimizations:
 - Pre-built first_words index (computed once at init, not per query)
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from rapidfuzz import fuzz, process
 
@@ -28,15 +28,17 @@ class StationMatcher:
     Uses StationDatabase as data source to avoid duplication.
     """
 
-    def __init__(self, station_database: Optional[StationDatabase] = None, threshold: int = 80):
+    def __init__(self, station_database: Optional[StationDatabase] = None, threshold: int = 80, graph: Optional[Any] = None):
         """
         Initialize the station matcher with SNCF stations database.
 
         Args:
             station_database: StationDatabase instance. Creates a new one if None.
             threshold: Minimum similarity score (0-100) to accept a match (default: 80)
+            graph: Optional NetworkX graph to determine main stations by connectivity
         """
         self.threshold = threshold
+        self._graph = graph
 
         # Use provided database or create a new one
         self.db = station_database or StationDatabase()
@@ -122,15 +124,42 @@ class StationMatcher:
             self._match_cache[normalized_query] = result
             return result
 
-        # Step 1b: Check for exact prefix match (e.g., "paris" -> "Paris Austerlitz")
-        # This handles cases where user says "Paris" but stations are "Paris-Est", etc.
-        # Note: normalize_name() converts hyphens to spaces
-        for normalized_name in self.normalized_names:
-            if normalized_name.startswith(normalized_query + " "):
-                original_name = self.search_index[normalized_name]
-                result = (original_name, 95.0)
+        # Step 1b: Check for prefix matches — prefer the station with most
+        # connections (highest degree in the railway graph = main station)
+        prefix_matches = [
+            n for n in self.normalized_names
+            if n.startswith(normalized_query + " ") or n == normalized_query
+        ]
+
+        if prefix_matches:
+            if len(prefix_matches) == 1:
+                original_name = self.search_index[prefix_matches[0]]
+                result = (original_name, 98.0)
                 self._match_cache[normalized_query] = result
                 return result
+
+            # Multiple matches: pick the one with most connections
+            best_name = prefix_matches[0]
+            best_degree = -1
+            if self._graph is not None:
+                for norm_name in prefix_matches:
+                    orig = self.search_index[norm_name]
+                    # Find UIC in graph and check degree
+                    for uic, data in self._graph.nodes(data=True):
+                        if data.get("name") == orig:
+                            deg = self._graph.degree(uic)
+                            if deg > best_degree:
+                                best_degree = deg
+                                best_name = norm_name
+                            break
+            else:
+                # No graph: prefer shortest name (usually the main station)
+                best_name = min(prefix_matches, key=len)
+
+            original_name = self.search_index[best_name]
+            result = (original_name, 98.0)
+            self._match_cache[normalized_query] = result
+            return result
 
         # Step 2: Use pre-built first_words index (no longer rebuilt every call)
         # Step 3: Try fuzzy matching on first words only

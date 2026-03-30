@@ -61,6 +61,18 @@ export interface RouteSegment {
   geometry: [number, number][]
 }
 
+export interface ParetoCost {
+  time_h: number
+  distance_km: number
+  transfers: number
+}
+
+export interface ParetoRoute {
+  path: string[]
+  cost: ParetoCost
+  route_details?: RouteSegment[]
+}
+
 export interface PathfindingResult {
   found: boolean
   route: string[] | null
@@ -68,6 +80,8 @@ export interface PathfindingResult {
   total_stops: number
   transfers: number
   error: string | null
+  algorithm?: string
+  pareto_routes?: ParetoRoute[]
 }
 
 // Resolve (full pipeline)
@@ -76,6 +90,7 @@ export interface ResolveRequest {
   intent_model?: string
   entity_model?: string
   use_fuzzy?: boolean
+  algorithm?: string
 }
 
 export interface ResolveResponse {

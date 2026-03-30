@@ -7,9 +7,17 @@ import type { RouteSegment, Station } from '../../api/types'
 import RouteLayer from './RouteLayer.vue'
 import StationMarker from './StationMarker.vue'
 
+export interface MapRoute {
+  segments: RouteSegment[]
+  color: string
+  label: string
+}
+
 const props = withDefaults(
   defineProps<{
     route?: RouteSegment[] | null
+    routes?: MapRoute[]
+    selectedRouteIndex?: number
     departureStation?: Station | null
     destinationStation?: Station | null
     intermediateStations?: Station[]
@@ -17,6 +25,8 @@ const props = withDefaults(
   }>(),
   {
     route: null,
+    routes: () => [],
+    selectedRouteIndex: 0,
     departureStation: null,
     destinationStation: null,
     intermediateStations: () => [],
@@ -34,11 +44,13 @@ const tileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
 const tileAttribution =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CartoDB</a>'
 
+const ROUTE_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
+
 function onMapReady() {
   mapReady.value = true
 }
 
-function fitToRoute(segments: RouteSegment[]) {
+function fitToSegments(segments: RouteSegment[]) {
   if (!mapRef.value) return
 
   const allPoints: [number, number][] = []
@@ -58,15 +70,20 @@ function fitToRoute(segments: RouteSegment[]) {
       leafletMap.fitBounds(bounds, { padding: [50, 50] })
     }
   } catch {
-    // Map not ready yet, ignore
+    // Map not ready yet
   }
 }
 
+// Fit to primary route or first multi-route
 watch(
-  [() => props.route, mapReady],
-  ([segments]) => {
-    if (!segments || segments.length === 0 || !mapReady.value) return
-    fitToRoute(segments)
+  [() => props.route, () => props.routes, mapReady],
+  ([segments, multiRoutes]) => {
+    if (!mapReady.value) return
+    if (segments && segments.length > 0) {
+      fitToSegments(segments)
+    } else if (multiRoutes && multiRoutes.length > 0) {
+      fitToSegments(multiRoutes[0].segments)
+    }
   },
 )
 </script>
@@ -86,7 +103,20 @@ watch(
     >
       <LTileLayer :url="tileUrl" :attribution="tileAttribution" />
 
-      <RouteLayer v-if="route" :segments="route" />
+      <!-- Multi-route mode (MOA*) : draw non-selected routes first (behind) -->
+      <template v-if="routes.length > 1">
+        <RouteLayer
+          v-for="(r, i) in routes"
+          :key="'route-' + i"
+          :segments="r.segments"
+          :color="ROUTE_COLORS[i % ROUTE_COLORS.length]"
+          :opacity="i === selectedRouteIndex ? 0.9 : 0.25"
+          :label="r.label"
+        />
+      </template>
+
+      <!-- Single route mode -->
+      <RouteLayer v-else-if="route" :segments="route" />
 
       <StationMarker v-if="departureStation" :station="departureStation" type="departure" />
       <StationMarker v-if="destinationStation" :station="destinationStation" type="destination" />

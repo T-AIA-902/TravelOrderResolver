@@ -24,18 +24,19 @@ class FuzzyPostProcessor(PostProcessor):
     This can be applied to ANY entity extractor's output.
     """
 
-    def __init__(self, threshold: int = 80) -> None:
+    def __init__(self, threshold: int = 80, graph: Any = None) -> None:
         """
         Initialize the fuzzy post-processor.
 
         Args:
             threshold: Minimum similarity score (0-100) to accept a match
+            graph: Optional NetworkX graph to determine main stations by connectivity
         """
         # Import from local module
         from .station_matcher import StationMatcher
 
         self.threshold = threshold
-        self.matcher = StationMatcher(threshold=threshold)
+        self.matcher = StationMatcher(threshold=threshold, graph=graph)
 
     @property
     def name(self) -> str:
