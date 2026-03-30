@@ -35,11 +35,25 @@ const stepsText = computed(() => {
   return ''
 })
 
+const completedItems = computed(() => {
+  return props.status?.progress.completed ?? []
+})
+
 const isRunning = computed(
   () => props.status?.status === 'running' || props.status?.status === 'started',
 )
 const isCompleted = computed(() => props.status?.status === 'completed')
 const isFailed = computed(() => props.status?.status === 'failed')
+
+function pct(v: number): string {
+  return (v * 100).toFixed(1) + '%'
+}
+
+function scoreColor(v: number): string {
+  if (v >= 0.8) return 'text-green-700 bg-green-50'
+  if (v >= 0.5) return 'text-yellow-700 bg-yellow-50'
+  return 'text-red-700 bg-red-50'
+}
 </script>
 
 <template>
@@ -75,6 +89,24 @@ const isFailed = computed(() => props.status?.status === 'failed')
         <span class="text-gray-600">{{ currentStep }}</span>
         <span class="font-medium text-blue-600">{{ percent }}%</span>
       </div>
+
+      <!-- Completed results -->
+      <div v-if="completedItems.length > 0" class="mt-3 space-y-1">
+        <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Résultats obtenus</p>
+        <div class="flex flex-wrap gap-2">
+          <div
+            v-for="(item, i) in completedItems"
+            :key="i"
+            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs"
+            :class="scoreColor(item.value)"
+          >
+            <CheckCircle class="h-3 w-3" />
+            <span class="font-medium">{{ item.category }}</span>
+            <span class="text-gray-400">{{ item.model }}</span>
+            <span class="font-bold">{{ pct(item.value) }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Completed -->
@@ -107,6 +139,24 @@ const isFailed = computed(() => props.status?.status === 'failed')
         />
       </div>
       <p v-if="currentStep" class="text-sm text-red-600">{{ currentStep }}</p>
+
+      <!-- Show what was completed before failure -->
+      <div v-if="completedItems.length > 0" class="mt-2 space-y-1">
+        <p class="text-xs font-medium text-gray-400">Résultats avant l'erreur :</p>
+        <div class="flex flex-wrap gap-2">
+          <div
+            v-for="(item, i) in completedItems"
+            :key="i"
+            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs"
+            :class="scoreColor(item.value)"
+          >
+            <CheckCircle class="h-3 w-3" />
+            <span class="font-medium">{{ item.category }}</span>
+            <span class="text-gray-400">{{ item.model }}</span>
+            <span class="font-bold">{{ pct(item.value) }}</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

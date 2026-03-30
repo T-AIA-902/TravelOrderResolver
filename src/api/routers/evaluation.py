@@ -26,6 +26,7 @@ class EvalRunRequest(BaseModel):
     entity_models: list[str] | None = None
     use_fuzzy: bool = True
     device: str = "cpu"
+    max_samples: int | None = None
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -132,9 +133,10 @@ def _run_evaluation(task_id: str, eval_tasks: dict, request: EvalRunRequest) -> 
 
     start_time = time.time()
 
+    completed_items: list[dict] = []
+
     def _update(step: str, step_num: int, total_steps: int, sub: int = 0, sub_total: int = 0):
         """Update task progress with global step tracking."""
-        # Global percent: each step is an equal slice, sub-progress within the step
         base = int((step_num / total_steps) * 100)
         step_size = 100 / total_steps
         sub_pct = int((sub / sub_total) * step_size) if sub_total > 0 else 0
@@ -147,12 +149,28 @@ def _run_evaluation(task_id: str, eval_tasks: dict, request: EvalRunRequest) -> 
             ),
             "steps_completed": step_num,
             "steps_total": total_steps,
+            "completed": completed_items,
         }
+
+    def _log_result(category: str, model: str, metric: str, value: float):
+        """Log a completed evaluation result."""
+        completed_items.append({
+            "category": category,
+            "model": model,
+            "metric": metric,
+            "value": round(value, 4),
+        })
 
     try:
         # Load dataset
         _update("Chargement du dataset...", 0, 1)
         data = load_dataset("datasets/augmented/test.csv")
+
+        # Limit dataset size if requested
+        if request.max_samples and len(data) > request.max_samples:
+            import random
+            random.seed(42)
+            data = random.sample(data, request.max_samples)
 
         # Resolve model lists
         eval_type = request.eval_type
@@ -228,6 +246,8 @@ def _run_evaluation(task_id: str, eval_tasks: dict, request: EvalRunRequest) -> 
                 language_detectors, data,
                 progress_callback=make_progress_cb("Évaluation langue", step_idx),
             )
+            for name, res in language_results.items():
+                _log_result("Langue", name, "accuracy", res.correct / res.total if res.total else 0)
             step_idx += 1
 
         if need_intent:
@@ -236,6 +256,8 @@ def _run_evaluation(task_id: str, eval_tasks: dict, request: EvalRunRequest) -> 
                 classifiers, data,
                 progress_callback=make_progress_cb("Évaluation intent", step_idx),
             )
+            for name, res in intent_results.items():
+                _log_result("Intent", name, "accuracy", res.correct / res.total if res.total else 0)
             step_idx += 1
 
         if eval_type in ("entity", "all"):
@@ -244,6 +266,8 @@ def _run_evaluation(task_id: str, eval_tasks: dict, request: EvalRunRequest) -> 
                 extractors, data,
                 progress_callback=make_progress_cb("Évaluation entités", step_idx),
             )
+            for name, res in entity_results.items():
+                _log_result("Entity", name, "accuracy", res.correct / res.total if res.total else 0)
             step_idx += 1
 
         if eval_type in ("entity_fuzzy", "all"):
@@ -254,6 +278,8 @@ def _run_evaluation(task_id: str, eval_tasks: dict, request: EvalRunRequest) -> 
                 normalize_fuzzy=True,
                 progress_callback=make_progress_cb("Évaluation entités + fuzzy", step_idx),
             )
+            for name, res in entity_fuzzy_results.items():
+                _log_result("Entity+Fuzzy", name, "accuracy", res.correct / res.total if res.total else 0)
             step_idx += 1
 
         if eval_type in ("combined", "all"):

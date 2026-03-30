@@ -156,9 +156,14 @@ const perClassData = computed(() => {
   return { models, rows }
 })
 
-// --- Run ---
+// --- Run config ---
+const maxSamples = ref(2000)
+
 async function handleRun() {
-  await startEvaluation({ eval_type: 'all' })
+  await startEvaluation({
+    eval_type: 'all',
+    max_samples: maxSamples.value || undefined,
+  })
 }
 
 const isEvalRunning = computed(
@@ -340,7 +345,24 @@ onMounted(async () => {
           {{ isEvalRunning ? 'En cours...' : 'Lancer' }}
         </button>
       </div>
-      <div v-if="isEvalRunning || runError" class="px-6 py-4">
+      <div class="px-6 py-4">
+        <!-- Config -->
+        <div v-if="!isEvalRunning" class="mb-4 flex flex-wrap items-center gap-4">
+          <div class="flex items-center gap-1.5">
+            <label class="text-xs font-medium text-gray-500">Échantillon :</label>
+            <select
+              v-model.number="maxSamples"
+              class="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
+            >
+              <option :value="500">500 (rapide ~30min)</option>
+              <option :value="1000">1 000 (~1h)</option>
+              <option :value="2000">2 000 (~2h)</option>
+              <option :value="5000">5 000 (~5h)</option>
+              <option :value="0">Tout (15k, ~24h)</option>
+            </select>
+          </div>
+        </div>
+
         <ErrorAlert v-if="runError" :message="runError" class="mb-4" />
         <EvalProgress v-if="isEvalRunning" :status="evalStatus" />
       </div>

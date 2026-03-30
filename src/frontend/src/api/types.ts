@@ -175,12 +175,20 @@ export interface EvalRunRequest {
   preprocess?: boolean
   device?: string
   dataset?: string
+  max_samples?: number
 }
 
 export interface EvalRunResponse {
   task_id: string
   status: string
   message: string
+}
+
+export interface EvalCompletedItem {
+  category: string
+  model: string
+  metric: string
+  value: number
 }
 
 export interface EvalStatus {
@@ -192,6 +200,7 @@ export interface EvalStatus {
     steps_total?: number
     percent: number
     elapsed_seconds: number
+    completed?: EvalCompletedItem[]
   }
   report_id?: string
 }
