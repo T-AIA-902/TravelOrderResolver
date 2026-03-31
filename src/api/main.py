@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):  # type: ignore[arg-type]
         ["all"], device=device, ner_model=ner_model  # type: ignore[arg-type]
     )
     app.state.fuzzy_post = create_fuzzy_post_processor(graph=app.state.graph.graph)
-    app.state.whisper = WhisperModel(model_name="base", device="auto")
+    app.state.whisper = WhisperModel(model_name="small", device="auto")
     app.state.eval_tasks = {}
     yield
     if app.state.whisper.is_loaded:

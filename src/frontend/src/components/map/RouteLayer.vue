@@ -17,18 +17,20 @@ const props = withDefaults(
 )
 
 function polylineOptions(segment: RouteSegment) {
-  if (segment.type === 'TRAIN') {
+  const isWalk = segment.type === 'WALK'
+  if (isWalk) {
     return {
       color: props.color,
-      weight: props.opacity >= 0.7 ? 4 : 3,
-      opacity: props.opacity,
+      weight: 3,
+      opacity: props.opacity * 0.8,
+      dashArray: '8,6',
     }
   }
+  // TRAIN and SERVICE segments: solid line
   return {
     color: props.color,
-    weight: 3,
-    opacity: props.opacity * 0.8,
-    dashArray: '8,6',
+    weight: props.opacity >= 0.7 ? 4 : 2,
+    opacity: props.opacity,
   }
 }
 

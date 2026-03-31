@@ -45,12 +45,13 @@ export function useMapRoute() {
       }
     }
 
-    // Only show markers for transfer stations (line changes)
+    // Only show markers for transfer stations (real line changes)
+    const getAxe = (line: string) => line.includes('-') ? line.split('-').slice(1).join('-') : line
     for (let i = 0; i < details.length - 1; i++) {
       const seg = details[i]!
       const nextSeg = details[i + 1]!
-      // Transfer = different line, or walk segment
-      const isTransfer = seg.line !== nextSeg.line || seg.type === 'WALK' || nextSeg.type === 'WALK'
+      // Transfer = different axe corridor, or walk segment
+      const isTransfer = (getAxe(seg.line) !== getAxe(nextSeg.line)) || seg.type === 'WALK' || nextSeg.type === 'WALK'
       if (isTransfer && seg.geometry.length > 0) {
         const point = seg.geometry[seg.geometry.length - 1]!
         intermediateStations.value.push({

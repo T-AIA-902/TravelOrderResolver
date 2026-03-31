@@ -103,15 +103,23 @@ watch(
     >
       <LTileLayer :url="tileUrl" :attribution="tileAttribution" />
 
-      <!-- Multi-route mode (MOA*) : draw non-selected routes first (behind) -->
+      <!-- Multi-route mode (MOA*) : draw non-selected first (behind), selected last (on top) -->
       <template v-if="routes.length > 1">
+        <template v-for="(r, i) in routes" :key="'route-' + i">
+          <RouteLayer
+            v-if="i !== selectedRouteIndex"
+            :segments="r.segments"
+            :color="ROUTE_COLORS[i % ROUTE_COLORS.length]"
+            :opacity="0.15"
+            :label="r.label"
+          />
+        </template>
         <RouteLayer
-          v-for="(r, i) in routes"
-          :key="'route-' + i"
-          :segments="r.segments"
-          :color="ROUTE_COLORS[i % ROUTE_COLORS.length]"
-          :opacity="i === selectedRouteIndex ? 0.9 : 0.25"
-          :label="r.label"
+          v-if="routes[selectedRouteIndex]"
+          :segments="routes[selectedRouteIndex]!.segments"
+          :color="ROUTE_COLORS[selectedRouteIndex % ROUTE_COLORS.length]"
+          :opacity="0.9"
+          :label="routes[selectedRouteIndex]!.label"
         />
       </template>
 

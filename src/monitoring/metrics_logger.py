@@ -122,6 +122,38 @@ class MetricsLogger:
         return entries[-limit:][::-1]
 
 
+# Energy estimation constants
+# Average power draw during inference (Watts) — conservative estimates
+_POWER_ESTIMATES_W: dict[str, float] = {
+    "cpu_idle": 5.0,
+    "cpu_light": 15.0,   # Regex, SpaCy
+    "cpu_medium": 25.0,  # CamemBERT, Flan-T5
+    "cpu_heavy": 45.0,   # Mistral 7B on CPU
+    "gpu": 80.0,         # GPU inference
+}
+# France electricity carbon intensity (ADEME 2024): 52 g CO2/kWh
+_CARBON_INTENSITY_KG_PER_KWH = 0.052
+
+
+def estimate_carbon_kg(duration_s: float, model_name: str = "") -> float:
+    """Estimate CO2 emissions from inference duration and model type.
+
+    Uses average power draw estimates and French grid emission factor.
+    """
+    name = model_name.lower()
+    if "mistral" in name:
+        power_w = _POWER_ESTIMATES_W["cpu_heavy"]
+    elif any(k in name for k in ("camembert", "flan", "t5", "bert")):
+        power_w = _POWER_ESTIMATES_W["cpu_medium"]
+    elif any(k in name for k in ("spacy", "regex")):
+        power_w = _POWER_ESTIMATES_W["cpu_light"]
+    else:
+        power_w = _POWER_ESTIMATES_W["cpu_medium"]
+
+    energy_kwh = power_w * duration_s / 3_600_000
+    return energy_kwh * _CARBON_INTENSITY_KG_PER_KWH
+
+
 class _RequestTimer:
     """Context manager that times a request and logs metrics."""
 
@@ -132,6 +164,7 @@ class _RequestTimer:
         self._start: float = 0.0
         self._output: Optional[dict] = None
         self._extra: dict = {}
+        self.carbon_kg: float = 0.0
 
     def set_output(self, output: dict) -> None:
         """Set the output result to include in metrics."""
@@ -147,11 +180,13 @@ class _RequestTimer:
 
     def __exit__(self, *args: object) -> None:
         duration = time.time() - self._start
+        self.carbon_kg = estimate_carbon_kg(duration, self._model_name)
         metrics = RequestMetrics(
             timestamp=datetime.now(timezone.utc).isoformat(),
             input_text=self._input_text,
             model_name=self._model_name,
             duration_s=round(duration, 4),
+            carbon_kg=round(self.carbon_kg, 10),
             output=self._output,
             extra=self._extra,
         )

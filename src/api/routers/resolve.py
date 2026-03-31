@@ -210,4 +210,8 @@ def resolve(
 
         timer.set_output(result.to_dict())
 
+    # Add carbon estimate to response
+    carbon_g = round(timer.carbon_kg * 1000, 4)  # convert kg → grams
+    nlp_response["carbon_g"] = carbon_g
+
     return {"nlp": nlp_response, "pathfinding": pathfinding_response}

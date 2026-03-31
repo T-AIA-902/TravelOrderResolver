@@ -60,6 +60,13 @@ class _ParetoFrontier:
         return True
 
 
+def _normalize_axe(line: str) -> str:
+    """Extract normalized axe from line label for transfer comparison."""
+    if "-" in line:
+        return line.split("-", 1)[1]
+    return line
+
+
 def _edge_costs(
     graph: nx.MultiGraph,
     u: str,
@@ -68,14 +75,33 @@ def _edge_costs(
 ) -> List[Tuple[CostVector, str]]:
     edge_data = graph.get_edge_data(u, v)
     results = []
+    seen_lines = set()
 
     for key in edge_data:
         edata = edge_data[key]
         line_code = edata.get("line", "UNKNOWN")
+        edge_type = edata.get("type", "TRAIN")
+
+        # Deduplicate: keep best edge per line
+        if line_code in seen_lines:
+            continue
+        seen_lines.add(line_code)
+
         dist_km = edata.get("dist_km", 1.0)
-        speed = edata.get("speed", SPEED_DEFAULT)
-        time_h = dist_km / speed
-        transfer = 1 if (prev_line is not None and line_code != prev_line) else 0
+        # Use pre-computed weight (real travel time for SERVICE edges)
+        time_h = edata.get("weight", dist_km / edata.get("speed", SPEED_DEFAULT))
+
+        # Transfer counting: hub walks don't count,
+        # same axe doesn't count (e.g. TGV-sud est → TGV-sud est)
+        transfer = 0
+        if prev_line is not None and line_code != prev_line:
+            if edge_type == "WALK" or line_code == "TRANSFERT":
+                transfer = 0  # city walk, not a real transfer
+            else:
+                prev_axe = _normalize_axe(prev_line)
+                curr_axe = _normalize_axe(line_code)
+                if prev_axe != curr_axe:
+                    transfer = 1
 
         results.append(
             (

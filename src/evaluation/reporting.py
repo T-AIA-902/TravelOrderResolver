@@ -16,6 +16,12 @@ from .formatting import (
     format_language_report_ascii,
 )
 from .metrics import CombinedResults, EntityResults, IntentResults, LanguageResults
+from src.monitoring.metrics_logger import estimate_carbon_kg
+
+
+def _carbon_g_from_latency(latency_ms: float, model_name: str) -> float:
+    """Convert average latency to estimated carbon per request in grams."""
+    return round(estimate_carbon_kg(latency_ms / 1000, model_name) * 1000, 6)
 
 
 def print_table_language(results: dict[str, LanguageResults]) -> None:
@@ -108,6 +114,7 @@ def export_results_json(
                 "unknown_f1": r.unknown_intent_metrics.f1_score,
                 "unknown_support": r.unknown_intent_metrics.support,
                 "latency_ms": r.avg_latency_ms,
+                "carbon_g": _carbon_g_from_latency(r.avg_latency_ms, name),
             }
             for name, r in intent_results.items()
         },
@@ -124,6 +131,7 @@ def export_results_json(
                 "destination_f1": r.destination_metrics.f1_score,
                 "destination_support": r.destination_metrics.support,
                 "latency_ms": r.avg_latency_ms,
+                "carbon_g": _carbon_g_from_latency(r.avg_latency_ms, name),
             }
             for name, r in entity_results.items()
         },
@@ -140,6 +148,7 @@ def export_results_json(
                 "destination_f1": r.destination_metrics.f1_score,
                 "destination_support": r.destination_metrics.support,
                 "latency_ms": r.avg_latency_ms,
+                "carbon_g": _carbon_g_from_latency(r.avg_latency_ms, name),
             }
             for name, r in entity_fuzzy_results.items()
         },
@@ -151,6 +160,7 @@ def export_results_json(
                 "intent_accuracy": r.intent_accuracy,
                 "entity_accuracy": r.entity_accuracy,
                 "latency_ms": r.avg_latency_ms,
+                "carbon_g": _carbon_g_from_latency(r.avg_latency_ms, f"{r.intent_name}+{r.entity_name}"),
             }
             for r in combined_results
         ],
@@ -162,6 +172,7 @@ def export_results_json(
                 "intent_accuracy": r.intent_accuracy,
                 "entity_accuracy": r.entity_accuracy,
                 "latency_ms": r.avg_latency_ms,
+                "carbon_g": _carbon_g_from_latency(r.avg_latency_ms, f"{r.intent_name}+{r.entity_name}"),
             }
             for r in combined_fuzzy_results
         ],
@@ -182,6 +193,7 @@ def export_results_json(
                 "unknown_f1": r.unknown_lang_metrics.f1_score,
                 "unknown_support": r.unknown_total,
                 "latency_ms": r.avg_latency_ms,
+                "carbon_g": _carbon_g_from_latency(r.avg_latency_ms, name),
             }
             for name, r in language_results.items()
         },
